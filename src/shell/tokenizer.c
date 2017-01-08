@@ -1,36 +1,8 @@
+#include "tokenizer.h"
+
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef enum {CHAR, QUOTE, PIPE, REDIRECT, WHITE} token_type;
-
-token_type get_token(bool in_string, char curr_char)
-{
-  if (curr_char == '\"')
-  {
-    return QUOTE;
-  }
-  // If inside quotes, must be character
-  else if (in_string)
-  {
-    return CHAR;
-  }
-  else if (curr_char == '|') {
-    return PIPE;
-  }
-  else if (curr_char == '<' || curr_char == '>')
-  {
-    return REDIRECT;
-  }
-  else if (curr_char == ' ' || curr_char == '\t')
-  {
-    return WHITE;
-  }
-  else
-  {
-    return CHAR;
-  }
-}
 
 token_type *tokenize(char *line)
 {
@@ -69,4 +41,32 @@ token_type *tokenize(char *line)
   }
 
   return tokens;
+}
+
+token_type get_token(bool in_string, char curr_char)
+{
+  if (curr_char == '\"')
+  {
+    return QUOTE;
+  }
+  // If inside quotes, must be character
+  else if (in_string)
+  {
+    return CHAR;
+  }
+  else if (curr_char == '|') {
+    return PIPE;
+  }
+  else if (curr_char == '<' || curr_char == '>')
+  {
+    return REDIRECT;
+  }
+  else if (curr_char == ' ' || curr_char == '\t')
+  {
+    return WHITE;
+  }
+  else
+  {
+    return CHAR;
+  }
 }
