@@ -5,27 +5,27 @@
  *               Redirection struct              *
  * * * * * * * * * * * * * * * * * * * * * * * * */
 
-// This struct will consider the different kinds of redirections as well as the
-// specific redirect location.
-struct Redirection
-{
-  token_type redirectType;
-  char* redirectLocation;
-}
+/* This struct will consider the different kinds of redirections
+ * as well as the specific redirect location.
+ */
+typedef struct _Redirection {
+  token_type redirect_type;
+  char* redirect_location;
+} Redirection;
 
-// Non dynamic constructor.
-Redirection redirectionNew(const token_type redirectType,
-                           const char* redirectLocation);
+/* Non dynamic constructor. */
+Redirection Redirection_new(const token_type redirect_type,
+                           char* redirect_location);
 
-// Dynamic constructor
-Redirection* redirectionNewPointer(const token_type redirectType,
-                                   const char* redirectLocation);
+/* Dynamic constructor */
+Redirection* Redirection_new_pointer(const token_type redirect_type,
+                                   char* redirect_location);
 
-// Non dynamic destructor
-void freeRedirection(Redirection redirectPointer);
+/* Non dynamic destructor */
+void Redirection_free(Redirection* redirect_pointer);
 
-// Dynamic destructor
-void freeRedirectionPointer(Redirection* redirectPointer);
+/* Dynamic destructor */
+void Redirection_free_pointer(Redirection* redirect_pointer);
 
 
 
@@ -35,59 +35,60 @@ void freeRedirectionPointer(Redirection* redirectPointer);
  *                Command structs                *
  * * * * * * * * * * * * * * * * * * * * * * * * */
 
-// This struct represents a shell command. It will store necessary information
-// such as redirection and token numbers.
-struct Command
-{
-  // Keeps track of all redirections in the command (input, output, error)
+/* This struct represents a shell command. It will store necessary
+ * information such as redirection and token numbers.
+ */
+typedef struct _Command Command;
+typedef struct _Command {
+  /* Keeps track of all redirections in the command (input, output, error) */
   Redirection** redirects;
 
-  // Number of tokens for a particular command
-  int numTokens;
+  /* Number of tokens for a particular command */
+  int num_tokens;
 
-  // Array of arguments from command line.
+  /* Array of arguments from command line. */
   char** args;
 
-  Command* nextCommand;
-  Command* prevCommand;
-};
+  Command* next_command;
+  Command* prev_command;
+} Command;
 
-// Non dynamic constructor
-Command commandNew(char** commandLine, token_type** tokens);
+/* Non dynamic constructor */
+Command Command_new(char** command_line, token_type** tokens);
 
-// Dynamic constructor
-Command* commandNewPointer(char** commandLine, token_type** tokens);
+/* Dynamic constructor */
+Command* Command_new_pointer(char** command_line, token_type** tokens);
 
-// Non dynamic destructor
-void freeCommand(Command commandPointer);
+/* Non dynamic destructor */
+void Command_free(Command* command_pointer);
 
-// Dynamic destructor
-void freeCommandPointer(Command* commandPointer);
-
-
+/* Dynamic destructor */
+void Command_free_pointer(Command* command_pointer);
 
 
 
-// Double linked list of commands. For pipes, we will need information from
-// previous commands.
-struct CommandLinkedList
-{
-  Command* firstCommand;
 
-  // Size of the linked list.
-  int linkedListSize;
-}
 
-// Non dynamic constructor
-CommandLinkedList commandLinkedListNew(const Command* firstCommand);
+/* Double linked list of commands. For pipes, we will need information from
+ * previous commands.
+ */
+typedef struct _CommandLinkedList {
+  Command* first_command;
 
-// Dynamic constructor.
-CommandLinkedList* commandLinkedListNewPointer(const Command* firstCommand);
+  /* Size of the linked list. */
+  int linked_list_size;
+} CommandLinkedList;
 
-// Non dynamic destructor
-void freeCommandLinkedList(CommandLinkedList commandLL);
+/* Non dynamic constructor */
+CommandLinkedList CommandLinkedList_new(Command* first_command);
 
-// Dynamic destructor
-void freeCommandLinkedListPointer(CommandLinkedList* commandLLPointer);
+/* Dynamic constructor. */
+CommandLinkedList* CommandLinkedList_new_pointer(Command* first_command);
 
-#endif //COMMAND_STRUCT_H_
+/* Non dynamic destructor */
+void CommandLinkedList_free(CommandLinkedList* command_LL_pointer);
+
+/* Dynamic destructor */
+void CommandLinkedList_free_pointer(CommandLinkedList* command_LL_pointer);
+
+#endif /* COMMAND_STRUCT_H_ */
