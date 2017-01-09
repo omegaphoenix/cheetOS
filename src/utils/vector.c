@@ -3,26 +3,26 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-// String constructor. Will not make this a pointer.
+/* String constructor. Will not make this a pointer */
 String String_new(char* char_array) {
   String string;
 
-  // Soft copy is fine for now.
+  /* Soft copy is fine for now. */
   string.char_array = char_array;
   string.length = strlen(char_array);
   return string;
 }
 
-// String destructor.
+/* String destructor. */
 void String_free(String* target_string) {
   free(target_string->char_array);
 }
 
-// Only appending one character at a time.
+/* Only appending one character at a time. */
 void string_append(String* target_string, const char char_to_append) {
   int new_length = target_string->length + 1;
 
-  // Shallow copy here so they point to the same thing.
+  /* Shallow copy here so they point to the same thing. */
   char* new_char_array = target_string->char_array;
   new_char_array = realloc(new_char_array, new_length * sizeof(char));
   if(new_char_array) {
@@ -34,7 +34,7 @@ void string_append(String* target_string, const char char_to_append) {
   }
 }
 
-// Producing substring from a string.
+/* Producing substring from a string. */
 String string_substr(String target_string, int start_idx, int end_idx) {
   int idx;
   int substrIdx = 0;
@@ -56,13 +56,15 @@ int string_is_equal(const String self, const String compared_string) {
 }
 
 
-//
-// Vector functions
-//
+/* * * * * * * * * * * * * *
+ *     Vector functions    *
+ * * * * * * * * * * * * * */
 
-// Function pointer functions.
-// VectorString: Add a string to end of VectorString.
-void _vector_string_push_back(VectorString* self, const String string_to_append) {
+/* Function pointer functions.
+ * Add a string to end of VectorString.
+ */
+void _vector_string_push_back(VectorString* self,
+                              const String string_to_append) {
   String* new_string_array = self->string_array;
   int new_length = self->length + 1;
   new_string_array = realloc(new_string_array, new_length * sizeof(String));
@@ -76,7 +78,7 @@ void _vector_string_push_back(VectorString* self, const String string_to_append)
   }
 }
 
-// VectorString: Return index where a string is found.
+/* VectorString: Return index where a string is found. */
 int _vector_string_find(VectorString* self, const String string_to_find) {
   int idx;
 
@@ -88,7 +90,7 @@ int _vector_string_find(VectorString* self, const String string_to_find) {
   return VECTOR_NOT_FOUND;
 }
 
-// VectorString constructor
+/* VectorString constructor */
 VectorString VectorString_new(String* string_array, int length) {
   VectorString vector_string;
 
@@ -99,7 +101,7 @@ VectorString VectorString_new(String* string_array, int length) {
   return vector_string;
 }
 
-// Must free strings first before we free the vector.
+/* Must free strings first before we free the vector. */
 void VectorString_free(VectorString* target_vector) {
   int idx;
 
