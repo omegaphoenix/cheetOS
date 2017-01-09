@@ -2,13 +2,11 @@
 
 #include <stdio.h>
 
-int main()
-{
-  char str[100];
+int main() {
+  char str[KiB(1)];
 
-  // Use fgets()
   printf("Enter a string:");
-  scanf("%s", str);
+  fgets(str, KiB(1), stdin);
 
   printf("\nYou entered: %s ", str);
   printf("\n");
