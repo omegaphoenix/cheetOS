@@ -1,3 +1,5 @@
+#ifndef TOKENIZER_H
+#define TOKENIZER_H
 #include <stdbool.h>
 
 #define KiB(x) ((size_t) (x) << 10)
@@ -18,3 +20,4 @@ token_type get_token(bool in_string, char curr_char);
 /* Return true if this token indicates a new word or command */
 bool is_delimeter(token_type token);
 
+#endif /* TOKENIZER_H */
