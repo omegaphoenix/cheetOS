@@ -23,14 +23,15 @@ void parse_basicCommand_splitByWhitespace() {
     }
 
     /* Check for correct split of words */
-    for (int i = 0; i < num_words; i++) {
+    int i;
+    for (i = 0; i < num_words; i++) {
         if (strcmp(words[i], expected[i]) != 0) {
             fprintf(stderr, "Expected \"%s\" got \"%s\"\n", words[i], expected[i]);
         }
     }
 
     /* Verify tokens */
-    for (int i = 0; i < num_words; i++) {
+    for (i = 0; i < num_words; i++) {
         if (tokens[i] != expected_tokens[i]) {
             fprintf(stderr, "Token %d doesn't match\n", i);
         }
@@ -56,14 +57,15 @@ void parse_commandWithRedirectAndQuotes_splitByDelimiters() {
     }
 
     /* Check for correct split of words */
-    for (int i = 0; i < num_words; i++) {
+    int i;
+    for (i = 0; i < num_words; i++) {
         if (strcmp(words[i], expected[i]) != 0) {
             fprintf(stderr, "Expected \"%s\" got \"%s\"\n", words[i], expected[i]);
         }
     }
 
     /* Verify tokens */
-    for (int i = 0; i < num_words; i++) {
+    for (i = 0; i < num_words; i++) {
         if (tokens[i] != expected_tokens[i]) {
             fprintf(stderr, "Token %d doesn't match\n", i);
         }

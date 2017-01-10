@@ -10,7 +10,8 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
     char *curr_word = malloc(KiB(1));
     int idx, curr_word_idx = 0;
 
-    for (int i = 0; i < len; i++) {
+    int i;
+    for (i = 0; i < len; i++) {
         if (!is_delimiter(char_tokens[i])) {
             /* Save current character */
             curr_word[curr_word_idx] = line[i];
@@ -54,7 +55,8 @@ token_type *tokenize(char *line) {
     bool in_string = false;
 
     /* Parse line and label each character */
-    for (int i = 0; i < len; i++) {
+    int i;
+    for (i = 0; i < len; i++) {
         char curr_char = line[i];
         token_type curr_token = get_token(in_string, curr_char);
 
