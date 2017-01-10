@@ -7,7 +7,7 @@
  * doesn't have templates, we will create multiple vectors for each type.
  */
 
-#define VECTOR_NOT_FOUND -1
+#define NOT_FOUND -1
 
 /* * * * * * * * * * * * * *
  *      String struct      *
@@ -24,37 +24,58 @@ String String_new(char* char_array);
 void String_free(String* target_string);
 
 /* Only appending one character at a time. */
-void string_append(String* target_string, const char char_to_append);
+void string_append(String* target_string, const char* chars_to_append);
 
 /* Producing substring from a string. */
-String string_substr(String target_string, int start_idx, int end_idx);
+String string_substr(String* target_string, int start_idx, int end_idx);
 
 /* No boolean type in C. 1 is true, 0 is false. */
-int string_is_equal(const String self, const String compared_string);
+int string_is_equal(const String* self, const String* compared_string);
 
+
+
+/* * * * * * * * * * * * * * * *
+ *   StringLinkedList struct   *
+ * * * * * * * * * * * * * * * */
+
+typedef struct {
+  String string_value;
+  String *next_string;
+  String *prev_string;
+} StringNode;
+
+typedef struct _StringLinkedList {
+  StringNode *head;
+  int length;
+
+  void (*push_back) (StringLinkedList, StringNode*);
+
+  int (*find) (StringLinkedList, StringNode*);
+} StringLinkedList;
 
 
 /* * * * * * * * * * * * * *
- *   VectorString struct   *
+ *    VectorInt struct     *
  * * * * * * * * * * * * * */
-typedef struct _VectorString VectorString;
-typedef struct _VectorString {
-  String* string_array;
+typedef struct _VectorInt VectorInt;
+typedef struct _VectorInt {
+  int* int_array;
   int length;
 
   /* Function pointer for push_back. Appends to end of vector. */
-  void (*push_back)(VectorString*, const String);
+  void (*push_back)(VectorInt*, int);
 
-  /* Function pointer for find. Returns index of the found string.
+  /* Function pointer for find. Returns index for found integer.
    * Else, it returns -1.
    */
-  int (*find)(VectorString*, const String);
-} VectorString;
+  int (*find)(VectorInt*, int);
+} VectorInt;
 
-/* VectorString constructor. */
-VectorString VectorString_new(String* string_array, int length);
+/* VectorInt constructor. */
+VectorInt VectorInt_new(int* int_array, int length);
 
-/* VectorString destructor */
-void VectorString_free(VectorString* target_vector);
+/* VectorInt destructor. */
+void VectorInt_free(VectorInt* target_vector);
+
 
 #endif /* VECTOR_H_ */
