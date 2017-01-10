@@ -9,7 +9,7 @@
 */
 int in_cd(char **args) {
   /* If no argument is specified, change to home directory */
-  if (args[1] == NULL) { /* TODO: check size of array/vector */
+  if (args[1] == NULL) {
     return chdir(getenv("HOME"));
   }
   else {

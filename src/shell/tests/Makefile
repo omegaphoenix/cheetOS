@@ -1,4 +1,4 @@
-BINARIES = outerr sleepycat cattysleep
+BINARIES = outerr sleepycat cattysleep builtin-test
 
 CFLAGS = -Wall
 
@@ -15,6 +15,8 @@ sleepycat: sleepycat.o
 cattysleep: cattysleep.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
+builtin-test: builtin-test.o
+	$(CC) $(CFLAGS) $^ ../builtin.c -o $@ $(LDFLAGS)
 
 clean:
 	rm -f *.o $(BINARIES) *~
