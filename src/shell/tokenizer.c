@@ -44,11 +44,6 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
     curr_word_idx = 0;
   }
 
-  /* Indicate end of arrays */
-  words[idx] = malloc(sizeof(char));
-  words[idx][0] = ' ';
-  tokens[idx] = END;
-
   return idx;
 }
 

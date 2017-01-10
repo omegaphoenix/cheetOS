@@ -5,7 +5,7 @@
 
 #define KiB(x) ((size_t) (x) << 10)
 
-typedef enum {WORD, QUOTE, PIPE, IN_REDIR, OUT_REDIR, WHITE, END} token_type;
+typedef enum {WORD, QUOTE, PIPE, IN_REDIR, OUT_REDIR, WHITE} token_type;
 
 /*
  * Modify arrays to contain tokens. Return length of array.
