@@ -58,15 +58,19 @@ token_type *tokenize(char *line) {
   tokens = malloc(len * sizeof(token_type));
   bool in_string = false;
 
+  /* Parse line and label each character */
   for (int i = 0; i < len; i++) {
     char curr_char = line[i];
     token_type curr_token = get_token(in_string, curr_char);
+
+    /* Handle tokens outside of quotes */
     if (!in_string) {
       if (curr_token == QUOTE) {
         in_string = true;
       }
       tokens[i] = curr_token;
     }
+    /* Handle tokens within quotes */
     else {
       if (curr_token == QUOTE) {
         in_string = false;
@@ -93,20 +97,16 @@ token_type get_token(bool in_string, char curr_char) {
   else if (in_string) {
     return WORD;
   }
-  else if (curr_char == '|') {
-    return PIPE;
-  }
-  else if (curr_char == '<') {
-    return IN_REDIR;
-  }
-  else if (curr_char == '>') {
-    return OUT_REDIR;
-  }
-  else if (curr_char == ' ' || curr_char == '\t') {
-    return WHITE;
-  }
   else {
-    return WORD;
+    switch (curr_char) {
+      case '|': return PIPE;
+      case '<': return IN_REDIR;
+      case '>': return OUT_REDIR;
+      case ' ': return WHITE;
+      case '\t': return WHITE;
+      /* WORD represents a character within a word */
+      default: return WORD;
+    }
   }
 }
 

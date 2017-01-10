@@ -12,7 +12,7 @@ typedef enum {WORD, QUOTE, PIPE, IN_REDIR, OUT_REDIR, WHITE, END} token_type;
  */
 int parse_tokens(char *line, char **words, token_type *tokens);
 
-/* Return array of tokens */
+/* Return array of tokens corresponding to characters */
 token_type *tokenize(char *line);
 
 /* Return token of current character */

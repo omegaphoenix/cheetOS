@@ -4,16 +4,19 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Test basic 3 word command */
 void parse_basicCommand_splitByWhitespace() {
   char *test_str = "a arg1 arg2";
   char **words = malloc(KiB(1));
   token_type *tokens = malloc(KiB(1) * sizeof(token_type));
 
+  /* Call parse function to be tested */
   int res = parse_tokens(test_str, words, tokens);
   if (res != 3) {
     fprintf(stderr, "Wrong number of tokens\n");
   }
 
+  /* Check for correct split of words */
   if (strcmp(words[0], "a") != 0) {
     fprintf(stderr, "Expected \"a\" got \"%s\"\n", words[0]);
   }
@@ -26,22 +29,26 @@ void parse_basicCommand_splitByWhitespace() {
     fprintf(stderr, "Expected \"arg2\" got \"%s\"\n", words[2]);
   }
 
+  /* Verify tokens */
   if (tokens[0] != tokens[1] || tokens[1] != tokens[2]
       || tokens[2] != WORD) {
     fprintf(stderr, "Wrong token");
   }
 }
 
+/* Test quote handling, whitespace, and redirect handling */
 void parse_commandWithRedirectAndQuotes_splitByDelimiters() {
-  char *test_str = "grep \"\\\"\"<logfile.txt";
+  char *test_str = "grep \"\\\"\" <logfile.txt";
   char **words = malloc(KiB(1));
   token_type *tokens = malloc(KiB(1) * sizeof(token_type));
 
+  /* Call parse function to be tested */
   int res = parse_tokens(test_str, words, tokens);
   if (res != 4) {
     fprintf(stderr, "Wrong number of tokens\n");
   }
 
+  /* Check for correct split of words */
   if (strcmp(words[0], "grep") != 0) {
     fprintf(stderr, "Expected \"a\" got \"%s\"\n", words[0]);
   }
@@ -58,6 +65,7 @@ void parse_commandWithRedirectAndQuotes_splitByDelimiters() {
     fprintf(stderr, "Expected \"logfile.txt\" got \"%s\"\n", words[2]);
   }
 
+  /* Verify tokens */
   if (tokens[0] != tokens[1] || tokens[1] != tokens[3]
       || tokens[3] != WORD || tokens[2] != IN_REDIR) {
     fprintf(stderr, "Wrong token");
