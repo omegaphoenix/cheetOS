@@ -8,6 +8,8 @@
 int parse_tokens(char *line, char **words, token_type *tokens) {
     size_t len = strlen(line);
     token_type *char_tokens = tokenize(line);
+
+    /* Allocate memory for current word being built */
     char *curr_word = malloc(KiB(1));
     if (!curr_word) {
         fprintf(stderr, "Malloc failed\n");
@@ -30,11 +32,12 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
                 tokens[idx] = WORD;
                 idx++;
 
-                curr_word_idx = 0;
+                /* Allocate new memory for current word */
                 curr_word = malloc(KiB(1));
                 if (!curr_word) {
                     fprintf(stderr, "Malloc failed\n");
                 }
+                curr_word_idx = 0;
             }
             /* Add pipe or redirect operator */
             if (char_tokens[i] != WHITE) {
@@ -104,13 +107,13 @@ token_type get_token(bool in_string, char curr_char) {
         return WORD;
     }
     else {
+        /* WORD represents a character within a word */
         switch (curr_char) {
             case '|': return PIPE;
             case '<': return IN_REDIR;
             case '>': return OUT_REDIR;
             case ' ': return WHITE;
             case '\t': return WHITE;
-                       /* WORD represents a character within a word */
             default: return WORD;
         }
     }

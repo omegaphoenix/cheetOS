@@ -11,7 +11,7 @@ void parse_basicCommand_splitByWhitespace() {
     /* Expected results */
     int num_words = 3;
     const char *expected[] = {"a", "arg1", "arg2"};
-    token_type expected_tokens[] = {WORD, WORD, WORD};
+    const token_type expected_tokens[] = {WORD, WORD, WORD};
 
     char **words = malloc(KiB(1));
     token_type *tokens = malloc(KiB(1) * sizeof(token_type));
@@ -47,8 +47,8 @@ void parse_commandWithRedirectAndQuotes_splitByDelimiters() {
 
     /* Expected results */
     int num_words = 4;
-    char *expected[] = {"grep", "\"\\\"\"", "<", "logfile.txt"};
-    token_type expected_tokens[] = {WORD, WORD, IN_REDIR, WORD};
+    const char *expected[] = {"grep", "\"\\\"\"", "<", "logfile.txt"};
+    const token_type expected_tokens[] = {WORD, WORD, IN_REDIR, WORD};
 
     char **words = malloc(KiB(1));
     token_type *tokens = malloc(KiB(1) * sizeof(token_type));
