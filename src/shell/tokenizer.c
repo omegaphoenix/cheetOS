@@ -4,40 +4,50 @@
 #include <stdlib.h>
 #include <string.h>
 
-int parse(char *line, char **commands, token_type *tokens) {
+int parse_tokens(char *line, char **words, token_type *tokens) {
   size_t len = strlen(line);
   token_type *char_tokens = tokenize(line);
   char *curr_word = malloc(KiB(1));
   int idx, curr_word_idx = 0;
 
   for (int i = 0; i < len; i++) {
-    if (!is_delimeter(char_tokens[i])) {
+    if (!is_delimiter(char_tokens[i])) {
+      /* Save current character */
       curr_word[curr_word_idx] = line[i];
       curr_word_idx++;
     }
+    /* Handle whitespace, pipes, and redirects */
     else {
+      /* Add finished word */
       if (curr_word_idx > 0) {
-        commands[idx] = curr_word;
+        words[idx] = curr_word;
         tokens[idx] = WORD;
         idx++;
         curr_word_idx = 0;
         curr_word = malloc(KiB(1));
       }
+      /* Add pipe or redirect operator */
       if (char_tokens[i] != WHITE) {
-        commands[idx] = malloc(sizeof(char));
-        commands[idx][0] = line[i];
+        words[idx] = malloc(sizeof(char));
+        words[idx][0] = line[i];
         tokens[idx] = char_tokens[i];
         idx++;
       }
     }
   }
 
+  /* Add last word */
   if (curr_word_idx > 0) {
-    commands[idx] = curr_word;
+    words[idx] = curr_word;
     tokens[idx] = WORD;
     idx++;
     curr_word_idx = 0;
   }
+
+  /* Indicate end of arrays */
+  words[idx] = malloc(sizeof(char));
+  words[idx][0] = ' ';
+  tokens[idx] = END;
 
   return idx;
 }
@@ -100,7 +110,7 @@ token_type get_token(bool in_string, char curr_char) {
   }
 }
 
-bool is_delimeter(token_type token) {
+bool is_delimiter(token_type token) {
   return token == PIPE || token == IN_REDIR ||
     token == OUT_REDIR || token == WHITE;
 }
