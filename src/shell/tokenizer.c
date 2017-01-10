@@ -2,13 +2,18 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 int parse_tokens(char *line, char **words, token_type *tokens) {
     size_t len = strlen(line);
     token_type *char_tokens = tokenize(line);
     char *curr_word = malloc(KiB(1));
-    int idx, curr_word_idx = 0;
+    if (!curr_word) {
+        fprintf(stderr, "Malloc failed\n");
+    }
+    int idx = 0;
+    int curr_word_idx = 0;
 
     int i;
     for (i = 0; i < len; i++) {
@@ -24,8 +29,12 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
                 words[idx] = curr_word;
                 tokens[idx] = WORD;
                 idx++;
+
                 curr_word_idx = 0;
                 curr_word = malloc(KiB(1));
+                if (!curr_word) {
+                    fprintf(stderr, "Malloc failed\n");
+                }
             }
             /* Add pipe or redirect operator */
             if (char_tokens[i] != WHITE) {

@@ -10,11 +10,14 @@ void parse_basicCommand_splitByWhitespace() {
 
     /* Expected results */
     int num_words = 3;
-    char *expected[] = {"a", "arg1", "arg2"};
+    const char *expected[] = {"a", "arg1", "arg2"};
     token_type expected_tokens[] = {WORD, WORD, WORD};
 
     char **words = malloc(KiB(1));
     token_type *tokens = malloc(KiB(1) * sizeof(token_type));
+    if (!words || !tokens) {
+        fprintf(stderr, "Malloc failed\n");
+    }
 
     /* Call parse function to be tested */
     int res = parse_tokens(test_str, words, tokens);
