@@ -64,6 +64,10 @@ void parse_commandWithRedirectAndQuotes_splitByDelimiters() {
 
     char **words = malloc(KiB(1));
     token_type *tokens = malloc(KiB(1) * sizeof(token_type));
+    if (!words || !tokens) {
+        fprintf(stderr, "Malloc failed\n");
+        pass = false;
+    }
 
     /* Call parse function to be tested */
     int res = parse_tokens(test_str, words, tokens);
@@ -108,6 +112,10 @@ void parse_commandWithPipeAndOutRedir_splitByDelimiters() {
 
     char **words = malloc(KiB(1));
     token_type *tokens = malloc(KiB(1) * sizeof(token_type));
+    if (!words || !tokens) {
+        fprintf(stderr, "Malloc failed\n");
+        pass = false;
+    }
 
     /* Call parse function to be tested */
     int res = parse_tokens(test_str, words, tokens);

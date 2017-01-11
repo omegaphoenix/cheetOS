@@ -42,6 +42,9 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
             /* Add pipe or redirect operator */
             if (char_tokens[i] != WHITE) {
                 words[idx] = malloc(sizeof(char));
+                if (!words[idx]) {
+                    fprintf(stderr, "Malloc failed\n");
+                }
                 words[idx][0] = line[i];
                 tokens[idx] = char_tokens[i];
                 idx++;
@@ -64,6 +67,9 @@ token_type *tokenize(char *line) {
     size_t len = strlen(line);
     static token_type *tokens;
     tokens = malloc(len * sizeof(token_type));
+    if (!tokens) {
+        fprintf(stderr, "Malloc failed\n");
+    }
     bool in_string = false;
 
     /* Parse line and label each character */
