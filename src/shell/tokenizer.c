@@ -2,15 +2,23 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 int parse_tokens(char *line, char **words, token_type *tokens) {
     size_t len = strlen(line);
     token_type *char_tokens = tokenize(line);
-    char *curr_word = malloc(KiB(1));
-    int idx, curr_word_idx = 0;
 
-    for (int i = 0; i < len; i++) {
+    /* Allocate memory for current word being built */
+    char *curr_word = malloc(KiB(1));
+    if (!curr_word) {
+        fprintf(stderr, "Malloc failed\n");
+    }
+    int idx = 0;
+    int curr_word_idx = 0;
+
+    int i;
+    for (i = 0; i < len; i++) {
         if (!is_delimiter(char_tokens[i])) {
             /* Save current character */
             curr_word[curr_word_idx] = line[i];
@@ -23,12 +31,20 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
                 words[idx] = curr_word;
                 tokens[idx] = WORD;
                 idx++;
-                curr_word_idx = 0;
+
+                /* Allocate new memory for current word */
                 curr_word = malloc(KiB(1));
+                if (!curr_word) {
+                    fprintf(stderr, "Malloc failed\n");
+                }
+                curr_word_idx = 0;
             }
             /* Add pipe or redirect operator */
             if (char_tokens[i] != WHITE) {
                 words[idx] = malloc(sizeof(char));
+                if (!words[idx]) {
+                    fprintf(stderr, "Malloc failed\n");
+                }
                 words[idx][0] = line[i];
                 tokens[idx] = char_tokens[i];
                 idx++;
@@ -51,10 +67,14 @@ token_type *tokenize(char *line) {
     size_t len = strlen(line);
     static token_type *tokens;
     tokens = malloc(len * sizeof(token_type));
+    if (!tokens) {
+        fprintf(stderr, "Malloc failed\n");
+    }
     bool in_string = false;
 
     /* Parse line and label each character */
-    for (int i = 0; i < len; i++) {
+    int i;
+    for (i = 0; i < len; i++) {
         char curr_char = line[i];
         token_type curr_token = get_token(in_string, curr_char);
 
@@ -93,13 +113,13 @@ token_type get_token(bool in_string, char curr_char) {
         return WORD;
     }
     else {
+        /* WORD represents a character within a word */
         switch (curr_char) {
             case '|': return PIPE;
             case '<': return IN_REDIR;
             case '>': return OUT_REDIR;
             case ' ': return WHITE;
             case '\t': return WHITE;
-                       /* WORD represents a character within a word */
             default: return WORD;
         }
     }
