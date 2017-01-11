@@ -92,10 +92,10 @@ Command* Command_new_pointer(char **command_line,
   for (iter = 0; iter < size_of_array; iter++) {
     switch (tokens[iter]) {
 
-      case WORD: ; /* Empty statement, 
-                    * because you can't initialize variable 
-                    * immediately after a label
-                    */
+      /* Empty statement after case, because you can't initialize variable 
+       * immediately after a label
+       */
+      case WORD: ; 
         command_word = malloc((strlen(command_line[iter]) + 1));
         if (command_word) {
           strcpy(command_word, command_line[iter]);
