@@ -7,7 +7,7 @@ git stash -q --keep-index
 # TODO: Add test script
 # ./run_tests.sh
 
-FILES_PATTERN=$(find . -type f -name "*.c")
+FILES_PATTERN=$(find -regex '.*/.*\.\(c\|h\)$')
 RESULT=$(c_style_check $FILES_PATTERN)
 echo $RESULT
 
