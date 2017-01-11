@@ -1,4 +1,4 @@
-BINARIES = outerr sleepycat cattysleep builtin-test
+BINARIES = outerr sleepycat cattysleep tokenizer-test builtin-test
 
 CFLAGS = -Wall
 
@@ -15,8 +15,12 @@ sleepycat: sleepycat.o
 cattysleep: cattysleep.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
+tokenizer-test: tokenizer-test.o
+	$(CC) $(CFLAGS) $^ ../tokenizer.c -o $@ $(LDFLAGS)
+
 builtin-test: builtin-test.o
 	$(CC) $(CFLAGS) $^ ../builtin.c -o $@ $(LDFLAGS)
+
 
 clean:
 	rm -f *.o $(BINARIES) *~

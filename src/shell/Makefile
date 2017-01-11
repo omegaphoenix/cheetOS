@@ -7,7 +7,7 @@ all: mysh
 mysh: $(OBJS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-clean: 
+clean:
 	rm -f *.o *~ mysh
 
 .PHONY: all clean
