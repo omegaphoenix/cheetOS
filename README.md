@@ -2,6 +2,11 @@
 
 To add pre-commit hook for style checking:
 
-Navigate to project base directory
+1. Download and set the path for Mike Vanier's C style checker.
 
+    http://courses.cms.caltech.edu/cs11/material/c/mike/misc/c_style_guide.html
+
+2. Navigate to project base directory
+
+3.
     ln -s ../../pre-commit.sh .git/hooks/pre-commit
