@@ -14,16 +14,9 @@ typedef struct _Redirection {
   char *redirect_location;
 } Redirection;
 
-/* Non dynamic constructor. */
-Redirection Redirection_new(const token_type redirect_type,
-                            char *redirect_location);
-
 /* Dynamic constructor */
 Redirection* Redirection_new_pointer(const token_type redirect_type,
                                      char *redirect_location);
-
-/* Non dynamic destructor */
-void Redirection_free(Redirection *redirect_pointer);
 
 /* Dynamic destructor */
 void Redirection_free_pointer(Redirection *redirect_pointer);
@@ -49,21 +42,20 @@ typedef struct _Command {
   /* Number of tokens for a particular command */
   int num_tokens;
 
-  /* Array of arguments from command line. */
+  /* Array of arguments from command line.
+   * Ex: For "grep Allow < input.txt > output.txt"
+   *     args = ["grep", "Allow", NULL]
+   */
   char **args;
 
   Command *next_command;
   Command *prev_command;
 } Command;
 
-/* Non dynamic constructor */
-Command Command_new(char **command_line, token_type *tokens, int size_of_array);
-
 /* Dynamic constructor */
-Command *Command_new_pointer(char **command_line, token_type *tokens, int size_of_array);
-
-/* Non dynamic destructor */
-void Command_free(Command *command_pointer);
+Command *Command_new_pointer(char **command_line,
+                             token_type *tokens,
+                             int size_of_array);
 
 /* Dynamic destructor */
 void Command_free_pointer(Command *command_pointer);

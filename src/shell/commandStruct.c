@@ -9,53 +9,28 @@
  *         Redirection struct functions          *
  * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* Non dynamic constructor. */
-Redirection Redirection_new(const token_type redirect_type,
-                            char *redirect_location) {
-  Redirection new_redirect;
-
-  new_redirect.redirect_type = redirect_type;
-
-  /* TODO: Make this deep later. */
-  new_redirect.redirect_location = redirect_location;
-  return new_redirect;
-}
-
 /* Dynamic constructor */
 Redirection *Redirection_new_pointer(const token_type redirect_type,
                                      char *redirect_location) {
   Redirection *new_redirect = malloc(sizeof(Redirection));
-  if (new_redirect) {
+  char *file_name = malloc((strlen(redirect_location) + 1));
+
+  if (new_redirect && file_name) {
     new_redirect->redirect_type = redirect_type;
 
-    char *file_name = malloc((strlen(redirect_location) + 1) * sizeof(char));
-    if (file_name) {
-      strcpy(file_name, redirect_location);
+    strcpy(file_name, redirect_location);
 
-      new_redirect->redirect_location = file_name;
-      return new_redirect;
-    }
-    else {
-      fprintf(stderr, "Malloc Redirection failed");
-      free(file_name);
-      free(new_redirect);
-      return NULL;
-    }
+    new_redirect->redirect_location = file_name;
+    return new_redirect;
   }
   else {
     fprintf(stderr, "Malloc Redirection failed");
+    free(file_name);
     free(new_redirect);
     return NULL;
   }
 
 }
-
-/* Non Dynamic destructor. Just frees the array */
-void Redirection_free(Redirection *redirect_pointer) {
-  /* TODO: Free the array */
-  free(redirect_pointer->redirect_location);
-}
-
 
 /* Dynamic destructor. Frees both struct and array. */
 void Redirection_free_pointer(Redirection *redirect_pointer) {
@@ -74,19 +49,12 @@ void Redirection_free_pointer(Redirection *redirect_pointer) {
 /* * * * * * * * * * * * * * * * * * * * * * * * *
  *                Command structs                *
  * * * * * * * * * * * * * * * * * * * * * * * * */
-/* Parsing will be done in these constructors. */
-
-/* Non dynamic constructor */
-Command Command_new(char **command_line, token_type *tokens, int size_of_array) {
-  Command new_command;
-
-  return new_command;
-}
-
 /* Dynamic constructor. Will only parse things before a pipe.
  * Thus, assume command_line will not contain a pipe.
  */
-Command* Command_new_pointer(char **command_line, token_type *tokens, int size_of_array) {
+Command* Command_new_pointer(char **command_line,
+                             token_type *tokens,
+                             int size_of_array) {
   /* To avoid a ton of if/else indentations,
    * I will do a few mallocs here first.
    */
@@ -125,9 +93,10 @@ Command* Command_new_pointer(char **command_line, token_type *tokens, int size_o
     switch (tokens[iter]) {
 
       case WORD: ; /* Empty statement, 
-                    * because you can't initialize variable immediately after a label
+                    * because you can't initialize variable 
+                    * immediately after a label
                     */
-        command_word = malloc((strlen(command_line[iter]) + 1) * sizeof(char));
+        command_word = malloc((strlen(command_line[iter]) + 1));
         if (command_word) {
           strcpy(command_word, command_line[iter]);
           args[filtered_idx] = command_word;
@@ -145,7 +114,8 @@ Command* Command_new_pointer(char **command_line, token_type *tokens, int size_o
       case OUT_REDIR: ;
         token_type redirect_type = tokens[iter];
         iter++;
-        Redirection *new_redirect = Redirection_new_pointer(redirect_type, command_line[iter]);
+        Redirection *new_redirect = \
+              Redirection_new_pointer(redirect_type, command_line[iter]);
 
         if (new_redirect) {
           if (new_redirect->redirect_type == IN_REDIR) {
