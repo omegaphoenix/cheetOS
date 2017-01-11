@@ -39,10 +39,13 @@ void parse_basicCommand_splitByWhitespace() {
             fprintf(stderr, "Token %d doesn't match\n", i);
         }
     }
+
+    printf("Tokenizes basic command split by whitespace correctly.\n");
 }
 
 /* Test quote handling, whitespace, and redirect handling */
 void parse_commandWithRedirectAndQuotes_splitByDelimiters() {
+    // Search for quotes within logfile.txt
     char *test_str = "grep \"\\\"\" <logfile.txt";
 
     /* Expected results */
@@ -73,11 +76,52 @@ void parse_commandWithRedirectAndQuotes_splitByDelimiters() {
             fprintf(stderr, "Token %d doesn't match\n", i);
         }
     }
+
+    printf("Tokenizes command with in redirect and quotes correctly.\n");
+}
+
+void parse_commandWithPipeAndOutRedir_splitByDelimiters() {
+    // Search for quotes within logfile.txt
+    char *test_str = "grep \"Allow\" logfile.txt | sort > out.txt";
+
+    /* Expected results */
+    int num_words = 7;
+    const char *expected[] = {"grep", "\"Allow\"", "logfile.txt",
+        "|", "sort", ">", "out.txt"};
+    const token_type expected_tokens[] = {WORD, WORD, WORD, PIPE, WORD,
+        OUT_REDIR, WORD};
+
+    char **words = malloc(KiB(1));
+    token_type *tokens = malloc(KiB(1) * sizeof(token_type));
+
+    /* Call parse function to be tested */
+    int res = parse_tokens(test_str, words, tokens);
+    if (res != num_words) {
+        fprintf(stderr, "Wrong number of tokens\n");
+    }
+
+    /* Check for correct split of words */
+    int i;
+    for (i = 0; i < num_words; i++) {
+        if (strcmp(words[i], expected[i]) != 0) {
+            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", words[i], expected[i]);
+        }
+    }
+
+    /* Verify tokens */
+    for (i = 0; i < num_words; i++) {
+        if (tokens[i] != expected_tokens[i]) {
+            fprintf(stderr, "Token %d doesn't match\n", i);
+        }
+    }
+
+    printf("Tokenizes command with out redirect and pipe correctly.\n");
 }
 
 int main() {
     parse_basicCommand_splitByWhitespace();
     parse_commandWithRedirectAndQuotes_splitByDelimiters();
+    parse_commandWithPipeAndOutRedir_splitByDelimiters();
     return 0;
 }
 
