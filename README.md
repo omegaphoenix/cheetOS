@@ -8,7 +8,8 @@ To add pre-commit hook for style checking:
 
 2. Navigate to project base directory
 
-3.
+3. Run this command:
+
     ln -s ../../pre-commit.sh .git/hooks/pre-commit
 
 Make sure to use the "../../" before the file name because when git is
