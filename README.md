@@ -10,3 +10,7 @@ To add pre-commit hook for style checking:
 
 3.
     ln -s ../../pre-commit.sh .git/hooks/pre-commit
+
+Make sure to use the "../../" before the file name because when git is
+evaluating the symlink, it does so using `.git/hooks` as its working
+directory.
