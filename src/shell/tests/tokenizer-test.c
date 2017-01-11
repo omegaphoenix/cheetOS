@@ -33,7 +33,8 @@ void parse_basicCommand_splitByWhitespace() {
     int i;
     for (i = 0; i < num_words; i++) {
         if (strcmp(words[i], expected[i]) != 0) {
-            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", words[i], expected[i]);
+            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", words[i],
+                    expected[i]);
             pass = false;
         }
     }
@@ -53,7 +54,7 @@ void parse_basicCommand_splitByWhitespace() {
 
 /* Test quote handling, whitespace, and redirect handling */
 void parse_commandWithRedirectAndQuotes_splitByDelimiters() {
-    // Search for quotes within logfile.txt
+    /* Search for quotes within logfile.txt */
     char *test_str = "grep \"\\\"\" <logfile.txt";
     bool pass = true;
 
@@ -80,7 +81,8 @@ void parse_commandWithRedirectAndQuotes_splitByDelimiters() {
     int i;
     for (i = 0; i < num_words; i++) {
         if (strcmp(words[i], expected[i]) != 0) {
-            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", words[i], expected[i]);
+            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", words[i],
+                    expected[i]);
             pass = false;
         }
     }
@@ -99,7 +101,6 @@ void parse_commandWithRedirectAndQuotes_splitByDelimiters() {
 }
 
 void parse_commandWithPipeAndOutRedir_splitByDelimiters() {
-    // Search for quotes within logfile.txt
     char *test_str = "grep \"Allow\" logfile.txt | sort > out.txt";
     bool pass = true;
 
@@ -128,7 +129,8 @@ void parse_commandWithPipeAndOutRedir_splitByDelimiters() {
     int i;
     for (i = 0; i < num_words; i++) {
         if (strcmp(words[i], expected[i]) != 0) {
-            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", words[i], expected[i]);
+            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", words[i],
+                    expected[i]);
             pass = false;
         }
     }
