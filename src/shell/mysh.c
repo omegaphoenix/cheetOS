@@ -1,6 +1,7 @@
 #include "builtin.h"
-#include "tokenizer.h"
 #include "commandStruct.h"
+#include "tokenizer.h"
+#include "tokenStruct.h"
 
 #include <stdio.h>
 #include <stdlib.h>
