@@ -222,7 +222,6 @@ void Command_free_pointer(Command *command_pointer) {
   Redirection_free_pointer(command_pointer->stdin_redirect);
   Redirection_free_pointer(command_pointer->stdout_redirect);
   Redirection_free_pointer(command_pointer->stderr_redirect);
-  printf("free here?");
 
   /* Accounting for the null at the end of the args */
   for (idx = 0; idx < command_pointer->num_tokens + 1; idx++) {
