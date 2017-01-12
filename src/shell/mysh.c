@@ -11,15 +11,15 @@
 #define MAX_INPUT KiB(1)
 
 int main() {
-    char *cwd;
-    char *username;
+    char *cwd = NULL;
+    char *username = NULL;
     char cwd_buffer[MAX_INPUT + 1];
 
     char input_str[MAX_INPUT];
 
     char **words = NULL;
     token_type *tokens = NULL;
-    int num_tokens = NULL;
+    int num_tokens;
 
     while (1) {
         /* Prompt with username and current working directory */

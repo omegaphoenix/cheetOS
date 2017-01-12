@@ -12,7 +12,7 @@
  *               Redirection struct              *
  * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* 
+/*
  * This struct will consider the different kinds of redirections
  * as well as the specific redirect location.
  */
@@ -70,7 +70,7 @@ void Command_free_pointer(Command *command_pointer);
 
 /* * * * * * * * HELPER FUNCTIONS FOR COMMAND STRUCT * * * * * * * */
 
-/* 
+/*
  * This function will take in a command line, the appropriate
  * tokens, and output the size of the args list
  */
@@ -88,7 +88,7 @@ bool set_command_attributes(Command *command,
 
 
 
-/* 
+/*
  * Double linked list of commands. For pipes, we will need information from
  * previous commands.
  */
