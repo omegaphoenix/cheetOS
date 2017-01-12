@@ -32,7 +32,7 @@ bool set_command_attributes(Command *command,
  *               Redirection struct              *
  * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* 
+/*
  * This struct will consider the different kinds of redirections
  * as well as the specific redirect location.
  */
@@ -89,11 +89,30 @@ void Command_free_pointer(Command *command_pointer);
 
 
 
+/* * * * * * * * HELPER FUNCTIONS FOR COMMAND STRUCT * * * * * * * */
+
+/*
+ * This function will take in a command line, the appropriate
+ * tokens, and output the size of the args list
+ */
+int filter_command_line_args(Command *command,
+                             char **command_line,
+                             char **args,
+                             token_type *tokens,
+                             int size_of_array);
+
+/* Helper function that will just set attributes for a new command */
+bool set_command_attributes(Command *command,
+                            char **new_args,
+                            char **old_args,
+                            int filtered_size);
+
+
 /* * * * * * * * * * * * * * * * * * * * * * * * *
  *         Command Linked List Structs           *
  * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* 
+/*
  * Double linked list of commands. For pipes, we will need information from
  * previous commands.
  */

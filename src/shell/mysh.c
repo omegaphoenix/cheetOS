@@ -1,6 +1,8 @@
 #include "builtin.h"
-#include "tokenizer.h"
 #include "commandStruct.h"
+#include "extCmd.h"
+#include "tokenizer.h"
+#include "tokenStruct.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,8 +12,8 @@
 #define MAX_INPUT KiB(1)
 
 int main() {
-    char *cwd;
-    char *username;
+    char *cwd = NULL;
+    char *username = NULL;
     char cwd_buffer[MAX_INPUT + 1];
 
     char input_str[MAX_INPUT];
@@ -19,7 +21,7 @@ int main() {
     char **words = NULL;
     token_type *tokens = NULL;
     CommandLinkedList *commands = NULL;
-    int num_tokens = NULL;
+    int num_tokens;
 
     while (1) {
         /* Prompt with username and current working directory */
@@ -59,8 +61,8 @@ int main() {
 
         /* TODO: Else, fork a child process and execute */
         else {
-            printf("You entered: %s", input_str);
-            printf("\n");
+            /* TODO: Swap wrapper function once command is been used */
+            execute_ext_cmd(num_tokens, words);
         }
 
         free_malloc:

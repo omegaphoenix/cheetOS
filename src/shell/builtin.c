@@ -15,7 +15,6 @@ int in_cd(char **args) {
     else {
         return chdir(args[1]);
     }
-    return 1;
 }
 
 /*

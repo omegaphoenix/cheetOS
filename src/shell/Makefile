@@ -1,7 +1,7 @@
 CFLAGS = -Wall -g
 
 OBJS = mysh.o
-SOURCES = builtin.c tokenizer.c commandStruct.c
+SOURCES = builtin.c tokenizer.c commandStruct.c tokenStruct.c extCmd.c
 
 all: mysh
 
