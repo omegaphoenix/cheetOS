@@ -43,7 +43,6 @@ void token_group_llist_append(TokenGroupLList *token_groups,
 /* Dynamic destructor */
 void TokenGroupLList_free(TokenGroupLList *token_groups);
 
-
 /*
  * Takes the entire string of words, and encapsulates it
  * inside a token linked list delimited by pipes.
