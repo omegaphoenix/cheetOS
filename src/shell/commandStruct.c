@@ -5,43 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* * * * * * * * * * * * * * * * * * * * * * * * *
- *         Redirection struct functions          *
- * * * * * * * * * * * * * * * * * * * * * * * * */
-
-/* Dynamic constructor */
-Redirection *Redirection_new_pointer(const token_type redirect_type,
-                                     char *redirect_location) {
-  Redirection *new_redirect = malloc(sizeof(Redirection));
-  char *file_name = malloc((strlen(redirect_location) + 1));
-
-  if (new_redirect && file_name) {
-    new_redirect->redirect_type = redirect_type;
-
-    strcpy(file_name, redirect_location);
-
-    new_redirect->redirect_location = file_name;
-    return new_redirect;
-  }
-  else {
-    fprintf(stderr, "Malloc Redirection failed");
-    free(file_name);
-    free(new_redirect);
-    return NULL;
-  }
-
-}
-
-/* Dynamic destructor. Frees both struct and array. */
-void Redirection_free_pointer(Redirection *redirect_pointer) {
-  /* TODO: Free the array before freeing the struct. */
-  if (redirect_pointer) {
-    free(redirect_pointer->redirect_location);
-  }
-
-  free(redirect_pointer);
-}
-
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * *
@@ -142,6 +105,45 @@ bool set_command_attributes(Command *command,
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * *
+ *         Redirection struct functions          *
+ * * * * * * * * * * * * * * * * * * * * * * * * */
+
+/* Dynamic constructor */
+Redirection *Redirection_new_pointer(const token_type redirect_type,
+                                     char *redirect_location) {
+  Redirection *new_redirect = malloc(sizeof(Redirection));
+  char *file_name = malloc((strlen(redirect_location) + 1));
+
+  if (new_redirect && file_name) {
+    new_redirect->redirect_type = redirect_type;
+
+    strcpy(file_name, redirect_location);
+
+    new_redirect->redirect_location = file_name;
+    return new_redirect;
+  }
+  else {
+    fprintf(stderr, "Malloc Redirection failed");
+    free(file_name);
+    free(new_redirect);
+    return NULL;
+  }
+
+}
+
+/* Dynamic destructor. Frees both struct and array. */
+void Redirection_free_pointer(Redirection *redirect_pointer) {
+  /* TODO: Free the array before freeing the struct. */
+  if (redirect_pointer) {
+    free(redirect_pointer->redirect_location);
+  }
+
+  free(redirect_pointer);
+}
+
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * *
  *                Command structs                *
  * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -232,22 +234,43 @@ void Command_free_pointer(Command *command_pointer) {
 }
 
 
-CommandLinkedList CommandLinkedList_new(Command *first_command) {
-  CommandLinkedList command_LL;
 
-  /* No need to deep copy here. */
-  command_LL.first_command = first_command;
+/* * * * * * * * * * * * * * * * * * * * * * * * *
+ *         Command Linked List Structs           *
+ * * * * * * * * * * * * * * * * * * * * * * * * */
 
-  /* TODO: find size. */
+/* Dynamic constructor. */
+CommandLinkedList *CommandLinkedList_new_pointer() {
+  CommandLinkedList *command_LL = malloc(sizeof(CommandLinkedList));
+
+  command_LL->first_command = NULL;
+  command_LL->last_command = NULL;
+  command_LL->linked_list_size = 0;
+
   return command_LL;
 }
 
-CommandLinkedList *CommandLinkedList_new_pointer(Command *first_command) {
-  CommandLinkedList *command_LL = malloc(sizeof(CommandLinkedList));
+/* Appends a node to the end of the linked list. */
+void command_linked_list_append(CommandLinkedList *command_LL_pointer,
+                                Command *command) {
+  Command *last_command = command_LL_pointer->last_command;
+  last_command->next_command = command;
+  command->prev_command = last_command;
 
-  /* No need to deep copy here. */
-  command_LL->first_command = first_command;
+  linked_list_size++;
+}
 
-  /* TODO: find size. */
-  return command_LL;
+/* Dynamic destructor. Will free all Commands first before freeing itself */
+void CommandLinkedList_free_pointer(CommandLinkedList *command_LL_pointer) {
+  Command *curr_command = command_LL_pointer->first_command;
+  Command *temp_command;
+
+  /* Keep freeing until all nodes are freed */
+  while (curr_command) {
+    temp_command = curr_command->next_command;
+    Command_free_pointer(curr_command);
+    curr_command = temp_command;
+  }
+
+  free(command_LL_pointer);
 }

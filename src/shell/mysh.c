@@ -18,6 +18,7 @@ int main() {
 
     char **words = NULL;
     token_type *tokens = NULL;
+    CommandLinkedList *commands = NULL;
     int num_tokens = NULL;
 
     while (1) {
@@ -34,6 +35,12 @@ int main() {
         /* Tokenize input command */
         words = malloc(MAX_INPUT);
         tokens = malloc(MAX_INPUT * sizeof(token_type));
+
+        /* Malloc checker */
+        if (!words || !tokens) {
+          goto free_malloc;
+        }
+
         num_tokens = parse_tokens(input_str, words, tokens);
 
         /* TODO: Create Command struct from tokens */
@@ -56,8 +63,9 @@ int main() {
             printf("\n");
         }
 
-        free(words);
-        free(tokens);
+        free_malloc:
+          free(words);
+          free(tokens);
     }
     return 0;
 }
