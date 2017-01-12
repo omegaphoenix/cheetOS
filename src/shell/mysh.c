@@ -1,5 +1,6 @@
 #include "builtin.h"
 #include "commandStruct.h"
+#include "extCmd.h"
 #include "tokenizer.h"
 #include "tokenStruct.h"
 
@@ -53,8 +54,7 @@ int main() {
 
         /* TODO: Else, fork a child process and execute */
         else {
-            printf("You entered: %s", input_str);
-            printf("\n");
+            execute_ext_cmd(num_tokens, words);
         }
 
         free(words);

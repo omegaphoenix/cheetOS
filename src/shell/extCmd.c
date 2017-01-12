@@ -35,3 +35,8 @@ int execute_cmd(char **argv) {
         return status;
     }
 }
+
+int execute_ext_cmd(int argc, char **argv) {
+    argv[argc] = NULL;
+    return execute_cmd(argv);
+}
