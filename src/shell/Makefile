@@ -5,7 +5,7 @@ OBJS = mysh.o
 all: mysh
 
 mysh: $(OBJS)
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ builtin.c tokenizer.c -o $@ $(LDFLAGS)
 
 clean:
 	rm -f *.o *~ mysh
