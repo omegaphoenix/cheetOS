@@ -1,5 +1,6 @@
 #include "tokenStruct.h"
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -78,4 +79,114 @@ void TokenGroupLList_free(TokenGroupLList *token_groups) {
     }
 
     free(token_groups);
+}
+
+/*
+ * Helper function that truncates the array when a pipe is encountered.
+ * It then adds the TokenGroup to the Linked List. Return true
+ * if process finished successfully. Otherwise, returns false.
+ */
+bool truncate_and_add(TokenGroupLList *token_groups,
+                      char **word_array,
+                      token_type *token_type_array,
+                      int size_of_group) {
+    TokenGroup *new_token = NULL;
+    char **truncated_words = NULL;
+    token_type *truncated_tokens = NULL;
+
+    truncated_words = realloc(word_array,
+                                     size_of_group * sizeof(char *));
+
+    truncated_tokens =
+          realloc(token_type_array,
+                  size_of_group * sizeof(token_type));
+
+    if (!truncated_words || !truncated_tokens) {
+      return false;
+    }
+
+    new_token = TokenGroup_new(truncated_words,
+                               truncated_tokens,
+                               size_of_group);
+
+    if (!new_token) {
+      return false;
+    }
+
+    token_group_llist_append(token_groups, new_token);
+    return true;
+}
+
+/*
+ * Takes the entire string of words, and encapsulates it
+ * inside a token linked list delimited by pipes.
+ */
+TokenGroupLList *split_string_by_pipe(char **words,
+                                      token_type *tokens,
+                                      int array_size) {
+    TokenGroupLList *new_list = NULL;
+    char **word_array = NULL;
+    token_type *token_type_array = NULL;
+
+    int idx;
+    int size_of_group = 0;
+    bool add_to_list_successfully;
+
+    new_list = TokenGroupLList_new();
+    word_array = malloc(array_size * sizeof(char *));
+    token_type_array = malloc(array_size * sizeof(token_type));
+
+    if (new_list && word_array && token_type_array) {
+
+        /* Iterating through array, and splitting when we see a pipe */
+        for (idx = 0; idx < array_size; idx++) {
+            char *word = words[idx];
+
+            /* If it isn't a pipe, then add it to the group. */
+            if (strcmp(word, "|") != 0) {
+                word_array[size_of_group] = word;
+                token_type_array[size_of_group] = tokens[idx];
+                size_of_group++;
+
+                /*
+                 * End of array. This should always be a word,
+                 * never a pipe.
+                 */
+                if (idx == array_size - 1) {
+                    add_to_list_successfully =
+                          truncate_and_add(new_list,
+                                           word_array,
+                                           token_type_array,
+                                           size_of_group);
+                    if (!add_to_list_successfully) {
+                        goto error_exit;
+                    }
+                }
+            }
+
+            /* Pipe encountered */
+            else {
+                add_to_list_successfully = truncate_and_add(new_list,
+                                                            word_array,
+                                                            token_type_array,
+                                                            size_of_group);
+                if (!add_to_list_successfully) {
+                    goto error_exit;
+                }
+                size_of_group = 0;
+                word_array = malloc(array_size * sizeof(char *));
+                token_type_array = malloc(array_size * sizeof(token_type));
+            }
+        }
+        return new_list;
+    }
+    else {
+      error_exit:
+          fprintf(stderr,
+              "Malloc Error in initialization of split_string_by_pipe.\n");
+          free(word_array);
+          free(token_type_array);
+          TokenGroupLList_free(new_list);
+          return NULL;
+    }
 }
