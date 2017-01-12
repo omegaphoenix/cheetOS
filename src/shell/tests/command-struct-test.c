@@ -167,7 +167,7 @@ void set_command_attributes_test() {
     printf("set_command_attributes successfully sets command attributes.\n");
   }
 
-  free(new_args);
+  free(test_command->args);
   free(test_command);
 }
 
