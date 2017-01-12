@@ -48,7 +48,7 @@ void Redirection_free_pointer(Redirection *redirect_pointer) {
  *                Helper Functions               *
  * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* 
+/*
  * This function will take in a command line, the appropriate
  * tokens, set redirects and output the size of the args list
  */
@@ -65,7 +65,7 @@ int filter_command_line_args(Command *command,
   for (iter = 0; iter < size_of_array; iter++) {
     switch (tokens[iter]) {
 
-      /* 
+      /*
        * Empty statement after case, because you can't initialize variable
        * immediately after a label. Command word initialized above
        */
@@ -81,8 +81,8 @@ int filter_command_line_args(Command *command,
           return COMMAND_PARSE_ERROR(filtered_idx);
         }
 
-     /* 
-      * Word after a redirect is the target. So we will increment 
+     /*
+      * Word after a redirect is the target. So we will increment
       * iter additionally here
       */
       case IN_REDIR:
@@ -116,7 +116,7 @@ int filter_command_line_args(Command *command,
   }
 
   return filtered_idx;
-} 
+}
 
 /* Helper function that will just set attributes for a new command */
 bool set_command_attributes(Command *command,
@@ -145,14 +145,14 @@ bool set_command_attributes(Command *command,
  *                Command structs                *
  * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* 
+/*
  * Dynamic constructor. Will only parse things before a pipe.
  * Thus, assume command_line will not contain a pipe.
  */
 Command* Command_new_pointer(char **command_line,
                              token_type *tokens,
                              int size_of_array) {
-  /* 
+  /*
    * To avoid a ton of if/else indentations,
    * I will do a few mallocs here first.
    */
@@ -194,7 +194,7 @@ Command* Command_new_pointer(char **command_line,
     goto error_exit;
   }
 
-  is_command_set = 
+  is_command_set =
         set_command_attributes(new_command, new_args, args, filtered_size);
   args = NULL; /* Allows for freeing in case of an error */
 
