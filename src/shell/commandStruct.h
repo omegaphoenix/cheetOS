@@ -2,11 +2,18 @@
 #define COMMAND_STRUCT_H_
 
 #include "tokenizer.h"
+
+/* To preserve the size of an array, yet also throw an error. */
+#define COMMAND_PARSE_ERROR(x) ((int) -x)
+
+
+
 /* * * * * * * * * * * * * * * * * * * * * * * * *
  *               Redirection struct              *
  * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* This struct will consider the different kinds of redirections
+/* 
+ * This struct will consider the different kinds of redirections
  * as well as the specific redirect location.
  */
 typedef struct _Redirection {
@@ -23,13 +30,12 @@ void Redirection_free_pointer(Redirection *redirect_pointer);
 
 
 
-
-
 /* * * * * * * * * * * * * * * * * * * * * * * * *
  *                Command structs                *
  * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* This struct represents a shell command. It will store necessary
+/*
+ * This struct represents a shell command. It will store necessary
  * information such as redirection and token numbers.
  */
 typedef struct _Command Command;
@@ -42,7 +48,8 @@ typedef struct _Command {
   /* Number of tokens for a particular command */
   int num_tokens;
 
-  /* Array of arguments from command line.
+  /*
+   * Array of arguments from command line.
    * Ex: For "grep Allow < input.txt > output.txt"
    *     args = ["grep", "Allow", NULL]
    */
@@ -61,10 +68,28 @@ Command *Command_new_pointer(char **command_line,
 void Command_free_pointer(Command *command_pointer);
 
 
+/* * * * * * * * HELPER FUNCTIONS FOR COMMAND STRUCT * * * * * * * */
+
+/* 
+ * This function will take in a command line, the appropriate
+ * tokens, and output the size of the args list
+ */
+int filter_command_line_args(Command *command,
+                             char **command_line,
+                             char **args,
+                             token_type *tokens,
+                             int size_of_array);
+
+/* Helper function that will just set attributes for a new command */
+bool set_command_attributes(Command *command,
+                            char **new_args,
+                            char **old_args,
+                            int filtered_size);
 
 
 
-/* Double linked list of commands. For pipes, we will need information from
+/* 
+ * Double linked list of commands. For pipes, we will need information from
  * previous commands.
  */
 typedef struct _CommandLinkedList {
