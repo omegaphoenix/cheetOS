@@ -13,6 +13,10 @@ int main() {
 
     char input_str[KiB(1)];
 
+    char **words;
+    token_type *tokens = NULL;
+    int num_tokens = NULL;
+
     while (1) {
         /* Prompt with username and current working directory */
         cwd = getcwd(cwd_buffer, KiB(1) + 1);
@@ -25,9 +29,9 @@ int main() {
         input_str[strcspn(input_str, "\n")] = 0;
 
         /* Tokenize input command */
-        char **words = malloc(KiB(1));
-        token_type *tokens = malloc(KiB(1) * sizeof(token_type));
-        int num_tokens = parse_tokens(input_str, words, tokens);
+        words = malloc(KiB(1));
+        tokens = malloc(KiB(1) * sizeof(token_type));
+        num_tokens = parse_tokens(input_str, words, tokens);
 
         /* TODO: Create Command struct from tokens */
         if (num_tokens) {}; /* delete this */
@@ -38,6 +42,8 @@ int main() {
             in_cd(words);
         }
         else if (strcmp(words[0], "exit") == 0) {
+            free(words);
+            free(tokens);
             in_exit(words);
         }
 
@@ -46,6 +52,9 @@ int main() {
             printf("You entered: %s", input_str);
             printf("\n");
         }
+
+        free(words);
+        free(tokens);
     }
     return 0;
 }
