@@ -1,11 +1,12 @@
 CFLAGS = -Wall -g
 
 OBJS = mysh.o
+SOURCES = builtin.c tokenizer.c
 
 all: mysh
 
 mysh: $(OBJS)
-	$(CC) $(CFLAGS) $^ builtin.c tokenizer.c -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ $(SOURCES) -o $@ $(LDFLAGS)
 
 clean:
 	rm -f *.o *~ mysh

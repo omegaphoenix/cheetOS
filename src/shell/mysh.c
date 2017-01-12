@@ -6,31 +6,33 @@
 #include <string.h>
 #include <unistd.h>
 
+#define MAX_INPUT KiB(1)
+
 int main() {
     char *cwd;
     char *username;
-    char cwd_buffer[KiB(1) + 1];
+    char cwd_buffer[MAX_INPUT + 1];
 
-    char input_str[KiB(1)];
+    char input_str[MAX_INPUT];
 
-    char **words;
+    char **words = NULL;
     token_type *tokens = NULL;
     int num_tokens = NULL;
 
     while (1) {
         /* Prompt with username and current working directory */
-        cwd = getcwd(cwd_buffer, KiB(1) + 1);
+        cwd = getcwd(cwd_buffer, MAX_INPUT + 1);
         username = getlogin();
 
         printf("%s:%s> ", username, cwd);
-        fgets(input_str, KiB(1), stdin);
+        fgets(input_str, MAX_INPUT, stdin);
 
         /* Remove newline (and any following chars) at the end of input_str */
         input_str[strcspn(input_str, "\n")] = 0;
 
         /* Tokenize input command */
-        words = malloc(KiB(1));
-        tokens = malloc(KiB(1) * sizeof(token_type));
+        words = malloc(MAX_INPUT);
+        tokens = malloc(MAX_INPUT * sizeof(token_type));
         num_tokens = parse_tokens(input_str, words, tokens);
 
         /* TODO: Create Command struct from tokens */
