@@ -8,15 +8,18 @@
 #define KiB(x) ((size_t) (x) << 10)
 #define PATH_MAX KiB(1)
 
-/* Test cd with no arguments */
+/* Test grep */
 void executeCmd_externalCommand_shouldGrep() {
     char *cmd = "grep";
     char *search_word = "all";
-    char *command[] = {cmd, search_word, "Makefile", NULL};
+    char *file = "Makefile";
+    char *argv[] = {cmd, search_word, file, NULL};
 
+    /* Expected behavior */
     printf("Testing external command \"%s\"\n", cmd);
     printf("Should output line with the word \"%s\"\n", search_word);
-    execute_cmd(command);
+
+    execute_cmd(argv);
 }
 
 int main() {

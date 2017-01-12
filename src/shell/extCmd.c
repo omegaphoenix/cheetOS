@@ -6,7 +6,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-int execute_cmd(char **args) {
+int execute_cmd(char **argv) {
     pid_t child_pid;
     int status;
 
@@ -19,7 +19,7 @@ int execute_cmd(char **args) {
     /* Child process */
     if (child_pid == 0) {
         /* Execute command with child process */
-        execvp(args[0], args);
+        execvp(argv[0], argv);
         fprintf(stderr, "execvp failed - unknown command\n");
         exit(0);
     }
