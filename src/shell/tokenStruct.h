@@ -11,12 +11,12 @@
  */
 typedef struct _TokenGroup TokenGroup;
 typedef struct _TokenGroup {
-  char **words;
-  token_type *tokens;
-  int num_tokens;
+    char **words;
+    token_type *tokens;
+    int num_tokens;
 
-  TokenGroup *next_group;
-  TokenGroup *prev_group;
+    TokenGroup *next_group;
+    TokenGroup *prev_group;
 } TokenGroup;
 
 /* Dynamic constructor */
@@ -28,11 +28,11 @@ void TokenGroup_free(TokenGroup *token);
 
 
 typedef struct _TokenGroupLList {
-  TokenGroup *first_group;
-  TokenGroup *last_group;
+    TokenGroup *first_group;
+    TokenGroup *last_group;
 
-  int num_groups;
-} TokenGroupLList;
+    int num_groups;
+}   TokenGroupLList;
 
 /* Initializes empty Token Linked List */
 TokenGroupLList *TokenGroupLList_new();
