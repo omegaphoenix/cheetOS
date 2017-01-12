@@ -1,4 +1,4 @@
-BINARIES = outerr sleepycat cattysleep tokenizer-test builtin-test command-struct-test
+BINARIES = outerr sleepycat cattysleep tokenizer-test builtin-test command-struct-test token-struct-test
 
 CFLAGS = -Wall
 
@@ -24,6 +24,8 @@ builtin-test: builtin-test.o
 command-struct-test: command-struct-test.o
 	$(CC) $(CFLAGS) $^ ../commandStruct.c -o $@ $(LDFLAGS)
 
+token-struct-test: token-struct-test.o
+	$(CC) $(CFLAGS) $^ ../tokenStruct.c -o $@ $(LDFLAGS)
 clean:
 	rm -f *.o $(BINARIES) *~
 
