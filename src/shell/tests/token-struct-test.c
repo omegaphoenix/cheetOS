@@ -195,6 +195,7 @@ void split_string_by_pipe_with_pipe_tests() {
     int input_size = 15;
     int expected_num_groups = 4; /* 3 pipes */
 
+    /* Expected results */
     char *group1_words[] = {"grep", "Allow", "<", "logfile.txt"};
     token_type group1_tokens[] = {WORD, WORD, IN_REDIR, WORD};
     int group1_size = 4;
@@ -214,6 +215,7 @@ void split_string_by_pipe_with_pipe_tests() {
     TokenGroupLList *new_list =
         split_string_by_pipe(input_command, input_tokens, input_size);
 
+    /* Verify TokenGroupLList values */
     if (!new_list) {
         fprintf(stderr, "Token List not malloced properly.");
     }

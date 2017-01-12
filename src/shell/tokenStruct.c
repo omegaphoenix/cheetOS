@@ -91,15 +91,11 @@ bool truncate_and_add(TokenGroupLList *token_groups,
                       token_type *token_type_array,
                       int size_of_group) {
     TokenGroup *new_token = NULL;
-    char **truncated_words = NULL;
-    token_type *truncated_tokens = NULL;
-
-    truncated_words = realloc(word_array,
+    char **truncated_words = realloc(word_array,
                                      size_of_group * sizeof(char *));
 
-    truncated_tokens =
-          realloc(token_type_array,
-                  size_of_group * sizeof(token_type));
+    token_type *truncated_tokens =
+        realloc(token_type_array, size_of_group * sizeof(token_type));
 
     if (!truncated_words || !truncated_tokens) {
       return false;
@@ -124,17 +120,13 @@ bool truncate_and_add(TokenGroupLList *token_groups,
 TokenGroupLList *split_string_by_pipe(char **words,
                                       token_type *tokens,
                                       int array_size) {
-    TokenGroupLList *new_list = NULL;
-    char **word_array = NULL;
-    token_type *token_type_array = NULL;
+    TokenGroupLList *new_list = TokenGroupLList_new();
+    char **word_array = malloc(array_size * sizeof(char *));
+    token_type *token_type_array = malloc(array_size * sizeof(token_type));
 
     int idx;
     int size_of_group = 0;
     bool add_to_list_successfully;
-
-    new_list = TokenGroupLList_new();
-    word_array = malloc(array_size * sizeof(char *));
-    token_type_array = malloc(array_size * sizeof(token_type));
 
     if (new_list && word_array && token_type_array) {
 
