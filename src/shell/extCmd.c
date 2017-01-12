@@ -15,12 +15,16 @@ int execute_cmd(char **args) {
         fprintf(stderr, "Fork failed\n");
         exit(1);
     }
+
+    /* Child process */
     if (child_pid == 0) {
         /* Execute command with child process */
         execvp(args[0], args);
         fprintf(stderr, "execvp failed - unknown command\n");
         exit(0);
     }
+
+    /* Parent process */
     else {
         /* Wait for child process to terminate */
         pid_t finished_pid = wait(&status);
