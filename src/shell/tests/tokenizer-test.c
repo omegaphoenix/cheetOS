@@ -33,8 +33,8 @@ void parse_basicCommand_splitByWhitespace() {
     int i;
     for (i = 0; i < num_words; i++) {
         if (strcmp(words[i], expected[i]) != 0) {
-            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", words[i],
-                    expected[i]);
+            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", expected[i],
+                    words[i]);
             pass = false;
         }
     }
@@ -81,8 +81,8 @@ void parse_commandWithRedirectAndQuotes_splitByDelimiters() {
     int i;
     for (i = 0; i < num_words; i++) {
         if (strcmp(words[i], expected[i]) != 0) {
-            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", words[i],
-                    expected[i]);
+            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", expected[i],
+                    words[i]);
             pass = false;
         }
     }
@@ -129,8 +129,8 @@ void parse_commandWithPipeAndOutRedir_splitByDelimiters() {
     int i;
     for (i = 0; i < num_words; i++) {
         if (strcmp(words[i], expected[i]) != 0) {
-            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", words[i],
-                    expected[i]);
+            fprintf(stderr, "Expected \"%s\" got \"%s\"\n", expected[i],
+                    words[i]);
             pass = false;
         }
     }
