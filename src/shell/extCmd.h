@@ -4,6 +4,6 @@
 /*
  * Execute external command
  */
-void execute_cmd(char **args);
+int execute_cmd(char **args);
 
 #endif /* EXTCMD_H */

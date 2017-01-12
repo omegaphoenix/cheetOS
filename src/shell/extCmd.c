@@ -1,15 +1,33 @@
 #include "extCmd.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
-void execute_cmd(char **args) {
-    pid_t pid;
+int execute_cmd(char **args) {
+    pid_t child_pid, finished_pid;
+    int status;
+
     /* Fork off a child process to execute program */
-    if ((pid = fork()) < 0) {
+    if ((child_pid = fork()) < 0) {
         fprintf(stderr, "Fork failed\n");
         exit(1);
     }
-    /* Wait for child process to terminate */
+    if (child_pid == 0) {
+        /* Execute command with child process */
+        execvp(args[0], args);
+        fprintf(stderr, "execvp failed - unknown command\n");
+        exit(0);
+    }
+    else {
+        /* Wait for child process to terminate */
+        finished_pid = wait(&status);
+        while (finished_pid != child_pid) {
+            pid_t finished_pid = wait(&status);
+        }
+
+        return status;
+    }
 }
