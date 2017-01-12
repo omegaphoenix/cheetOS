@@ -65,7 +65,7 @@ void token_group_llist_empty_append_test() {
   token_group_llist_append(new_list, test_group);
 
   if (new_list->first_group != new_list->last_group ||
-      new_list->num_groups != 1) {
+      !new_list->first_group || new_list->num_groups != 1) {
     fprintf(stderr, "TokenList singleton not set properly.\n");
   }
   else {

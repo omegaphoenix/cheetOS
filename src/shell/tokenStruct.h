@@ -5,7 +5,7 @@
 
 #include <stdio.h>
 
-/* 
+/*
  * This struct contains the words and token_types for each
  * corresponding node.
  */

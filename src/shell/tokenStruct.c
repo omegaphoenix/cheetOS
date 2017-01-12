@@ -25,6 +25,7 @@ TokenGroup *TokenGroup_new(char **words,
 void TokenGroup_free(TokenGroup *token) {
   free(token->words);
   free(token->tokens);
+  free(token);
 }
 
 
@@ -72,7 +73,7 @@ void TokenGroupLList_free(TokenGroupLList *token_groups) {
 
   while (curr_group) {
     temp_group = curr_group->next_group;
-    free(curr_group);
+    TokenGroup_free(curr_group);
     curr_group = temp_group;
   }
 
