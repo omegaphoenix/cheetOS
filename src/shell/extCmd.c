@@ -7,18 +7,24 @@
 #include <unistd.h>
 
 int execute_cmd(char **argv) {
-    pid_t child_pid;
+    pid_t pid;
     int status;
 
-    /* Fork off a child process to execute program */
-    if ((child_pid = fork()) < 0) {
+    /*
+     * Fork off a child process to execute program
+     * Fork will create two processes; child process will
+     * have pid of 0, and parent will have a pid > 0
+     */
+    if ((pid = fork()) < 0) {
         fprintf(stderr, "Fork failed\n");
         exit(1);
     }
 
     /* Child process */
-    if (child_pid == 0) {
+    if (pid == 0) {
         /* Execute command with child process */
+
+        /* This process should never return if successful */
         execvp(argv[0], argv);
         fprintf(stderr, "execvp failed - unknown command\n");
         exit(0);
@@ -28,7 +34,7 @@ int execute_cmd(char **argv) {
     else {
         /* Wait for child process to terminate */
         pid_t finished_pid = wait(&status);
-        while (finished_pid != child_pid) {
+        while (finished_pid != pid) {
             finished_pid = wait(&status);
         }
 

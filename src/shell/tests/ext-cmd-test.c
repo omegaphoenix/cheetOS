@@ -5,9 +5,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define KiB(x) ((size_t) (x) << 10)
-#define PATH_MAX KiB(1)
-
 /* Test grep */
 void executeCmd_externalCommand_shouldGrep() {
     char *cmd = "grep";
