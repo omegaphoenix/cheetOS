@@ -401,6 +401,29 @@ transformation with this input.
 >> A8: Why did you ultimately choose this design?  In what ways is it
 >> superior to other designs you considered as you developed your solution?
 
+  We considered tokenizing commands by character (which we do as an
+  intermediate step) and by command, split by pipes. We decided to tokenize
+  by word because by assigning a token to each word, redirect, pipe, etc.,
+  we were able to eliminate parsing when creating the struct and parallelize
+  the implementation.
+
+  We chose a linked list of commands separated by pipes because the commands
+  are executed in order and thus it is efficient to iterate through the linked
+  list and execute each command after setting the stdin and stdout to the
+  appropriate file descriptors. This eliminated the need for an index
+  iterator and malloc based on size if we used an array instead.
+
+  Using the Command struct allowed us to keep track of corresponding command
+  arguments and the redirects necessary.  An alternate design could have been
+  to keep the redirects in the list of arguments so that there would only
+  be an array of strings representing this command. This would require parsing
+  and determining if redirects are present during the execution step which
+  seems to be a less logical place to parse the redirects.
+
+  For command execution, we arrived at our design by iterating and forking
+  a process to execute external commands. Then we added redirection and
+  finally refactored to handle pipes.
+
 >> A9: Did you take any steps to facilitate development of the command
 >> shell in parallel, e.g. designing shared data structures or integration
 >> points up front?  How well did your approach work for your team?  Feel
