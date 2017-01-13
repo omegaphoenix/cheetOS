@@ -44,10 +44,12 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
             }
             /* Add pipe or redirect operator */
             if (char_tokens[i] != WHITE) {
-                words[idx] = malloc(sizeof(char));
+                /* Handle \0 at end of string */
+                words[idx] = malloc(sizeof(char) + 1);
                 if (!words[idx]) {
                     fprintf(stderr, "Malloc failed\n");
                 }
+                words[idx][1] = '\0';
                 words[idx][0] = line[i];
                 tokens[idx] = char_tokens[i];
                 idx++;
@@ -64,6 +66,8 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
         curr_word_idx = 0;
     }
 
+    /* char_tokens is done being used. Free it here. */
+    free(char_tokens);
     return idx;
 }
 
