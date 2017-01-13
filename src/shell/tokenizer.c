@@ -17,12 +17,6 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
     int idx = 0;
     int curr_word_idx = 0;
 
-    if (len == 0) {
-        free(curr_word);
-        free(char_tokens);
-        return idx;
-    }
-
     int i;
     for (i = 0; i < len; i++) {
         if (!is_delimiter(char_tokens[i])) {
@@ -50,14 +44,27 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
             }
             /* Add pipe or redirect operator */
             if (char_tokens[i] != WHITE) {
-                /* Handle \0 at end of string */
-                words[idx] = malloc(sizeof(char) + 1);
-                if (!words[idx]) {
-                    fprintf(stderr, "Malloc failed\n");
+                /* Handle >> sequence */
+                if (is_append_redir(char_tokens, i, len)) {
+                    words[idx] = malloc(sizeof(char) + 1);
+                    if (!words[idx]) {
+                        fprintf(stderr, "Malloc failed\n");
+                    }
+                    words[idx][0] = line[i];
+                    words[idx][1] = '\0';
+                    tokens[idx] = AP_REDIR;
+                    i++;
                 }
-                words[idx][1] = '\0';
-                words[idx][0] = line[i];
-                tokens[idx] = char_tokens[i];
+                else {
+                    /* Handle \0 at end of string */
+                    words[idx] = malloc(sizeof(char) + 1);
+                    if (!words[idx]) {
+                        fprintf(stderr, "Malloc failed\n");
+                    }
+                    words[idx][1] = '\0';
+                    words[idx][0] = line[i];
+                    tokens[idx] = char_tokens[i];
+                }
                 idx++;
             }
         }
@@ -144,3 +151,7 @@ bool is_delimiter(token_type token) {
         token == OUT_REDIR || token == WHITE;
 }
 
+bool is_append_redir(token_type *tokens, int i, int len) {
+    return i < len - 1 && tokens[i] == OUT_REDIR &&
+        tokens[i + 1] == OUT_REDIR;
+}

@@ -11,7 +11,7 @@
 /* * * * * * * * HELPER FUNCTIONS * * * * * * * */
 typedef struct _Command Command;
 
-/* 
+/*
  * This function will take in a command line, the appropriate
  * tokens, and output the size of the args list
  */
@@ -60,7 +60,7 @@ void Redirection_free_pointer(Redirection *redirect_pointer);
  * information such as redirection and token numbers.
  */
 typedef struct _Command {
-    /* Keeps track of all redirections in the command (input, output, error) */
+    /* Keeps track of all redirections in the command */
     Redirection *stdin_redirect;
     Redirection *stdout_redirect;
     Redirection *stderr_redirect;
