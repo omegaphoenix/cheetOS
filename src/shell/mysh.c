@@ -11,6 +11,16 @@
 
 #define MAX_INPUT KiB(1)
 
+void free_char_array(char **char_array, int size_of_array) {
+    int idx;
+    if (char_array) {
+        for (idx = 0; idx < size_of_array; idx++) {
+            free(char_array[idx]);
+        }
+        free(char_array);
+    }
+}
+
 int main() {
     char *cwd = NULL;
     char *username = NULL;
@@ -79,18 +89,20 @@ int main() {
             in_cd(words);
         }
         else if (strcmp(words[0], "exit") == 0) {
-            free(words);
+            free_char_array(words, num_tokens);
             free(tokens);
+            CommandLinkedList_free_pointer(commands);
+            TokenGroupLList_free(word_groups);
             in_exit(words);
         }
 
-        /* TODO: Else, fork a child process and execute */
         else {
+            /* Passing everything in to potentially garbage collect */
             execute_ext_cmd(commands->first_command);
         }
 
         free_malloc:
-          free(words);
+          free_char_array(words, num_tokens);
           free(tokens);
           CommandLinkedList_free_pointer(commands);
           TokenGroupLList_free(word_groups);
