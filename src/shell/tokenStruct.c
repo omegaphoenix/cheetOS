@@ -69,16 +69,18 @@ void token_group_llist_append(TokenGroupLList *token_groups,
 
 /* Dynamic destructor */
 void TokenGroupLList_free(TokenGroupLList *token_groups) {
-    TokenGroup *curr_group = token_groups->first_group;
-    TokenGroup *temp_group;
+    if (token_groups) {
+        TokenGroup *curr_group = token_groups->first_group;
+        TokenGroup *temp_group;
 
-    while (curr_group) {
-        temp_group = curr_group->next_group;
-        TokenGroup_free(curr_group);
-        curr_group = temp_group;
+        while (curr_group) {
+            temp_group = curr_group->next_group;
+            TokenGroup_free(curr_group);
+            curr_group = temp_group;
+        }
+
+        free(token_groups);
     }
-
-    free(token_groups);
 }
 
 /*

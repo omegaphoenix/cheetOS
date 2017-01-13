@@ -156,85 +156,84 @@ void Redirection_free_pointer(Redirection *redirect_pointer) {
 Command* Command_new_pointer(char **command_line,
                              token_type *tokens,
                              int size_of_array) {
-    /*
-     * To avoid a ton of if/else indentations,
-     * I will do a few mallocs here first.
-     */
+  /*
+   * To avoid a ton of if/else indentations,
+   * I will do a few mallocs here first.
+   */
 
-    Command* new_command = NULL;
-    char **args = NULL;
+  Command* new_command = NULL;
+  char **args = NULL;
 
-    new_command = malloc(sizeof(Command));
-    args = malloc((size_of_array + 1) * sizeof(char *));
+  new_command = malloc(sizeof(Command));
+  args = malloc((size_of_array + 1) * sizeof(char *));
 
-    /* All these are set to null so freeing would not be a problem */
-    new_command->next_command = NULL;
-    new_command->prev_command = NULL;
-    new_command->stdin_redirect = NULL;
-    new_command->stdout_redirect = NULL;
-    new_command->stderr_redirect = NULL;
+  /* All these are set to null so freeing would not be a problem */
+  new_command->next_command = NULL;
+  new_command->prev_command = NULL;
+  new_command->stdin_redirect = NULL;
+  new_command->stdout_redirect = NULL;
+  new_command->stderr_redirect = NULL;
 
-    char **new_args = NULL;
-    int error_idx;
-    int filtered_size;
-    bool is_command_set;
+  char **new_args = NULL;
+  int error_idx;
+  int filtered_size;
+  bool is_command_set;
 
-    /* Handler for freeing everything before returning NULL */
-    if (!args || !new_command) {
-        fprintf(stderr, "Command Malloc Error\n");
-        goto error_exit;
-    }
+  /* Handler for freeing everything before returning NULL */
+  if (!args || !new_command) {
+    goto error_exit;
+  }
 
-    filtered_size = filter_command_line_args(new_command,
-                                             command_line,
-                                             args,
-                                             tokens,
-                                             size_of_array);
+  filtered_size = filter_command_line_args(new_command,
+                                               command_line,
+                                               args,
+                                               tokens,
+                                               size_of_array);
 
-    /*
-     * An error value will be negative. We can use abs() to clear what
-     * has been set before the error.
-     */
-    if (filtered_size < 0) {
-        fprintf(stderr, "Tokenize parse error\n");
-        goto error_exit;
-    }
+  /*
+   * An error value will be negative. We can use abs() to clear what
+   * has been set before the error.
+   */
+  if (filtered_size < 0) {
+    goto error_exit;
+  }
 
-    is_command_set =
+  is_command_set =
         set_command_attributes(new_command, new_args, args, filtered_size);
-    args = NULL; /* Allows for freeing in case of an error */
+  args = NULL; /* Allows for freeing in case of an error */
 
-    if (is_command_set) {
-        return new_command;
-    }
-    else {
-        fprintf(stderr, "Command Malloc Error\n");
-        error_exit:
-            for (error_idx = 0; error_idx < abs(filtered_size); error_idx++) {
-                free(args[error_idx]);
-            }
-            free(new_args);
-            free(args);
-            free(new_command);
+  if (is_command_set) {
+    return new_command;
+  }
+  else {
+    error_exit:
+        fprintf(stderr, "Command Malloc Error or Tokenize parse error\n");
+        for (error_idx = 0; error_idx < abs(filtered_size); error_idx++) {
+          free(args[error_idx]);
+        }
+        free(new_args);
+        free(args);
+        free(new_command);
 
-            return NULL;
-    }
+        return NULL;
+  }
 }
 
 /* Dynamic destructor */
 void Command_free_pointer(Command *command_pointer) {
     int idx;
+    if (command_pointer) {
+        Redirection_free_pointer(command_pointer->stdin_redirect);
+        Redirection_free_pointer(command_pointer->stdout_redirect);
+        Redirection_free_pointer(command_pointer->stderr_redirect);
 
-    Redirection_free_pointer(command_pointer->stdin_redirect);
-    Redirection_free_pointer(command_pointer->stdout_redirect);
-    Redirection_free_pointer(command_pointer->stderr_redirect);
-
-    /* Accounting for the null at the end of the args */
-    for (idx = 0; idx < command_pointer->num_tokens + 1; idx++) {
-        free(command_pointer->args[idx]);
+        /* Accounting for the null at the end of the args */
+        for (idx = 0; idx < command_pointer->num_tokens + 1; idx++) {
+          free(command_pointer->args[idx]);
+        }
+        free(command_pointer->args);
+        free(command_pointer);
     }
-    free(command_pointer->args);
-    free(command_pointer);
 }
 
 
@@ -280,31 +279,17 @@ void command_linked_list_append(CommandLinkedList *command_LL_pointer,
 
 /* Dynamic destructor. Will free all Commands first before freeing itself */
 void CommandLinkedList_free_pointer(CommandLinkedList *command_LL_pointer) {
-    Command *curr_command = command_LL_pointer->first_command;
-    Command *temp_command;
+      if(command_LL_pointer) {
+          Command *curr_command = command_LL_pointer->first_command;
+          Command *temp_command;
 
-    /* Keep freeing until all nodes are freed */
-    while (curr_command) {
-        temp_command = curr_command->next_command;
-        Command_free_pointer(curr_command);
-        curr_command = temp_command;
-    }
+          /* Keep freeing until all nodes are freed */
+          while (curr_command) {
+            temp_command = curr_command->next_command;
+            Command_free_pointer(curr_command);
+            curr_command = temp_command;
+          }
 
-    free(command_LL_pointer);
-}
-
-/* Print arguments for debugging */
-void print(CommandLinkedList *command_LL_pointer) {
-    int i;
-    int cmd_count = 0;
-    Command *curr_cmd = command_LL_pointer->first_command;
-    while (curr_cmd) {
-        printf("Args for command %d\n", cmd_count);
-        for (i = 0; i < curr_cmd->num_tokens; i++) {
-            printf("%s ", curr_cmd->args[i]);
-        }
-        printf("\n");
-        curr_cmd = curr_cmd->next_command;
-        cmd_count++;
-    }
+          free(command_LL_pointer);
+      }
 }
