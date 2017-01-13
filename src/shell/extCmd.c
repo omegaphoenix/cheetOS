@@ -111,11 +111,11 @@ int execute_cmd(Command *cmd, int input_fd) {
             finished_pid = wait(&status);
         }
 
-        /* If there is a pipe, replace stdout with pipe output */
-        /* If there is a pipe, execute the next command. */
         if (has_pipe) {
+            /* If there is a pipe, replace stdout with pipe output */
             close(pipefd[1]);
             close(input_fd);
+            /* If there is a pipe, execute the next command. */
             execute_cmd(cmd->next_command, pipefd[0]);
         }
 
