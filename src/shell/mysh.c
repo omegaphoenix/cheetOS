@@ -59,6 +59,11 @@ int main() {
         }
 
         num_tokens = parse_tokens(input_str, words, tokens);
+        /* Skip if no input */
+        if (num_tokens == 0) {
+            goto free_malloc;
+        }
+
         word_groups = split_string_by_pipe(words, tokens, num_tokens);
 
         /* Creating command linked list delimited by pipes */
@@ -80,12 +85,10 @@ int main() {
             }
         };
 
-        /* Skip if no input */
-        if (num_tokens == 0) {
-        }
+
         /* TODO: improve this by looping through array of internal cmds */
         /* If internal command, execute in current process */
-        else if (strcmp(words[0], "cd") == 0) {
+        if (strcmp(words[0], "cd") == 0) {
             in_cd(words);
         }
         else if (strcmp(words[0], "exit") == 0) {
@@ -97,8 +100,14 @@ int main() {
         }
 
         else {
+            free_char_array(words, num_tokens);
+            free(tokens);
+            TokenGroupLList_free(word_groups);
+            words = NULL;
+            tokens = NULL;
+            word_groups = NULL;
             /* Passing everything in to potentially garbage collect */
-            execute_ext_cmd(commands->first_command);
+            execute_ext_cmd(commands->first_command, commands);
         }
 
         free_malloc:
@@ -106,6 +115,8 @@ int main() {
           free(tokens);
           CommandLinkedList_free_pointer(commands);
           TokenGroupLList_free(word_groups);
+          commands = NULL;
+          word_groups = NULL;
     }
     return 0;
 }

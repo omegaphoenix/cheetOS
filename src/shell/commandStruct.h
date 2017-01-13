@@ -38,8 +38,8 @@ bool set_command_attributes(Command *command,
  * as well as the specific redirect location.
  */
 typedef struct _Redirection {
-  token_type redirect_type;
-  char *redirect_location;
+    token_type redirect_type;
+    char *redirect_location;
 } Redirection;
 
 /* Dynamic constructor */
@@ -60,23 +60,23 @@ void Redirection_free_pointer(Redirection *redirect_pointer);
  * information such as redirection and token numbers.
  */
 typedef struct _Command {
-  /* Keeps track of all redirections in the command (input, output, error) */
-  Redirection *stdin_redirect;
-  Redirection *stdout_redirect;
-  Redirection *stderr_redirect;
+    /* Keeps track of all redirections in the command (input, output, error) */
+    Redirection *stdin_redirect;
+    Redirection *stdout_redirect;
+    Redirection *stderr_redirect;
 
-  /* Number of tokens for a particular command */
-  int num_tokens;
+    /* Number of tokens for a particular command */
+    int num_tokens;
 
-  /*
-   * Array of arguments from command line.
-   * Ex: For "grep Allow < input.txt > output.txt"
-   *     args = ["grep", "Allow", NULL]
-   */
-  char **args;
+    /*
+     * Array of arguments from command line.
+     * Ex: For "grep Allow < input.txt > output.txt"
+     *     args = ["grep", "Allow", NULL]
+     */
+    char **args;
 
-  Command *next_command;
-  Command *prev_command;
+    Command *next_command;
+    Command *prev_command;
 } Command;
 
 /* Dynamic constructor */
@@ -96,11 +96,11 @@ void Command_free_pointer(Command *command_pointer);
  * previous commands.
  */
 typedef struct _CommandLinkedList {
-  Command *first_command;
-  Command *last_command;
+    Command *first_command;
+    Command *last_command;
 
-  /* Size of the linked list. */
-  int linked_list_size;
+    /* Size of the linked list. */
+    int linked_list_size;
 } CommandLinkedList;
 
 /* Dynamic constructor. */

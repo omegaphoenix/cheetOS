@@ -45,10 +45,10 @@ int filter_command_line_args(Command *command,
                     return COMMAND_PARSE_ERROR(filtered_idx);
                 }
 
-                /*
-                 * Word after a redirect is the target. So we will
-                 * increment iter additionally here
-                 */
+            /*
+             * Word after a redirect is the target. So we will increment
+             * iter additionally here
+             */
             case IN_REDIR:
             case OUT_REDIR: ;
                 token_type redirect_type = tokens[iter];
@@ -112,7 +112,7 @@ bool set_command_attributes(Command *command,
 
 /* Dynamic constructor */
 Redirection *Redirection_new_pointer(const token_type redirect_type,
-        char *redirect_location) {
+                                     char *redirect_location) {
     Redirection *new_redirect = malloc(sizeof(Redirection));
     char *file_name = malloc((strlen(redirect_location) + 1));
 
@@ -130,7 +130,6 @@ Redirection *Redirection_new_pointer(const token_type redirect_type,
         free(new_redirect);
         return NULL;
     }
-
 }
 
 /* Dynamic destructor. Frees both struct and array. */
@@ -181,7 +180,6 @@ Command* Command_new_pointer(char **command_line,
 
     /* Handler for freeing everything before returning NULL */
     if (!args || !new_command) {
-        fprintf(stderr, "Command Malloc Error\n");
         goto error_exit;
     }
 
@@ -196,7 +194,6 @@ Command* Command_new_pointer(char **command_line,
      * has been set before the error.
      */
     if (filtered_size < 0) {
-        fprintf(stderr, "Tokenize parse error\n");
         goto error_exit;
     }
 
@@ -208,8 +205,8 @@ Command* Command_new_pointer(char **command_line,
         return new_command;
     }
     else {
-        fprintf(stderr, "Command Malloc Error\n");
         error_exit:
+            fprintf(stderr, "Command Malloc Error or Tokenize parse error\n");
             for (error_idx = 0; error_idx < abs(filtered_size); error_idx++) {
                 free(args[error_idx]);
             }
@@ -224,17 +221,18 @@ Command* Command_new_pointer(char **command_line,
 /* Dynamic destructor */
 void Command_free_pointer(Command *command_pointer) {
     int idx;
+    if (command_pointer) {
+        Redirection_free_pointer(command_pointer->stdin_redirect);
+        Redirection_free_pointer(command_pointer->stdout_redirect);
+        Redirection_free_pointer(command_pointer->stderr_redirect);
 
-    Redirection_free_pointer(command_pointer->stdin_redirect);
-    Redirection_free_pointer(command_pointer->stdout_redirect);
-    Redirection_free_pointer(command_pointer->stderr_redirect);
-
-    /* Accounting for the null at the end of the args */
-    for (idx = 0; idx < command_pointer->num_tokens + 1; idx++) {
-        free(command_pointer->args[idx]);
+        /* Accounting for the null at the end of the args */
+        for (idx = 0; idx < command_pointer->num_tokens + 1; idx++) {
+          free(command_pointer->args[idx]);
+        }
+        free(command_pointer->args);
+        free(command_pointer);
     }
-    free(command_pointer->args);
-    free(command_pointer);
 }
 
 
@@ -280,31 +278,17 @@ void command_linked_list_append(CommandLinkedList *command_LL_pointer,
 
 /* Dynamic destructor. Will free all Commands first before freeing itself */
 void CommandLinkedList_free_pointer(CommandLinkedList *command_LL_pointer) {
-    Command *curr_command = command_LL_pointer->first_command;
-    Command *temp_command;
+      if(command_LL_pointer) {
+          Command *curr_command = command_LL_pointer->first_command;
+          Command *temp_command;
 
-    /* Keep freeing until all nodes are freed */
-    while (curr_command) {
-        temp_command = curr_command->next_command;
-        Command_free_pointer(curr_command);
-        curr_command = temp_command;
-    }
+          /* Keep freeing until all nodes are freed */
+          while (curr_command) {
+            temp_command = curr_command->next_command;
+            Command_free_pointer(curr_command);
+            curr_command = temp_command;
+          }
 
-    free(command_LL_pointer);
-}
-
-/* Print arguments for debugging */
-void print(CommandLinkedList *command_LL_pointer) {
-    int i;
-    int cmd_count = 0;
-    Command *curr_cmd = command_LL_pointer->first_command;
-    while (curr_cmd) {
-        printf("Args for command %d\n", cmd_count);
-        for (i = 0; i < curr_cmd->num_tokens; i++) {
-            printf("%s ", curr_cmd->args[i]);
-        }
-        printf("\n");
-        curr_cmd = curr_cmd->next_command;
-        cmd_count++;
-    }
+          free(command_LL_pointer);
+      }
 }
