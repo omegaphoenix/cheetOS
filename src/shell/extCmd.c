@@ -1,9 +1,11 @@
 #include "extCmd.h"
 
+#include <dirent.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -56,6 +58,14 @@ int execute_cmd(Command *cmd, int input_fd) {
             close(stdin_filedes);
         }
         if (cmd->stdout_redirect != NULL) {
+            /* Check that output file location is not existing directory */
+            DIR* dir = opendir(cmd->stdout_redirect->redirect_location);
+            if (dir) {
+                fprintf(stderr, "is a directory: %s\n",
+                        cmd->stdout_redirect->redirect_location);
+                exit(0);
+            }
+
             /* write only; create file if it doesn't exist */
             int stdout_filedes = open(cmd->stdout_redirect->redirect_location,
                     O_WRONLY | O_CREAT | O_TRUNC, mode);
