@@ -113,4 +113,7 @@ void command_linked_list_append(CommandLinkedList *command_LL_pointer,
 /* Dynamic destructor */
 void CommandLinkedList_free_pointer(CommandLinkedList *command_LL_pointer);
 
+/* Print arguments for debugging */
+void print(CommandLinkedList *command_LL_pointer);
+
 #endif /* COMMAND_STRUCT_H_ */
