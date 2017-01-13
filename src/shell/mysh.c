@@ -86,8 +86,7 @@ int main() {
 
         /* TODO: Else, fork a child process and execute */
         else {
-            /* TODO: Swap wrapper function once command is been used */
-            execute_ext_cmd(num_tokens, words);
+            execute_ext_cmd(commands->first_command);
         }
 
         free_malloc:

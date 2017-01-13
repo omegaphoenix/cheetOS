@@ -1,14 +1,15 @@
 #ifndef EXTCMD_H
 #define EXTCMD_H
 
+#include "commandStruct.h"
+
 /*
  * Execute external command
  */
-int execute_cmd(char **args);
+int execute_cmd(Command *cmd, int input_fd);
 
 /*
- * Wrapper function for execute_cmd null terminates argv before executing
+ * Wrapper for execute_cmd to restore stdin and stdout
  */
-int execute_ext_cmd(int argc, char **argv);
-
+int execute_ext_cmd(Command *cmd);
 #endif /* EXTCMD_H */

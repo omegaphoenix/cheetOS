@@ -179,6 +179,7 @@ Command* Command_new_pointer(char **command_line,
 
   /* Handler for freeing everything before returning NULL */
   if (!args || !new_command) {
+    fprintf(stderr, "Command Malloc Error\n");
     goto error_exit;
   }
 
@@ -193,6 +194,7 @@ Command* Command_new_pointer(char **command_line,
    * has been set before the error.
    */
   if (filtered_size < 0) {
+    fprintf(stderr, "Tokenize parse error\n");
     goto error_exit;
   }
 
@@ -204,8 +206,8 @@ Command* Command_new_pointer(char **command_line,
     return new_command;
   }
   else {
+    fprintf(stderr, "Command Malloc Error\n");
     error_exit:
-        fprintf(stderr, "Command Malloc Error or Tokenize parse error\n");
         for (error_idx = 0; error_idx < abs(filtered_size); error_idx++) {
           free(args[error_idx]);
         }
@@ -287,4 +289,20 @@ void CommandLinkedList_free_pointer(CommandLinkedList *command_LL_pointer) {
   }
 
   free(command_LL_pointer);
+}
+
+/* Print arguments for debugging */
+void print(CommandLinkedList *command_LL_pointer) {
+    int i;
+    int cmd_count = 0;
+    Command *curr_cmd = command_LL_pointer->first_command;
+    while (curr_cmd) {
+        printf("Args for command %d\n", cmd_count);
+        for (i = 0; i < curr_cmd->num_tokens; i++) {
+            printf("%s ", curr_cmd->args[i]);
+        }
+        printf("\n");
+        curr_cmd = curr_cmd->next_command;
+        cmd_count++;
+    }
 }
