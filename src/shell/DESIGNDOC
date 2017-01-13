@@ -406,6 +406,23 @@ transformation with this input.
 >> points up front?  How well did your approach work for your team?  Feel
 >> free to share any positive or negative experiences in this vein.
 
+  Before starting work on this project, we set ground rules on stye, naming,
+  and branching conventions in order to facilitate smooth collaboration.
+  Each feature was developed on a new branch, and (in the beginning, at least)
+  we recieved each others' code before merging it into the 'develop' branch.
+
+  We started off the project by each tackling an item on the list of tasks in 
+  section 2.4 of the assignment. As we encountered issues about how the 
+  individual components would interface with one another, we discussed online and in 
+  person how to solve them. These issues included designing the Command struct,
+  deciding how to tokenize the words, and determining how to handle piping.
+
+  The components we worked on were mostly able to be completed in parallel.
+  We could perhaps have managed our time better by doing more designing 
+  and planning upfront, but overall, we were able to divide the work and also
+  work together pretty well.
+  
+
 
 
 			  SURVEY QUESTIONS
