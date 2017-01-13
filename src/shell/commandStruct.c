@@ -45,10 +45,10 @@ int filter_command_line_args(Command *command,
                     return COMMAND_PARSE_ERROR(filtered_idx);
                 }
 
-                /*
-                 * Word after a redirect is the target. So we will
-                 * increment iter additionally here
-                 */
+            /*
+             * Word after a redirect is the target. So we will increment
+             * iter additionally here
+             */
             case IN_REDIR:
             case OUT_REDIR: ;
                 token_type redirect_type = tokens[iter];
@@ -112,7 +112,7 @@ bool set_command_attributes(Command *command,
 
 /* Dynamic constructor */
 Redirection *Redirection_new_pointer(const token_type redirect_type,
-        char *redirect_location) {
+                                     char *redirect_location) {
     Redirection *new_redirect = malloc(sizeof(Redirection));
     char *file_name = malloc((strlen(redirect_location) + 1));
 
@@ -130,7 +130,6 @@ Redirection *Redirection_new_pointer(const token_type redirect_type,
         free(new_redirect);
         return NULL;
     }
-
 }
 
 /* Dynamic destructor. Frees both struct and array. */
@@ -156,67 +155,67 @@ void Redirection_free_pointer(Redirection *redirect_pointer) {
 Command* Command_new_pointer(char **command_line,
                              token_type *tokens,
                              int size_of_array) {
-  /*
-   * To avoid a ton of if/else indentations,
-   * I will do a few mallocs here first.
-   */
+    /*
+     * To avoid a ton of if/else indentations,
+     * I will do a few mallocs here first.
+     */
 
-  Command* new_command = NULL;
-  char **args = NULL;
+    Command* new_command = NULL;
+    char **args = NULL;
 
-  new_command = malloc(sizeof(Command));
-  args = malloc((size_of_array + 1) * sizeof(char *));
+    new_command = malloc(sizeof(Command));
+    args = malloc((size_of_array + 1) * sizeof(char *));
 
-  /* All these are set to null so freeing would not be a problem */
-  new_command->next_command = NULL;
-  new_command->prev_command = NULL;
-  new_command->stdin_redirect = NULL;
-  new_command->stdout_redirect = NULL;
-  new_command->stderr_redirect = NULL;
+    /* All these are set to null so freeing would not be a problem */
+    new_command->next_command = NULL;
+    new_command->prev_command = NULL;
+    new_command->stdin_redirect = NULL;
+    new_command->stdout_redirect = NULL;
+    new_command->stderr_redirect = NULL;
 
-  char **new_args = NULL;
-  int error_idx;
-  int filtered_size;
-  bool is_command_set;
+    char **new_args = NULL;
+    int error_idx;
+    int filtered_size;
+    bool is_command_set;
 
-  /* Handler for freeing everything before returning NULL */
-  if (!args || !new_command) {
-    goto error_exit;
-  }
+    /* Handler for freeing everything before returning NULL */
+    if (!args || !new_command) {
+        goto error_exit;
+    }
 
-  filtered_size = filter_command_line_args(new_command,
-                                               command_line,
-                                               args,
-                                               tokens,
-                                               size_of_array);
+    filtered_size = filter_command_line_args(new_command,
+                                             command_line,
+                                             args,
+                                             tokens,
+                                             size_of_array);
 
-  /*
-   * An error value will be negative. We can use abs() to clear what
-   * has been set before the error.
-   */
-  if (filtered_size < 0) {
-    goto error_exit;
-  }
+    /*
+     * An error value will be negative. We can use abs() to clear what
+     * has been set before the error.
+     */
+    if (filtered_size < 0) {
+        goto error_exit;
+    }
 
-  is_command_set =
+    is_command_set =
         set_command_attributes(new_command, new_args, args, filtered_size);
-  args = NULL; /* Allows for freeing in case of an error */
+    args = NULL; /* Allows for freeing in case of an error */
 
-  if (is_command_set) {
-    return new_command;
-  }
-  else {
-    error_exit:
-        fprintf(stderr, "Command Malloc Error or Tokenize parse error\n");
-        for (error_idx = 0; error_idx < abs(filtered_size); error_idx++) {
-          free(args[error_idx]);
-        }
-        free(new_args);
-        free(args);
-        free(new_command);
+    if (is_command_set) {
+        return new_command;
+    }
+    else {
+        error_exit:
+            fprintf(stderr, "Command Malloc Error or Tokenize parse error\n");
+            for (error_idx = 0; error_idx < abs(filtered_size); error_idx++) {
+                free(args[error_idx]);
+            }
+            free(new_args);
+            free(args);
+            free(new_command);
 
-        return NULL;
-  }
+            return NULL;
+    }
 }
 
 /* Dynamic destructor */
