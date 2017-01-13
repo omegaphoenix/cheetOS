@@ -86,8 +86,7 @@ which parts.
    descriptions to 25-30 words or less.
 
    John Li: Developing structs for TokenGroups and CommandLinkedLists (Linked List
-   for Command struct). Parsing the output from tokenizer into these data
-   structures.
+   for Command struct). Parsing the output from tokenizer into CommandLinkedList.
 
    Justin Leong:
 
@@ -160,19 +159,146 @@ Ex:
         prev_group: Node 2
         next_group: NULL
 
-4. 
+4. Now that the tokenized input string has been grouped by commands, we parse each
+   TokenGroup node into a Command node; ultimately producing a Command Linked List.
+   This is done by iterating through each node in the TokenGroupLList, and creating a
+   Command struct out of it, and appending that to the CommandStructLinkedList. The
+   Command struct will have Redirection information (not in this example) and it will
+   terminate each argument array with NULL.
 
+  Input:
+    TokenGroupLList:
+      Node 1: 
+        char **words: ["a", "arg1", "arg2"]
+        token_type *tokens: [WORD, WORD, WORD],
+        int num_tokens: 3
+        prev_group: NULL
+        next_group: Node 2
+
+      Node 2:
+        char **words: ["b", "arg1"]
+        token_type *tokens: [WORD, WORD],
+        int num_tokens: 2
+        prev_group: Node 1
+        next_group: Node 3
+
+      Node 3:
+        char **words: ["c", "arg1", "arg2", "arg3"]
+        token_type *tokens: [WORD, WORD, WORD, WORD],
+        int num_tokens: 4
+        prev_group: Node 2
+        next_group: NULL
+
+  Output:
+    CommandLinkedList:
+      Node 1: 
+        char **args: ["a", "arg1", "arg2", NULL]
+        int num_tokens: 3
+        Redirection *stdin_redirect: NULL
+        Redirection *stdout_redirect: NULL
+        Redirection *stderr_redirect: NULL
+        prev_command: NULL
+        next_command: Node 2
+
+      Node 2:
+        char **args: ["b", "arg1", NULL]
+        int num_tokens: 2
+        Redirection *stdin_redirect: NULL
+        Redirection *stdout_redirect: NULL
+        Redirection *stderr_redirect: NULL
+        prev_command: Node 1
+        next_command: Node 3
+
+      Node 3:
+        char **args: ["c", "arg1", "arg2", "arg3", NULL]
+        int num_tokens: 4
+        Redirection *stdin_redirect: NULL
+        Redirection *stdout_redirect: NULL
+        Redirection *stderr_redirect: NULL
+        prev_command: Node 2
+        next_command: NULL
+
+5. /TODO/
 
 >> A2: Now, given the command:
 >> "a arg1 arg2 < inp.txt | b arg1 | c arg1 arg2 arg3 > out.txt"
 >> Briefly explain specifically how the redirections are parsed and
 >> represented, and by what processes.
 
+The process is very similar to above. However, redirects are also accounted
+for in the Command struct. The redirections are parsed in the Command constructor
+which calls filter_command_line_args. Here is an example of the Token to Command
+transformation with this input.
+
+  Input:
+    TokenGroupLList:
+      Node 1: 
+        char **words: ["a", "arg1", "arg2", "<", "inp.txt"]
+        token_type *tokens: [WORD, WORD, WORD, IN_REDIR, WORD],
+        int num_tokens: 5
+        prev_group: NULL
+        next_group: Node 2
+
+      Node 2:
+        char **words: ["b", "arg1"]
+        token_type *tokens: [WORD, WORD],
+        int num_tokens: 2
+        prev_group: Node 1
+        next_group: Node 3
+
+      Node 3:
+        char **words: ["c", "arg1", "arg2", "arg3", ">", "out.txt"]
+        token_type *tokens: [WORD, WORD, WORD, WORD, OUT_REDIR, WORD],
+        int num_tokens: 6
+        prev_group: Node 2
+        next_group: NULL
+
+  Output:
+    CommandLinkedList:
+      Node 1: 
+        char **args: ["a", "arg1", "arg2", NULL]
+        int num_tokens: 3
+        Redirection *stdin_redirect: NULL
+        Redirection *stdout_redirect: NULL
+        Redirection *stderr_redirect: NULL
+        prev_command: NULL
+        next_command: Node 2
+
+      Node 2:
+        char **args: ["b", "arg1", NULL]
+        int num_tokens: 2
+        Redirection *stdin_redirect: NULL
+        Redirection *stdout_redirect: NULL
+        Redirection *stderr_redirect: NULL
+        prev_command: Node 1
+        next_command: Node 3
+
+      Node 3:
+        char **args: ["c", "arg1", "arg2", "arg3", NULL]
+        int num_tokens: 4
+        Redirection *stdin_redirect: NULL
+        Redirection *stdout_redirect: NULL
+        Redirection *stderr_redirect: NULL
+        prev_command: Node 2
+        next_command: NULL
+
+  After this CommandLinkedList construction and while they're executed, the redirections are handled
+  by /TODO/
+
 ---- ALGORITHMS ----
 
 >> A3: Illustrate how you solved the problem of setting up
 >> redirection in a simple command like "a < inp.txt > out.txt", by
 >> describing what process takes care of the redirection and when.
+  
+  First, we remove the redirection paths from the argument list. This
+  is done inside the Command constructor, particularly in
+  filter_command_line_args. This way, the command line arguments will
+  instead be the array ["a", NULL]. The struct will store two Redirection
+  pointers (one for stdin and one for stdout), each one storing their
+  respective redirection paths.
+
+  
 
 >> A4: Illustrate how you solved the problem of setting up the pipes
 >> between multiple operations in a single command, by describing
