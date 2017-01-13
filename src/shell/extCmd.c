@@ -6,9 +6,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-int execute_cmd(char **argv) {
+int execute_cmd(Command *cmd) {
     pid_t pid;
     int status;
+    char **argv = cmd->args;
 
     /*
      * Fork off a child process to execute program
@@ -42,7 +43,7 @@ int execute_cmd(char **argv) {
     }
 }
 
-int execute_ext_cmd(int argc, char **argv) {
-    argv[argc] = NULL;
-    return execute_cmd(argv);
+int execute_ext_cmd(Command *cmd) {
+    cmd->args[cmd->num_tokens] = NULL;
+    return execute_cmd(cmd);
 }
