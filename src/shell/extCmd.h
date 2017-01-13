@@ -6,11 +6,10 @@
 /*
  * Execute external command
  */
-int execute_cmd(Command *cmd);
+int execute_cmd(Command *cmd, int input_fd);
 
 /*
- * Wrapper function for execute_cmd null terminates argv before executing
+ * Wrapper for execute_cmd to restore stdin and stdout
  */
 int execute_ext_cmd(Command *cmd);
-
 #endif /* EXTCMD_H */

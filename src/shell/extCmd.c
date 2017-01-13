@@ -7,7 +7,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-int execute_cmd(Command *cmd) {
+int execute_cmd(Command *cmd, int input_fd) {
     pid_t pid;
     int status;
     int pipefd[2];
@@ -16,8 +16,10 @@ int execute_cmd(Command *cmd) {
 
     /* If there is a pipe to a next command, create a new pipe */
     if (has_pipe) {
-        fprintf(stderr, "pipe detected\n");
-        pipe(pipefd);
+        if (pipe(pipefd) < 0) {
+            fprintf(stderr, "Pipe failed\n");
+            exit(1);
+        }
     }
     /*
      * Fork off a child process to execute program
@@ -42,67 +44,79 @@ int execute_cmd(Command *cmd) {
 
         if (cmd->stdin_redirect != NULL) {
             int stdin_filedes = open(cmd->stdin_redirect->redirect_location,
-                                     O_RDONLY); /* read only */
+                    O_RDONLY); /* read only */
             dup2(stdin_filedes, STDIN_FILENO);
             close(stdin_filedes);
         }
         if (cmd->stdout_redirect != NULL) {
-            /* write only; create file if it doesn't exist */  
+            /* write only; create file if it doesn't exist */
             int stdout_filedes = open(cmd->stdout_redirect->redirect_location,
-                                      O_WRONLY | O_CREAT | O_TRUNC, mode);
-            
+                    O_WRONLY | O_CREAT | O_TRUNC, mode);
+
             dup2(stdout_filedes, STDOUT_FILENO);
             close(stdout_filedes);
         }
         if (cmd->stderr_redirect != NULL) {
             /* write only; create file if it doesn't exist */
             int stderr_filedes = open(cmd->stderr_redirect->redirect_location,
-                                     O_WRONLY | O_CREAT, mode);
-            
+                    O_WRONLY | O_CREAT, mode);
+
             dup2(stderr_filedes, STDERR_FILENO);
             close(stderr_filedes);
         }
 
         /* If there is a pipe, replace stdin with pipe input */
         if (has_pipe) {
-            dup2(pipefd[0], STDIN_FILENO);
-            close(pipefd[1]);
-
-            /* Execute the command after the pipe */
-            fprintf(stderr, "trying to execute next cmd\n");
-            execute_cmd(cmd->next_command);
+            close(pipefd[0]);
+            if (dup2(input_fd, STDIN_FILENO) < 0) {
+                fprintf(stderr, "Error redirecting stdin\n");
+            }
+            if (dup2(pipefd[1], STDOUT_FILENO) < 0) {
+                fprintf(stderr, "Error redirecting stdout\n");
+            }
+            else if (close(pipefd[1]) < 0) {
+                fprintf(stderr, "Error closing extra pipe fd\n");
+            }
+            else {
+                /* This process should never return if successful */
+                execvp(argv[0], argv);
+                fprintf(stderr, "execvp failed - unknown command %s\n",
+                        argv[0]);
+                exit(0);
+            }
         }
         /* If there is no pipe, execute the single command */
         else {
+            if (input_fd != STDIN_FILENO) {
+                if (dup2(input_fd, STDIN_FILENO) != -1) {
+                    close(input_fd);
+                }
+                else {
+                    fprintf(stderr, "Error redirecting stdin\n");
+                }
+            }
+
             /* This process should never return if successful */
-            fprintf(stderr, "executing single cmd %s\n", argv[0]);
             execvp(argv[0], argv);
-            fprintf(stderr, "execvp failed - unknown command\n");
+            fprintf(stderr, "execvp failed - unknown command %s\n", argv[0]);
             exit(0);
         }
     }
 
     /* Parent process */
     else {
-        /* If there is a pipe, replace stdout with pipe output */
-        if (has_pipe) {
-            dup2(pipefd[1], STDOUT_FILENO);
-            close(pipefd[0]);
-        }
-
         /* Wait for child process to terminate */
         pid_t finished_pid = wait(&status);
         while (finished_pid != pid) {
             finished_pid = wait(&status);
         }
 
-        /* If there is a pipe, execute the command.
-         * (if there is no pipe, the child executed the command already) */
+        /* If there is a pipe, replace stdout with pipe output */
+        /* If there is a pipe, execute the next command. */
         if (has_pipe) {
-            /* This process should never return if successful */
-            execvp(argv[0], argv);
-            fprintf(stderr, "execvp failed - unknown command\n");
-            exit(0);
+            close(pipefd[1]);
+            close(input_fd);
+            execute_cmd(cmd->next_command, pipefd[0]);
         }
 
         return status;
@@ -111,6 +125,16 @@ int execute_cmd(Command *cmd) {
 }
 
 int execute_ext_cmd(Command *cmd) {
-    cmd->args[cmd->num_tokens] = NULL;
-    return execute_cmd(cmd);
+    int save_in, save_out, res;
+    save_in = dup(STDIN_FILENO);
+    save_out = dup(STDOUT_FILENO);
+
+    /* Initial stdin should be STDIN_FILENO */
+    res = execute_cmd(cmd, STDIN_FILENO);
+
+    /* Restore stdin and stdout */
+    dup2(save_in, STDIN_FILENO);
+    dup2(save_out, STDIN_FILENO);
+
+    return res;
 }
