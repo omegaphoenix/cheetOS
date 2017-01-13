@@ -230,7 +230,9 @@ Ex:
         prev_command: Node 2
         next_command: NULL
 
-5. /TODO/
+5. The Command Linked List and Commands are used in execution as described in
+   parts A3 - A6.
+
 
 >> A2: Now, given the command:
 >> "a arg1 arg2 < inp.txt | b arg1 | c arg1 arg2 arg3 > out.txt"
@@ -429,7 +431,7 @@ transformation with this input.
 >> points up front?  How well did your approach work for your team?  Feel
 >> free to share any positive or negative experiences in this vein.
 
-  Before starting work on this project, we set ground rules on stye, naming,
+  Before starting work on this project, we set ground rules on style, naming,
   and branching conventions in order to facilitate smooth collaboration.
   Each feature was developed on a new branch, and (in the beginning, at least)
   we recieved each others' code before merging it into the 'develop' branch.
