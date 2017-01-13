@@ -44,6 +44,12 @@ Christina Lin <cylin@caltech.edu>
   Variable declaration forbidden after labels:
     http://stackoverflow.com/questions/18496282/why-do-i-get-a-label-can-only-be-part-of-a-statement-and-a-declaration-is-not-a
 
+  Checking if file is valid:
+    http://stackoverflow.com/questions/230062/whats-the-best-way-to-check-if-a-file-exists-in-c-cross-platform
+
+  Checking if location is directory:
+    http://stackoverflow.com/questions/12510874/how-can-i-check-if-a-directory-exists
+
   Use of gotos:
     http://stackoverflow.com/questions/27451220/how-can-i-correctly-handle-malloc-failure-in-c-especially-when-there-is-more-th
 
@@ -82,7 +88,7 @@ which parts.
 
    John Li: Approximately 15-16 hours.
    Justin Leong: Approximately 17:19:36 (hh/mm/ss)
-   Christina Lin:
+   Christina Lin: Approximately 15-16 hours.
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
@@ -95,7 +101,8 @@ which parts.
    external commands (without pipes/redirects). Debug pipes and final
    implementation.
 
-   Christina Lin:
+   Christina Lin: Implement internal commands. Handle redirects for external 
+   commands. Initial implementation of pipes. Write main loop.
 
 ---- DATA STRUCTURES ----
 
@@ -287,8 +294,8 @@ transformation with this input.
         prev_command: Node 2
         next_command: NULL
 
-  After this CommandLinkedList construction and while they're executed, the redirections are handled
-  by /TODO/
+  After this CommandLinkedList construction and while they're executed, 
+  the redirections are handled by execute_cmd() as descripted in A3.
 
 ---- ALGORITHMS ----
 
@@ -303,6 +310,13 @@ transformation with this input.
   pointers (one for stdin and one for stdout), each one storing their
   respective redirection paths.
 
+  The Command is then passed to execute_cmd(). If any of the Redirections are 
+  not NULL, the function first checks that the file locations are valid (input 
+  files exist and output locations are not dirs). Then it creates a new file 
+  descriptor for each redirect file and calls dup2() to copy the standard file 
+  descriptor into the new one. Then, when execvp() is called, the command will
+  be exexcuted using the appropriate files as input and output.
+
 
 
 >> A4: Illustrate how you solved the problem of setting up the pipes
@@ -315,19 +329,19 @@ transformation with this input.
 >> ~25 words or less.
 
   The first process forks into a parent and child. The child executes
-  "a" and sets it's stdout file descriptor to the output of the pipe.
+  "a" and sets its stdout file descriptor to the output of the pipe.
   The parent waits for the child to finish and then makes a recursive
   call on the next command.
 
   In the recursive call, the process forks into a parent and child.
-  The child executes "b" after setting it's stdin file descriptor
-  to receive the previous input and it's stdout file descriptor to
+  The child executes "b" after setting its stdin file descriptor
+  to receive the previous input and its stdout file descriptor to
   the output of another pipe. The parent waits for the child to finish
   and then makes a recursive call on the next command.
 
   In the recursive call, the process forks into a parent and child.
-  The child executes "c" after setting it's stdin file descriptor
-  to receive the previous input and it's stdout file descriptor to
+  The child executes "c" after setting its stdin file descriptor
+  to receive the previous input and its stdout file descriptor to
   the output. The parent waits for the child to finish
   and then returns the status.
 
@@ -338,10 +352,37 @@ transformation with this input.
 >> up the redirections in the example command
 >> "a < inp.txt | b | c > out.txt".
 
+  The main loop processes the command, creating a Command Linked List of three
+  Commands: one for "a < inp.txt", one for "b", one for "c > out.txt".
+
+  The loop then calls execute_ext_cmd() on the first command, "a < inp.txt,"
+  which calls execute_cmd(). A pipe, X, is created, and then the parent process 
+  forks off a child. In the child process, stdin is set to inp.txt and stdout 
+  is set to X's output end. Since there exists a next_command, the parent 
+  will call execute_cmd() for "b" and pass X's input end as the input
+  file descriptor.
+
+  In execute_cmd() with "b," a second pipe, Y, is immediately created, and then 
+  the parent process forks off a child. In the child process, stdin is set to
+  the X's input end and stdout is set to Y's output end. Since there exists a 
+  next_command, the parent will call execute_cmd() for "c > out.txt" and pass
+  Y's input end as the input file descriptor.
+
+  In the third call to execute_cmd() with "c," the function does not create
+  a new pipe, since there is no subsequent command to pipe to. The parent forks
+  off a child. In the child process, stdin is set to Y's input end.
+
 ---- RATIONALE ----
 
 >> A7: Why must the chdir and exit commands be implemented as built-in
 >> functions, rather than external programs?
+
+  chdir and exit both need to modify the shell's own process. If chdir were
+  implemented as an external program, it would change the working directory of 
+  the child process, but the parent's working directory would not be affected.
+  Similarly, an external program can exit itself, but it cannot exit the shell
+  or the parent process that called it. To make modifications to the shell,
+  these commands need to be built in.
 
 >> A8: Why did you ultimately choose this design?  In what ways is it
 >> superior to other designs you considered as you developed your solution?
