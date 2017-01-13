@@ -11,6 +11,16 @@
 
 #define MAX_INPUT KiB(1)
 
+void free_char_array(char **char_array, int size_of_array) {
+    int idx;
+    if (char_array) {
+        for (idx = 0; idx < size_of_array; idx++) {
+            free(char_array[idx]);
+        }
+        free(char_array);
+    }
+}
+
 int main() {
     char *cwd = NULL;
     char *username = NULL;
@@ -70,25 +80,29 @@ int main() {
             }
         };
 
+        /* Skip if no input */
+        if (num_tokens == 0) {
+        }
         /* TODO: improve this by looping through array of internal cmds */
         /* If internal command, execute in current process */
-        if (strcmp(words[0], "cd") == 0) {
+        else if (strcmp(words[0], "cd") == 0) {
             in_cd(words);
         }
         else if (strcmp(words[0], "exit") == 0) {
-            free(words);
+            free_char_array(words, num_tokens);
             free(tokens);
+            CommandLinkedList_free_pointer(commands);
+            TokenGroupLList_free(word_groups);
             in_exit(words);
         }
 
-        /* TODO: Else, fork a child process and execute */
         else {
-            /* TODO: Swap wrapper function once command is been used */
-            execute_ext_cmd(num_tokens, words);
+            /* Passing everything in to potentially garbage collect */
+            execute_ext_cmd(commands->first_command);
         }
 
         free_malloc:
-          free(words);
+          free_char_array(words, num_tokens);
           free(tokens);
           CommandLinkedList_free_pointer(commands);
           TokenGroupLList_free(word_groups);

@@ -86,7 +86,7 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-   John Li: Approximately 15-16 hours.
+   John Li: Approximately 17-18 hours.
    Justin Leong: Approximately 17:19:36 (hh/mm/ss)
    Christina Lin: Approximately 15-16 hours.
 
@@ -95,7 +95,7 @@ which parts.
 
    John Li: Developing structs for TokenGroups and CommandLinkedLists (Linked
    List for Command struct). Parsing the output from tokenizer into
-   CommandLinkedList.
+   CommandLinkedList. Handled memory leaks and memory errors.
 
    Justin Leong: Parse the input lines into tokens by word. Execute basic
    external commands (without pipes/redirects). Debug pipes and final
@@ -401,6 +401,29 @@ transformation with this input.
 >> A8: Why did you ultimately choose this design?  In what ways is it
 >> superior to other designs you considered as you developed your solution?
 
+  We considered tokenizing commands by character (which we do as an
+  intermediate step) and by command, split by pipes. We decided to tokenize
+  by word because by assigning a token to each word, redirect, pipe, etc.,
+  we were able to eliminate parsing when creating the struct and parallelize
+  the implementation.
+
+  We chose a linked list of commands separated by pipes because the commands
+  are executed in order and thus it is efficient to iterate through the linked
+  list and execute each command after setting the stdin and stdout to the
+  appropriate file descriptors. This eliminated the need for an index
+  iterator and malloc based on size if we used an array instead.
+
+  Using the Command struct allowed us to keep track of corresponding command
+  arguments and the redirects necessary.  An alternate design could have been
+  to keep the redirects in the list of arguments so that there would only
+  be an array of strings representing this command. This would require parsing
+  and determining if redirects are present during the execution step which
+  seems to be a less logical place to parse the redirects.
+
+  For command execution, we arrived at our design by iterating and forking
+  a process to execute external commands. Then we added redirection and
+  finally refactored to handle pipes.
+
 >> A9: Did you take any steps to facilitate development of the command
 >> shell in parallel, e.g. designing shared data structures or integration
 >> points up front?  How well did your approach work for your team?  Feel
@@ -439,8 +462,8 @@ penalized.  We can't fix things until we know about them.  :-)
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
-Working on pipes gave me much better insight into how forking, pipes, and
-file descriptors worked.
+  Working on pipes gave me much better insight into how forking, pipes, and
+  file descriptors worked.
 
 >> Were there any parts of the assignment that you felt were unnecessarily
 >> tedious or pointless?
@@ -448,6 +471,8 @@ file descriptors worked.
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
+  A hint to reset stdin/stdout after dup2'ing them in piping would have
+  saved us some time but debugging it builds character.
 
 >> Do you have any suggestions for the instructor and/or TAs to more
 >> effectively assist students, either for future quarters or the remaining

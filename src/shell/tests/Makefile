@@ -29,7 +29,7 @@ token-struct-test: token-struct-test.o
 	$(CC) $(CFLAGS) $^ ../tokenStruct.c -o $@ $(LDFLAGS)
 
 ext-cmd-test: ext-cmd-test.o
-	$(CC) $(CFLAGS) $^ ../extCmd.c -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ ../extCmd.c ../commandStruct.c -o $@ $(LDFLAGS)
 
 clean:
 	rm -f *.o $(BINARIES) *~
