@@ -10,8 +10,15 @@
 int execute_cmd(Command *cmd) {
     pid_t pid;
     int status;
+    int pipefd[2];
     char **argv = cmd->args;
+    bool has_pipe = (cmd->next_command != NULL);
 
+    /* If there is a pipe to a next command, create a new pipe */
+    if (has_pipe) {
+        fprintf(stderr, "pipe detected\n");
+        pipe(pipefd);
+    }
     /*
      * Fork off a child process to execute program
      * Fork will create two processes; child process will
@@ -56,22 +63,51 @@ int execute_cmd(Command *cmd) {
             close(stderr_filedes);
         }
 
-        /* This process should never return if successful */
-        execvp(argv[0], argv);
-        fprintf(stderr, "execvp failed - unknown command\n");
-        exit(0);
+        /* If there is a pipe, replace stdin with pipe input */
+        if (has_pipe) {
+            dup2(pipefd[0], STDIN_FILENO);
+            close(pipefd[1]);
+
+            /* Execute the command after the pipe */
+            fprintf(stderr, "trying to execute next cmd\n");
+            execute_cmd(cmd->next_command);
+        }
+        /* If there is no pipe, execute the single command */
+        else {
+            /* This process should never return if successful */
+            fprintf(stderr, "executing single cmd %s\n", argv[0]);
+            execvp(argv[0], argv);
+            fprintf(stderr, "execvp failed - unknown command\n");
+            exit(0);
+        }
     }
 
     /* Parent process */
     else {
+        /* If there is a pipe, replace stdout with pipe output */
+        if (has_pipe) {
+            dup2(pipefd[1], STDOUT_FILENO);
+            close(pipefd[0]);
+        }
+
         /* Wait for child process to terminate */
         pid_t finished_pid = wait(&status);
         while (finished_pid != pid) {
             finished_pid = wait(&status);
         }
 
+        /* If there is a pipe, execute the command.
+         * (if there is no pipe, the child executed the command already) */
+        if (has_pipe) {
+            /* This process should never return if successful */
+            execvp(argv[0], argv);
+            fprintf(stderr, "execvp failed - unknown command\n");
+            exit(0);
+        }
+
         return status;
     }
+    return 1; /* should not get here */
 }
 
 int execute_ext_cmd(Command *cmd) {
