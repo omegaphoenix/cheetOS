@@ -3,7 +3,7 @@
 			| PROJECT 1: SHELL |
 			|  DESIGN DOCUMENT |
 			+------------------+
-				   
+
 ---- GROUP ----
 
 >> Fill in the names and email addresses of your group members.
@@ -12,14 +12,13 @@ John Li <jzli@caltech.edu>
 Justin Leong <jleong@caltech.edu>
 Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment:  
-0
+>> Specify how many late tokens you are using on this assignment: 0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL: https://github.com/omegaphoenix/cheetOS
    commit ...
 
 ---- PRELIMINARIES ----
@@ -29,7 +28,7 @@ Christina Lin <cylin@caltech.edu>
     Most, if not all, of our functions we wrote also have test cases.
   We included our own test suites along with the test suites you guys
   created. This is to just ensure that our functions are working and that we
-  have a solid foundation. A lot of our code is also wrapped in structs 
+  have a solid foundation. A lot of our code is also wrapped in structs
   because there is no way to find the length of a dynamic array.
 
 >> Please cite any offline or online sources you consulted while
@@ -66,6 +65,9 @@ Christina Lin <cylin@caltech.edu>
   git flow protocol:
     http://danielkummer.github.io/git-flow-cheatsheet/
 
+  reverting stdin/stdoout file descriptors:
+    http://stackoverflow.com/questions/9084099/re-opening-stdout-and-stdin-file-descriptors-after-closing-them
+
 			   COMMAND SHELL
 			   =============
 
@@ -79,16 +81,19 @@ which parts.
    Make sure that each member's total time is listed.
 
    John Li: Approximately 15-16 hours.
-   Justin Leong:
+   Justin Leong: Approximately 17:19:36 (hh/mm/ss)
    Christina Lin:
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
-   John Li: Developing structs for TokenGroups and CommandLinkedLists (Linked List
-   for Command struct). Parsing the output from tokenizer into CommandLinkedList.
+   John Li: Developing structs for TokenGroups and CommandLinkedLists (Linked
+   List for Command struct). Parsing the output from tokenizer into
+   CommandLinkedList.
 
-   Justin Leong:
+   Justin Leong: Parse the input lines into tokens by word. Execute basic
+   external commands (without pipes/redirects). Debug pipes and final
+   implementation.
 
    Christina Lin:
 
@@ -106,7 +111,7 @@ first fgets the input.
   1) char* array
   2) token_type array
   3) size of both arrays
-token_type is an enumerator that characterizes the different types of 
+token_type is an enumerator that characterizes the different types of
 strings in the argument. Index X of the token_type array labels the Xth
 string in the char* array.
 
@@ -116,8 +121,8 @@ Ex: Input: "a arg1 arg2 | b arg1 | c arg1 arg2 arg3"
       1) char* array: ["a", "arg1", "arg2", "|", "b", "arg1", "|", "c", "arg1",
                        "arg2", "arg3"]
 
-      2) token_type array: [WORD, WORD, WORD, PIPE, WORD, WORD, PIPE, WORD, WORD,
-                            WORD, WORD]
+      2) token_type array: [WORD, WORD, WORD, PIPE, WORD, WORD, PIPE, WORD,
+                            WORD, WORD, WORD]
 
       3) size: 11
 
@@ -125,7 +130,7 @@ Ex: Input: "a arg1 arg2 | b arg1 | c arg1 arg2 arg3"
    pipes separate one command from another. All three things are passed into the
    function split_string_by_pipe to produce a linked list of TokenGroups
 
-Ex: 
+Ex:
 
   Input:
     1) char* array: ["a", "arg1", "arg2", "|", "b", "arg1", "|", "c", "arg1",
@@ -138,7 +143,7 @@ Ex:
 
   Output:
     TokenGroupLList:
-      Node 1: 
+      Node 1:
         char **words: ["a", "arg1", "arg2"]
         token_type *tokens: [WORD, WORD, WORD],
         int num_tokens: 3
@@ -168,7 +173,7 @@ Ex:
 
   Input:
     TokenGroupLList:
-      Node 1: 
+      Node 1:
         char **words: ["a", "arg1", "arg2"]
         token_type *tokens: [WORD, WORD, WORD],
         int num_tokens: 3
@@ -191,7 +196,7 @@ Ex:
 
   Output:
     CommandLinkedList:
-      Node 1: 
+      Node 1:
         char **args: ["a", "arg1", "arg2", NULL]
         int num_tokens: 3
         Redirection *stdin_redirect: NULL
@@ -232,7 +237,7 @@ transformation with this input.
 
   Input:
     TokenGroupLList:
-      Node 1: 
+      Node 1:
         char **words: ["a", "arg1", "arg2", "<", "inp.txt"]
         token_type *tokens: [WORD, WORD, WORD, IN_REDIR, WORD],
         int num_tokens: 5
@@ -255,7 +260,7 @@ transformation with this input.
 
   Output:
     CommandLinkedList:
-      Node 1: 
+      Node 1:
         char **args: ["a", "arg1", "arg2", NULL]
         int num_tokens: 3
         Redirection *stdin_redirect: NULL
@@ -290,7 +295,7 @@ transformation with this input.
 >> A3: Illustrate how you solved the problem of setting up
 >> redirection in a simple command like "a < inp.txt > out.txt", by
 >> describing what process takes care of the redirection and when.
-  
+
   First, we remove the redirection paths from the argument list. This
   is done inside the Command constructor, particularly in
   filter_command_line_args. This way, the command line arguments will
@@ -298,7 +303,7 @@ transformation with this input.
   pointers (one for stdin and one for stdout), each one storing their
   respective redirection paths.
 
-  
+
 
 >> A4: Illustrate how you solved the problem of setting up the pipes
 >> between multiple operations in a single command, by describing
@@ -308,6 +313,23 @@ transformation with this input.
 >> process, and going through the execution of programs a, b and c.
 >> Keep your description of each process' responsibilities limited to
 >> ~25 words or less.
+
+  The first process forks into a parent and child. The child executes
+  "a" and sets it's stdout file descriptor to the output of the pipe.
+  The parent waits for the child to finish and then makes a recursive
+  call on the next command.
+
+  In the recursive call, the process forks into a parent and child.
+  The child executes "b" after setting it's stdin file descriptor
+  to receive the previous input and it's stdout file descriptor to
+  the output of another pipe. The parent waits for the child to finish
+  and then makes a recursive call on the next command.
+
+  In the recursive call, the process forks into a parent and child.
+  The child executes "c" after setting it's stdin file descriptor
+  to receive the previous input and it's stdout file descriptor to
+  the output. The parent waits for the child to finish
+  and then returns the status.
 
 >> A5: Similarly, describe the details of how terminated processes are
 >> reaped in the example command "a | b | c".
@@ -344,6 +366,8 @@ penalized.  We can't fix things until we know about them.  :-)
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+Working on pipes gave me much better insight into how forking, pipes, and
+file descriptors worked.
 
 >> Were there any parts of the assignment that you felt were unnecessarily
 >> tedious or pointless?
