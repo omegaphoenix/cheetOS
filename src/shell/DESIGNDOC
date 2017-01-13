@@ -3,32 +3,76 @@
 			| PROJECT 1: SHELL |
 			|  DESIGN DOCUMENT |
 			+------------------+
-				   
+
 ---- GROUP ----
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+John Li <jzli@caltech.edu>
+Justin Leong <jleong@caltech.edu>
+Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment: 0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL: https://github.com/omegaphoenix/cheetOS
    commit ...
 
 ---- PRELIMINARIES ----
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please include them here.
+    Most, if not all, of our functions we wrote also have test cases.
+  We included our own test suites along with the test suites you guys
+  created. This is to just ensure that our functions are working and that we
+  have a solid foundation. A lot of our code is also wrapped in structs
+  because there is no way to find the length of a dynamic array.
 
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
+
+  Ending string with \0:
+    http://stackoverflow.com/questions/2911089/null-terminating-a-string
+
+  Memory leak with strcpy:
+    http://stackoverflow.com/questions/12426837/memory-error-using-valgrind-strcpy
+
+  Variable declaration forbidden after labels:
+    http://stackoverflow.com/questions/18496282/why-do-i-get-a-label-can-only-be-part-of-a-statement-and-a-declaration-is-not-a
+
+  Checking if file is valid:
+    http://stackoverflow.com/questions/230062/whats-the-best-way-to-check-if-a-file-exists-in-c-cross-platform
+
+  Checking if location is directory:
+    http://stackoverflow.com/questions/12510874/how-can-i-check-if-a-directory-exists
+
+  Use of gotos:
+    http://stackoverflow.com/questions/27451220/how-can-i-correctly-handle-malloc-failure-in-c-especially-when-there-is-more-th
+
+  git merge --no-ff:
+    http://stackoverflow.com/questions/9069061/what-is-the-difference-between-git-merge-and-git-merge-no-ff
+
+  Naming Convention:
+    http://stackoverflow.com/questions/1722112/what-are-the-most-common-naming-conventions-in-c
+
+  Tests convention:
+    https://www.quora.com/What-is-the-best-way-to-organize-tests-in-a-C-project
+
+  #include protocol:
+    http://stackoverflow.com/questions/2762568/c-c-include-file-order-best-practices
+
+  git commit protocol:
+    http://chris.beams.io/posts/git-commit/
+
+  git flow protocol:
+    http://danielkummer.github.io/git-flow-cheatsheet/
+
+  reverting stdin/stdoout file descriptors:
+    http://stackoverflow.com/questions/9084099/re-opening-stdout-and-stdin-file-descriptors-after-closing-them
 
 			   COMMAND SHELL
 			   =============
@@ -42,8 +86,23 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
+   John Li: Approximately 17-18 hours.
+   Justin Leong: Approximately 17:19:36 (hh/mm/ss)
+   Christina Lin: Approximately 17-18 hours.
+
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+
+   John Li: Developing structs for TokenGroups and CommandLinkedLists (Linked
+   List for Command struct). Parsing the output from tokenizer into
+   CommandLinkedList. Handled memory leaks and memory errors.
+
+   Justin Leong: Parse the input lines into tokens by word. Execute basic
+   external commands (without pipes/redirects). Debug pipes and final
+   implementation.
+
+   Christina Lin: Implement internal commands. Handle redirects for external 
+   commands. Initial implementation of pipes. Write main loop.
 
 ---- DATA STRUCTURES ----
 
@@ -52,16 +111,215 @@ which parts.
 >> command "a arg1 arg2 | b arg1 | c arg1 arg2 arg3".  How does your
 >> shell internally represent such a command?
 
+1. With the input "a arg1 arg2 | b arg1 | c arg1 arg2 arg3", the shell
+first fgets the input.
+
+2. From here, we parse this line into three variables:
+  1) char* array
+  2) token_type array
+  3) size of both arrays
+token_type is an enumerator that characterizes the different types of
+strings in the argument. Index X of the token_type array labels the Xth
+string in the char* array.
+
+Ex: Input: "a arg1 arg2 | b arg1 | c arg1 arg2 arg3"
+
+    Output:
+      1) char* array: ["a", "arg1", "arg2", "|", "b", "arg1", "|", "c", "arg1",
+                       "arg2", "arg3"]
+
+      2) token_type array: [WORD, WORD, WORD, PIPE, WORD, WORD, PIPE, WORD,
+                            WORD, WORD, WORD]
+
+      3) size: 11
+
+3. Using these three arrays, we group and split the arrays delimited by "|", since
+   pipes separate one command from another. All three things are passed into the
+   function split_string_by_pipe to produce a linked list of TokenGroups
+
+Ex:
+
+  Input:
+    1) char* array: ["a", "arg1", "arg2", "|", "b", "arg1", "|", "c", "arg1",
+                     "arg2", "arg3"]
+
+    2) token_type array: [WORD, WORD, WORD, PIPE, WORD, WORD, PIPE, WORD, WORD,
+                          WORD, WORD]
+
+    3) size: 11
+
+  Output:
+    TokenGroupLList:
+      Node 1:
+        char **words: ["a", "arg1", "arg2"]
+        token_type *tokens: [WORD, WORD, WORD],
+        int num_tokens: 3
+        prev_group: NULL
+        next_group: Node 2
+
+      Node 2:
+        char **words: ["b", "arg1"]
+        token_type *tokens: [WORD, WORD],
+        int num_tokens: 2
+        prev_group: Node 1
+        next_group: Node 3
+
+      Node 3:
+        char **words: ["c", "arg1", "arg2", "arg3"]
+        token_type *tokens: [WORD, WORD, WORD, WORD],
+        int num_tokens: 4
+        prev_group: Node 2
+        next_group: NULL
+
+4. Now that the tokenized input string has been grouped by commands, we parse each
+   TokenGroup node into a Command node; ultimately producing a Command Linked List.
+   This is done by iterating through each node in the TokenGroupLList, and creating a
+   Command struct out of it, and appending that to the CommandStructLinkedList. The
+   Command struct will have Redirection information (not in this example) and it will
+   terminate each argument array with NULL.
+
+  Input:
+    TokenGroupLList:
+      Node 1:
+        char **words: ["a", "arg1", "arg2"]
+        token_type *tokens: [WORD, WORD, WORD],
+        int num_tokens: 3
+        prev_group: NULL
+        next_group: Node 2
+
+      Node 2:
+        char **words: ["b", "arg1"]
+        token_type *tokens: [WORD, WORD],
+        int num_tokens: 2
+        prev_group: Node 1
+        next_group: Node 3
+
+      Node 3:
+        char **words: ["c", "arg1", "arg2", "arg3"]
+        token_type *tokens: [WORD, WORD, WORD, WORD],
+        int num_tokens: 4
+        prev_group: Node 2
+        next_group: NULL
+
+  Output:
+    CommandLinkedList:
+      Node 1:
+        char **args: ["a", "arg1", "arg2", NULL]
+        int num_tokens: 3
+        Redirection *stdin_redirect: NULL
+        Redirection *stdout_redirect: NULL
+        Redirection *stderr_redirect: NULL
+        prev_command: NULL
+        next_command: Node 2
+
+      Node 2:
+        char **args: ["b", "arg1", NULL]
+        int num_tokens: 2
+        Redirection *stdin_redirect: NULL
+        Redirection *stdout_redirect: NULL
+        Redirection *stderr_redirect: NULL
+        prev_command: Node 1
+        next_command: Node 3
+
+      Node 3:
+        char **args: ["c", "arg1", "arg2", "arg3", NULL]
+        int num_tokens: 4
+        Redirection *stdin_redirect: NULL
+        Redirection *stdout_redirect: NULL
+        Redirection *stderr_redirect: NULL
+        prev_command: Node 2
+        next_command: NULL
+
+5. The Command Linked List and Commands are used in execution as described in
+   parts A3 - A6.
+
+
 >> A2: Now, given the command:
 >> "a arg1 arg2 < inp.txt | b arg1 | c arg1 arg2 arg3 > out.txt"
 >> Briefly explain specifically how the redirections are parsed and
 >> represented, and by what processes.
+
+The process is very similar to above. However, redirects are also accounted
+for in the Command struct. The redirections are parsed in the Command constructor
+which calls filter_command_line_args. Here is an example of the Token to Command
+transformation with this input.
+
+  Input:
+    TokenGroupLList:
+      Node 1:
+        char **words: ["a", "arg1", "arg2", "<", "inp.txt"]
+        token_type *tokens: [WORD, WORD, WORD, IN_REDIR, WORD],
+        int num_tokens: 5
+        prev_group: NULL
+        next_group: Node 2
+
+      Node 2:
+        char **words: ["b", "arg1"]
+        token_type *tokens: [WORD, WORD],
+        int num_tokens: 2
+        prev_group: Node 1
+        next_group: Node 3
+
+      Node 3:
+        char **words: ["c", "arg1", "arg2", "arg3", ">", "out.txt"]
+        token_type *tokens: [WORD, WORD, WORD, WORD, OUT_REDIR, WORD],
+        int num_tokens: 6
+        prev_group: Node 2
+        next_group: NULL
+
+  Output:
+    CommandLinkedList:
+      Node 1:
+        char **args: ["a", "arg1", "arg2", NULL]
+        int num_tokens: 3
+        Redirection *stdin_redirect: NULL
+        Redirection *stdout_redirect: NULL
+        Redirection *stderr_redirect: NULL
+        prev_command: NULL
+        next_command: Node 2
+
+      Node 2:
+        char **args: ["b", "arg1", NULL]
+        int num_tokens: 2
+        Redirection *stdin_redirect: NULL
+        Redirection *stdout_redirect: NULL
+        Redirection *stderr_redirect: NULL
+        prev_command: Node 1
+        next_command: Node 3
+
+      Node 3:
+        char **args: ["c", "arg1", "arg2", "arg3", NULL]
+        int num_tokens: 4
+        Redirection *stdin_redirect: NULL
+        Redirection *stdout_redirect: NULL
+        Redirection *stderr_redirect: NULL
+        prev_command: Node 2
+        next_command: NULL
+
+  After this CommandLinkedList construction and while they're executed, 
+  the redirections are handled by execute_cmd() as described in A3.
 
 ---- ALGORITHMS ----
 
 >> A3: Illustrate how you solved the problem of setting up
 >> redirection in a simple command like "a < inp.txt > out.txt", by
 >> describing what process takes care of the redirection and when.
+
+  First, we remove the redirection paths from the argument list. This
+  is done inside the Command constructor, particularly in
+  filter_command_line_args. This way, the command line arguments will
+  instead be the array ["a", NULL]. The struct will store two Redirection
+  pointers (one for stdin and one for stdout), each one storing their
+  respective redirection paths.
+
+  The Command is then passed to execute_cmd(). If any of the Redirections are 
+  not NULL, the function first checks that the file locations are valid (input 
+  files exist and output locations are not dirs). Then it creates a new file 
+  descriptor for each redirect file and calls dup2() to copy the standard file 
+  descriptor into the new one. Then, when execvp() is called, the command will
+  be exexcuted using the appropriate files as input and output.
+
+
 
 >> A4: Illustrate how you solved the problem of setting up the pipes
 >> between multiple operations in a single command, by describing
@@ -72,25 +330,124 @@ which parts.
 >> Keep your description of each process' responsibilities limited to
 >> ~25 words or less.
 
+  The first process forks into a parent and child. The child executes
+  "a" and sets its stdout file descriptor to the output of the pipe.
+  The parent waits for the child to finish and then makes a recursive
+  call on the next command.
+
+  In the recursive call, the process forks into a parent and child.
+  The child executes "b" after setting its stdin file descriptor
+  to receive the previous input and its stdout file descriptor to
+  the output of another pipe. The parent waits for the child to finish
+  and then makes a recursive call on the next command.
+
+  In the recursive call, the process forks into a parent and child.
+  The child executes "c" after setting its stdin file descriptor
+  to receive the previous input and its stdout file descriptor to
+  the output. The parent waits for the child to finish
+  and then returns the status.
+
 >> A5: Similarly, describe the details of how terminated processes are
 >> reaped in the example command "a | b | c".
+  
+  In the command "a | b | c", execute_cmd() is first called on "a". A parent
+  process(1) forks a child(2). The child(2) executes "a". The parent(1) waits
+  until "a" is complete and the child(2) has terminated before calling 
+  execute_cmd() on "b".
+
+  Again, a parent process(1) forks a child(3). The child(3) executes "b",
+  and the parent(1) waits until "b" is completed and child(3) has terminated
+  before calling execute_cmd() on "c".
+
+  To execute "c", the parent process(1) forks a child(4). The child(4) executes
+  "c", and the parent(1) waits until "c" is completed and the child(4) has
+  terminated. Then it returns.
+
 
 >> A6: Similarly, describe which processes are responsible for setting
 >> up the redirections in the example command
 >> "a < inp.txt | b | c > out.txt".
+
+  The main loop processes the command, creating a Command Linked List of three
+  Commands: one for "a < inp.txt", one for "b", one for "c > out.txt".
+
+  The loop then calls execute_ext_cmd() on the first command, "a < inp.txt,"
+  which calls execute_cmd(). A pipe, X, is created, and then the parent process 
+  forks off a child. In the child process, stdin is set to inp.txt and stdout 
+  is set to X's output end. Since there exists a next_command, the parent 
+  will call execute_cmd() for "b" and pass X's input end as the input
+  file descriptor.
+
+  In execute_cmd() with "b," a second pipe, Y, is immediately created, and then 
+  the parent process forks off a child. In the child process, stdin is set to
+  the X's input end and stdout is set to Y's output end. Since there exists a 
+  next_command, the parent will call execute_cmd() for "c > out.txt" and pass
+  Y's input end as the input file descriptor.
+
+  In the third call to execute_cmd() with "c," the function does not create
+  a new pipe, since there is no subsequent command to pipe to. The parent forks
+  off a child. In the child process, stdin is set to Y's input end.
 
 ---- RATIONALE ----
 
 >> A7: Why must the chdir and exit commands be implemented as built-in
 >> functions, rather than external programs?
 
+  chdir and exit both need to modify the shell's own process. If chdir were
+  implemented as an external program, it would change the working directory of 
+  the child process, but the parent's working directory would not be affected.
+  Similarly, an external program can exit itself, but it cannot exit the shell
+  or the parent process that called it. To make modifications to the shell,
+  these commands need to be built in.
+
 >> A8: Why did you ultimately choose this design?  In what ways is it
 >> superior to other designs you considered as you developed your solution?
+
+  We considered tokenizing commands by character (which we do as an
+  intermediate step) and by command, split by pipes. We decided to tokenize
+  by word because by assigning a token to each word, redirect, pipe, etc.,
+  we were able to eliminate parsing when creating the struct and parallelize
+  the implementation.
+
+  We chose a linked list of commands separated by pipes because the commands
+  are executed in order and thus it is efficient to iterate through the linked
+  list and execute each command after setting the stdin and stdout to the
+  appropriate file descriptors. This eliminated the need for an index
+  iterator and malloc based on size if we used an array instead.
+
+  Using the Command struct allowed us to keep track of corresponding command
+  arguments and the redirects necessary.  An alternate design could have been
+  to keep the redirects in the list of arguments so that there would only
+  be an array of strings representing this command. This would require parsing
+  and determining if redirects are present during the execution step which
+  seems to be a less logical place to parse the redirects.
+
+  For command execution, we arrived at our design by iterating and forking
+  a process to execute external commands. Then we added redirection and
+  finally refactored to handle pipes.
 
 >> A9: Did you take any steps to facilitate development of the command
 >> shell in parallel, e.g. designing shared data structures or integration
 >> points up front?  How well did your approach work for your team?  Feel
 >> free to share any positive or negative experiences in this vein.
+
+  Before starting work on this project, we set ground rules on style, naming,
+  and branching conventions in order to facilitate smooth collaboration.
+  Each feature was developed on a new branch, and (in the beginning, at least)
+  we recieved each others' code before merging it into the 'develop' branch.
+
+  We started off the project by each tackling an item on the list of tasks in 
+  section 2.4 of the assignment. As we encountered issues about how the 
+  individual components would interface with one another, we discussed online and in 
+  person how to solve them. These issues included designing the Command struct,
+  deciding how to tokenize the words, and determining how to handle piping.
+
+  The components we worked on were mostly able to be completed in parallel.
+  We could perhaps have managed our time better by doing more designing 
+  and planning upfront, but overall, we were able to divide the work and also
+  work together pretty well.
+  
+
 
 
 			  SURVEY QUESTIONS
@@ -107,6 +464,8 @@ penalized.  We can't fix things until we know about them.  :-)
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+  Working on pipes gave me much better insight into how forking, pipes, and
+  file descriptors worked.
 
 >> Were there any parts of the assignment that you felt were unnecessarily
 >> tedious or pointless?
@@ -114,6 +473,8 @@ penalized.  We can't fix things until we know about them.  :-)
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
+  A hint to reset stdin/stdout after dup2'ing them in piping would have
+  saved us some time but debugging it builds character.
 
 >> Do you have any suggestions for the instructor and/or TAs to more
 >> effectively assist students, either for future quarters or the remaining

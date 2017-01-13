@@ -9,7 +9,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-int execute_cmd(Command *cmd, int input_fd) {
+int execute_cmd(Command *cmd, CommandLinkedList *cmds, int input_fd) {
     pid_t pid;
     int status;
     int pipefd[2];
@@ -49,6 +49,7 @@ int execute_cmd(Command *cmd, int input_fd) {
             if (access(cmd->stdin_redirect->redirect_location, F_OK) == -1) {
                 fprintf(stderr, "no such file: %s\n", 
                         cmd->stdin_redirect->redirect_location);
+                CommandLinkedList_free_pointer(cmds);
                 exit(0);
             }
 
@@ -63,6 +64,8 @@ int execute_cmd(Command *cmd, int input_fd) {
             if (dir) {
                 fprintf(stderr, "is a directory: %s\n",
                         cmd->stdout_redirect->redirect_location);
+                CommandLinkedList_free_pointer(cmds);
+                free(dir);
                 exit(0);
             }
 
@@ -99,6 +102,7 @@ int execute_cmd(Command *cmd, int input_fd) {
                 execvp(argv[0], argv);
                 fprintf(stderr, "execvp failed - unknown command %s\n",
                         argv[0]);
+                CommandLinkedList_free_pointer(cmds);
                 exit(0);
             }
         }
@@ -116,6 +120,7 @@ int execute_cmd(Command *cmd, int input_fd) {
             /* This process should never return if successful */
             execvp(argv[0], argv);
             fprintf(stderr, "execvp failed - unknown command %s\n", argv[0]);
+            CommandLinkedList_free_pointer(cmds);
             exit(0);
         }
     }
@@ -133,7 +138,7 @@ int execute_cmd(Command *cmd, int input_fd) {
             close(pipefd[1]);
             close(input_fd);
             /* If there is a pipe, execute the next command. */
-            execute_cmd(cmd->next_command, pipefd[0]);
+            execute_cmd(cmd->next_command, cmds, pipefd[0]);
         }
 
         return status;
@@ -141,13 +146,13 @@ int execute_cmd(Command *cmd, int input_fd) {
     return 1; /* should not get here */
 }
 
-int execute_ext_cmd(Command *cmd) {
+int execute_ext_cmd(Command *cmd, CommandLinkedList *cmds) {
     int save_in, save_out, res;
     save_in = dup(STDIN_FILENO);
     save_out = dup(STDOUT_FILENO);
 
     /* Initial stdin should be STDIN_FILENO */
-    res = execute_cmd(cmd, STDIN_FILENO);
+    res = execute_cmd(cmd, cmds, STDIN_FILENO);
 
     /* Restore stdin and stdout */
     dup2(save_in, STDIN_FILENO);

@@ -17,6 +17,12 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
     int idx = 0;
     int curr_word_idx = 0;
 
+    if (len == 0) {
+        free(curr_word);
+        free(char_tokens);
+        return idx;
+    }
+
     int i;
     for (i = 0; i < len; i++) {
         if (!is_delimiter(char_tokens[i])) {

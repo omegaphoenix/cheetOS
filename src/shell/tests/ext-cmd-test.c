@@ -20,11 +20,16 @@ void executeCmd_externalCommand_shouldGrep() {
     Command *test_cmd = malloc(sizeof(Command));
     test_cmd = Command_new_pointer(words, tokens, num_tokens);
 
+    /* Create command linked list */
+    CommandLinkedList *commands = NULL;
+    commands = CommandLinkedList_new_pointer();
+    command_linked_list_append(commands, test_cmd);
+
     /* Expected behavior */
     printf("Testing external command \"%s\"\n", cmd);
     printf("Should output line with the word \"%s\"\n", search_word);
 
-    execute_cmd(test_cmd, STDIN_FILENO);
+    execute_cmd(test_cmd, commands, STDIN_FILENO);
 }
 
 int main() {
