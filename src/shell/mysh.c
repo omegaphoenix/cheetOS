@@ -70,9 +70,12 @@ int main() {
             }
         };
 
+        /* Skip if no input */
+        if (num_tokens == 0) {
+        }
         /* TODO: improve this by looping through array of internal cmds */
         /* If internal command, execute in current process */
-        if (strcmp(words[0], "cd") == 0) {
+        else if (strcmp(words[0], "cd") == 0) {
             in_cd(words);
         }
         else if (strcmp(words[0], "exit") == 0) {
