@@ -28,6 +28,7 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
         else {
             /* Add finished word */
             if (curr_word_idx > 0) {
+                curr_word[curr_word_idx] = '\0';
                 words[idx] = curr_word;
                 tokens[idx] = WORD;
                 idx++;
