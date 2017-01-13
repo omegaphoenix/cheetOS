@@ -241,23 +241,37 @@ void Command_free_pointer(Command *command_pointer) {
 
 /* Dynamic constructor. */
 CommandLinkedList *CommandLinkedList_new_pointer() {
-  CommandLinkedList *command_LL = malloc(sizeof(CommandLinkedList));
+    CommandLinkedList *command_LL = malloc(sizeof(CommandLinkedList));
 
-  command_LL->first_command = NULL;
-  command_LL->last_command = NULL;
-  command_LL->linked_list_size = 0;
+    if (command_LL) {
+        command_LL->first_command = NULL;
+        command_LL->last_command = NULL;
 
-  return command_LL;
+        command_LL->linked_list_size = 0;
+        return command_LL;
+    }
+    else {
+        fprintf(stderr, "Malloc failed for Command List constructor.\n");
+        return NULL;
+    }
 }
 
 /* Appends a node to the end of the linked list. */
 void command_linked_list_append(CommandLinkedList *command_LL_pointer,
                                 Command *command) {
-  Command *last_command = command_LL_pointer->last_command;
-  last_command->next_command = command;
-  command->prev_command = last_command;
+    Command *last_command = command_LL_pointer->last_command;
+    if (last_command) {
+        last_command->next_command = command;
+        command->prev_command = last_command;
 
-  linked_list_size++;
+        command_LL_pointer->last_command = command;
+    }
+    else {
+        command_LL_pointer->first_command = command;
+        command_LL_pointer->last_command = command;
+    }
+
+    command_LL_pointer->linked_list_size++;
 }
 
 /* Dynamic destructor. Will free all Commands first before freeing itself */

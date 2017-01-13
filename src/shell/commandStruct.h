@@ -9,6 +9,7 @@
 
 
 /* * * * * * * * HELPER FUNCTIONS * * * * * * * */
+typedef struct _Command Command;
 
 /* 
  * This function will take in a command line, the appropriate
@@ -58,7 +59,6 @@ void Redirection_free_pointer(Redirection *redirect_pointer);
  * This struct represents a shell command. It will store necessary
  * information such as redirection and token numbers.
  */
-typedef struct _Command Command;
 typedef struct _Command {
   /* Keeps track of all redirections in the command (input, output, error) */
   Redirection *stdin_redirect;
@@ -86,27 +86,6 @@ Command *Command_new_pointer(char **command_line,
 
 /* Dynamic destructor */
 void Command_free_pointer(Command *command_pointer);
-
-
-
-/* * * * * * * * HELPER FUNCTIONS FOR COMMAND STRUCT * * * * * * * */
-
-/*
- * This function will take in a command line, the appropriate
- * tokens, and output the size of the args list
- */
-int filter_command_line_args(Command *command,
-                             char **command_line,
-                             char **args,
-                             token_type *tokens,
-                             int size_of_array);
-
-/* Helper function that will just set attributes for a new command */
-bool set_command_attributes(Command *command,
-                            char **new_args,
-                            char **old_args,
-                            int filtered_size);
-
 
 /* * * * * * * * * * * * * * * * * * * * * * * * *
  *         Command Linked List Structs           *

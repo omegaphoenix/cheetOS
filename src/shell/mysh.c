@@ -21,6 +21,11 @@ int main() {
     char **words = NULL;
     token_type *tokens = NULL;
     CommandLinkedList *commands = NULL;
+    Command *curr_command = NULL;
+
+    TokenGroupLList *word_groups = NULL;
+    TokenGroup *curr_group = NULL;
+
     int num_tokens;
 
     while (1) {
@@ -44,9 +49,26 @@ int main() {
         }
 
         num_tokens = parse_tokens(input_str, words, tokens);
+        word_groups = split_string_by_pipe(words, tokens, num_tokens);
 
-        /* TODO: Create Command struct from tokens */
-        if (num_tokens) {}; /* delete this */
+        /* Creating command linked list delimited by pipes */
+        if (word_groups) {
+            commands = CommandLinkedList_new_pointer();
+
+            curr_group = word_groups->first_group;
+            while (curr_group) {
+                curr_command = Command_new_pointer(curr_group->words,
+                                                   curr_group->tokens,
+                                                   curr_group->num_tokens);
+
+                if (!curr_command || !commands) {
+                    goto free_malloc;
+                }
+
+                command_linked_list_append(commands, curr_command);
+                curr_group = curr_group->next_group;
+            }
+        };
 
         /* TODO: improve this by looping through array of internal cmds */
         /* If internal command, execute in current process */
@@ -68,6 +90,8 @@ int main() {
         free_malloc:
           free(words);
           free(tokens);
+          CommandLinkedList_free_pointer(commands);
+          TokenGroupLList_free(word_groups);
     }
     return 0;
 }
