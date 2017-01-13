@@ -8,11 +8,12 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+John Li <jzli@caltech.edu>
+Justin Leong <jleong@caltech.edu>
+Christina Lin <cylin@caltech.edu>
 
 >> Specify how many late tokens you are using on this assignment:  
+0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
@@ -25,10 +26,45 @@ FirstName LastName <email@domain.example>
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please include them here.
+    Most, if not all, of our functions we wrote also have test cases.
+  We included our own test suites along with the test suites you guys
+  created. This is to just ensure that our functions are working and that we
+  have a solid foundation. A lot of our code is also wrapped in structs 
+  because there is no way to find the length of a dynamic array.
 
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
+
+  Ending string with \0:
+    http://stackoverflow.com/questions/2911089/null-terminating-a-string
+
+  Memory leak with strcpy:
+    http://stackoverflow.com/questions/12426837/memory-error-using-valgrind-strcpy
+
+  Variable declaration forbidden after labels:
+    http://stackoverflow.com/questions/18496282/why-do-i-get-a-label-can-only-be-part-of-a-statement-and-a-declaration-is-not-a
+
+  Use of gotos:
+    http://stackoverflow.com/questions/27451220/how-can-i-correctly-handle-malloc-failure-in-c-especially-when-there-is-more-th
+
+  git merge --no-ff:
+    http://stackoverflow.com/questions/9069061/what-is-the-difference-between-git-merge-and-git-merge-no-ff
+
+  Naming Convention:
+    http://stackoverflow.com/questions/1722112/what-are-the-most-common-naming-conventions-in-c
+
+  Tests convention:
+    https://www.quora.com/What-is-the-best-way-to-organize-tests-in-a-C-project
+
+  #include protocol:
+    http://stackoverflow.com/questions/2762568/c-c-include-file-order-best-practices
+
+  git commit protocol:
+    http://chris.beams.io/posts/git-commit/
+
+  git flow protocol:
+    http://danielkummer.github.io/git-flow-cheatsheet/
 
 			   COMMAND SHELL
 			   =============
@@ -42,8 +78,20 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
+   John Li: Approximately 15-16 hours.
+   Justin Leong:
+   Christina Lin:
+
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+
+   John Li: Developing structs for TokenGroups and CommandLinkedLists (Linked List
+   for Command struct). Parsing the output from tokenizer into these data
+   structures.
+
+   Justin Leong:
+
+   Christina Lin:
 
 ---- DATA STRUCTURES ----
 
@@ -51,6 +99,69 @@ which parts.
 >> commands that contain arguments and pipes, using the example
 >> command "a arg1 arg2 | b arg1 | c arg1 arg2 arg3".  How does your
 >> shell internally represent such a command?
+
+1. With the input "a arg1 arg2 | b arg1 | c arg1 arg2 arg3", the shell
+first fgets the input.
+
+2. From here, we parse this line into three variables:
+  1) char* array
+  2) token_type array
+  3) size of both arrays
+token_type is an enumerator that characterizes the different types of 
+strings in the argument. Index X of the token_type array labels the Xth
+string in the char* array.
+
+Ex: Input: "a arg1 arg2 | b arg1 | c arg1 arg2 arg3"
+
+    Output:
+      1) char* array: ["a", "arg1", "arg2", "|", "b", "arg1", "|", "c", "arg1",
+                       "arg2", "arg3"]
+
+      2) token_type array: [WORD, WORD, WORD, PIPE, WORD, WORD, PIPE, WORD, WORD,
+                            WORD, WORD]
+
+      3) size: 11
+
+3. Using these three arrays, we group and split the arrays delimited by "|", since
+   pipes separate one command from another. All three things are passed into the
+   function split_string_by_pipe to produce a linked list of TokenGroups
+
+Ex: 
+
+  Input:
+    1) char* array: ["a", "arg1", "arg2", "|", "b", "arg1", "|", "c", "arg1",
+                     "arg2", "arg3"]
+
+    2) token_type array: [WORD, WORD, WORD, PIPE, WORD, WORD, PIPE, WORD, WORD,
+                          WORD, WORD]
+
+    3) size: 11
+
+  Output:
+    TokenGroupLList:
+      Node 1: 
+        char **words: ["a", "arg1", "arg2"]
+        token_type *tokens: [WORD, WORD, WORD],
+        int num_tokens: 3
+        prev_group: NULL
+        next_group: Node 2
+
+      Node 2:
+        char **words: ["b", "arg1"]
+        token_type *tokens: [WORD, WORD],
+        int num_tokens: 2
+        prev_group: Node 1
+        next_group: Node 3
+
+      Node 3:
+        char **words: ["c", "arg1", "arg2", "arg3"]
+        token_type *tokens: [WORD, WORD, WORD, WORD],
+        int num_tokens: 4
+        prev_group: Node 2
+        next_group: NULL
+
+4. 
+
 
 >> A2: Now, given the command:
 >> "a arg1 arg2 < inp.txt | b arg1 | c arg1 arg2 arg3 > out.txt"
