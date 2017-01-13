@@ -21,8 +21,10 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
     for (i = 0; i < len; i++) {
         if (!is_delimiter(char_tokens[i])) {
             /* Save current character */
-            curr_word[curr_word_idx] = line[i];
-            curr_word_idx++;
+            if (char_tokens[i] != QUOTE) {
+                curr_word[curr_word_idx] = line[i];
+                curr_word_idx++;
+            }
         }
         /* Handle whitespace, pipes, and redirects */
         else {
