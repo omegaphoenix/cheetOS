@@ -43,6 +43,13 @@ int execute_cmd(Command *cmd, int input_fd) {
          */
 
         if (cmd->stdin_redirect != NULL) {
+            /* Check that stdin redirect file is valid */
+            if (access(cmd->stdin_redirect->redirect_location, F_OK) == -1) {
+                fprintf(stderr, "no such file: %s\n", 
+                        cmd->stdin_redirect->redirect_location);
+                exit(0);
+            }
+
             int stdin_filedes = open(cmd->stdin_redirect->redirect_location,
                     O_RDONLY); /* read only */
             dup2(stdin_filedes, STDIN_FILENO);
