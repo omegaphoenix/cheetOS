@@ -295,7 +295,7 @@ transformation with this input.
         next_command: NULL
 
   After this CommandLinkedList construction and while they're executed, 
-  the redirections are handled by execute_cmd() as descripted in A3.
+  the redirections are handled by execute_cmd() as described in A3.
 
 ---- ALGORITHMS ----
 
@@ -391,6 +391,7 @@ transformation with this input.
 >> shell in parallel, e.g. designing shared data structures or integration
 >> points up front?  How well did your approach work for your team?  Feel
 >> free to share any positive or negative experiences in this vein.
+
 
 
 			  SURVEY QUESTIONS
