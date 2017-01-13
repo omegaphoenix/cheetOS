@@ -86,7 +86,7 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-   John Li: Approximately 15-16 hours.
+   John Li: Approximately 17-18 hours.
    Justin Leong: Approximately 17:19:36 (hh/mm/ss)
    Christina Lin: Approximately 15-16 hours.
 
@@ -95,7 +95,7 @@ which parts.
 
    John Li: Developing structs for TokenGroups and CommandLinkedLists (Linked
    List for Command struct). Parsing the output from tokenizer into
-   CommandLinkedList.
+   CommandLinkedList. Handled memory leaks and memory errors.
 
    Justin Leong: Parse the input lines into tokens by word. Execute basic
    external commands (without pipes/redirects). Debug pipes and final
