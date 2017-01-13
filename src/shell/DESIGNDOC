@@ -347,6 +347,20 @@ transformation with this input.
 
 >> A5: Similarly, describe the details of how terminated processes are
 >> reaped in the example command "a | b | c".
+  
+  In the command "a | b | c", execute_cmd() is first called on "a". A parent
+  process(1) forks a child(2). The child(2) executes "a". The parent(1) waits
+  until "a" is complete and the child(2) has terminated before calling 
+  execute_cmd() on "b".
+
+  Again, a parent process(1) forks a child(3). The child(3) executes "b",
+  and the parent(1) waits until "b" is completed and child(3) has terminated
+  before calling execute_cmd() on "c".
+
+  To execute "c", the parent process(1) forks a child(4). The child(4) executes
+  "c", and the parent(1) waits until "c" is completed and the child(4) has
+  terminated. Then it returns.
+
 
 >> A6: Similarly, describe which processes are responsible for setting
 >> up the redirections in the example command
