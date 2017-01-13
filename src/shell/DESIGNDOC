@@ -445,8 +445,8 @@ penalized.  We can't fix things until we know about them.  :-)
 
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
-Working on pipes gave me much better insight into how forking, pipes, and
-file descriptors worked.
+  Working on pipes gave me much better insight into how forking, pipes, and
+  file descriptors worked.
 
 >> Were there any parts of the assignment that you felt were unnecessarily
 >> tedious or pointless?
@@ -454,6 +454,8 @@ file descriptors worked.
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
+  A hint to reset stdin/stdout after dup2'ing them in piping would have
+  saved us some time but debugging it builds character.
 
 >> Do you have any suggestions for the instructor and/or TAs to more
 >> effectively assist students, either for future quarters or the remaining
