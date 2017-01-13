@@ -107,11 +107,10 @@ int main() {
             tokens = NULL;
             word_groups = NULL;
             /* Passing everything in to potentially garbage collect */
-            execute_ext_cmd(commands->first_command);
+            execute_ext_cmd(commands->first_command, commands);
         }
 
         free_malloc:
-          printf("Freeing now...\n");
           free_char_array(words, num_tokens);
           free(tokens);
           CommandLinkedList_free_pointer(commands);
