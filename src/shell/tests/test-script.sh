@@ -24,7 +24,7 @@ grep "f *"<Makefile
 grep "f *" Makefile
 
 echo "\nShould print 2 lines."
-grep "all " Makefile
+grep "all " ../Makefile
 echo "\nShould have \"cat < Makefile\""
 echo "cat < Makefile" > foo.txt
 cat foo.txt
@@ -39,13 +39,16 @@ echo cat Makefile > test.sh
 chmod a+x test.sh
 ./test.sh
 
-echo "\nShould print 5 errors"
-blablabla
+echo "\nShould print Makefile"
 cat < Makefile
+
+echo "\nShould print 4 errors"
+blablabla
 cat < blablabla
 mkdir tmp
 cat Makefile > tmp
 cat Makefile | blablabla
+rmdir tmp
 
 
 echo "\nShould print 3 lines"
