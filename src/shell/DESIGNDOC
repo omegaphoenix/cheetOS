@@ -87,7 +87,7 @@ which parts.
    Make sure that each member's total time is listed.
 
    John Li: Approximately 17-18 hours.
-   Justin Leong: Approximately 17:19:36 (hh/mm/ss)
+   Justin Leong: Approximately 18:46:28 (hh/mm/ss)
    Christina Lin: Approximately 17-18 hours.
 
 >> L2: What did each team member focus on for this assignment?  Keep
@@ -99,9 +99,9 @@ which parts.
 
    Justin Leong: Parse the input lines into tokens by word. Execute basic
    external commands (without pipes/redirects). Debug pipes and final
-   implementation.
+   implementation of pipes. Added ">>" handling.
 
-   Christina Lin: Implement internal commands. Handle redirects for external 
+   Christina Lin: Implement internal commands. Handle redirects for external
    commands. Initial implementation of pipes. Write main loop.
 
 ---- DATA STRUCTURES ----
@@ -296,7 +296,7 @@ transformation with this input.
         prev_command: Node 2
         next_command: NULL
 
-  After this CommandLinkedList construction and while they're executed, 
+  After this CommandLinkedList construction and while they're executed,
   the redirections are handled by execute_cmd() as described in A3.
 
 ---- ALGORITHMS ----
@@ -312,9 +312,9 @@ transformation with this input.
   pointers (one for stdin and one for stdout), each one storing their
   respective redirection paths.
 
-  The Command is then passed to execute_cmd(). If any of the Redirections are 
+  The Command is then passed to execute_cmd(). If any of the Redirections are
   not NULL, the function first checks that the file locations are valid (input 
-  files exist and output locations are not dirs). Then it creates a new file 
+  files exist and output locations are not dirs). Then it creates a new file
   descriptor for each redirect file and calls dup2() to copy the standard file 
   descriptor into the new one. Then, when execvp() is called, the command will
   be exexcuted using the appropriate files as input and output.
@@ -349,10 +349,10 @@ transformation with this input.
 
 >> A5: Similarly, describe the details of how terminated processes are
 >> reaped in the example command "a | b | c".
-  
+
   In the command "a | b | c", execute_cmd() is first called on "a". A parent
   process(1) forks a child(2). The child(2) executes "a". The parent(1) waits
-  until "a" is complete and the child(2) has terminated before calling 
+  until "a" is complete and the child(2) has terminated before calling
   execute_cmd() on "b".
 
   Again, a parent process(1) forks a child(3). The child(3) executes "b",
@@ -372,15 +372,15 @@ transformation with this input.
   Commands: one for "a < inp.txt", one for "b", one for "c > out.txt".
 
   The loop then calls execute_ext_cmd() on the first command, "a < inp.txt,"
-  which calls execute_cmd(). A pipe, X, is created, and then the parent process 
-  forks off a child. In the child process, stdin is set to inp.txt and stdout 
-  is set to X's output end. Since there exists a next_command, the parent 
+  which calls execute_cmd(). A pipe, X, is created, and then the parent process
+  forks off a child. In the child process, stdin is set to inp.txt and stdout
+  is set to X's output end. Since there exists a next_command, the parent
   will call execute_cmd() for "b" and pass X's input end as the input
   file descriptor.
 
-  In execute_cmd() with "b," a second pipe, Y, is immediately created, and then 
+  In execute_cmd() with "b," a second pipe, Y, is immediately created, and then
   the parent process forks off a child. In the child process, stdin is set to
-  the X's input end and stdout is set to Y's output end. Since there exists a 
+  the X's input end and stdout is set to Y's output end. Since there exists a
   next_command, the parent will call execute_cmd() for "c > out.txt" and pass
   Y's input end as the input file descriptor.
 
@@ -436,17 +436,17 @@ transformation with this input.
   Each feature was developed on a new branch, and (in the beginning, at least)
   we recieved each others' code before merging it into the 'develop' branch.
 
-  We started off the project by each tackling an item on the list of tasks in 
-  section 2.4 of the assignment. As we encountered issues about how the 
-  individual components would interface with one another, we discussed online and in 
+  We started off the project by each tackling an item on the list of tasks in
+  section 2.4 of the assignment. As we encountered issues about how the
+  individual components would interface with one another, we discussed online and in
   person how to solve them. These issues included designing the Command struct,
   deciding how to tokenize the words, and determining how to handle piping.
 
   The components we worked on were mostly able to be completed in parallel.
-  We could perhaps have managed our time better by doing more designing 
+  We could perhaps have managed our time better by doing more designing
   and planning upfront, but overall, we were able to divide the work and also
   work together pretty well.
-  
+
 
 
 

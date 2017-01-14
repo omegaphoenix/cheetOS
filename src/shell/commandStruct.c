@@ -50,7 +50,8 @@ int filter_command_line_args(Command *command,
              * iter additionally here
              */
             case IN_REDIR:
-            case OUT_REDIR: ;
+            case OUT_REDIR:
+            case AP_REDIR: ;
                 token_type redirect_type = tokens[iter];
                 iter++;
                 Redirection *new_redirect =
@@ -61,7 +62,8 @@ int filter_command_line_args(Command *command,
                     if (new_redirect->redirect_type == IN_REDIR) {
                         command->stdin_redirect = new_redirect;
                     }
-                    else if (new_redirect->redirect_type == OUT_REDIR) {
+                    else if (new_redirect->redirect_type == OUT_REDIR ||
+                             new_redirect->redirect_type == AP_REDIR) {
                         command->stdout_redirect = new_redirect;
                     }
                     else {

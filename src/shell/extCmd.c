@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+/* Execute external command */
 int execute_cmd(Command *cmd, CommandLinkedList *cmds, int input_fd) {
     pid_t pid;
     int status;
@@ -47,7 +48,7 @@ int execute_cmd(Command *cmd, CommandLinkedList *cmds, int input_fd) {
         if (cmd->stdin_redirect != NULL) {
             /* Check that stdin redirect file is valid */
             if (access(cmd->stdin_redirect->redirect_location, F_OK) == -1) {
-                fprintf(stderr, "no such file: %s\n", 
+                fprintf(stderr, "no such file: %s\n",
                         cmd->stdin_redirect->redirect_location);
                 CommandLinkedList_free_pointer(cmds);
                 exit(0);
@@ -70,8 +71,16 @@ int execute_cmd(Command *cmd, CommandLinkedList *cmds, int input_fd) {
             }
 
             /* write only; create file if it doesn't exist */
-            int stdout_filedes = open(cmd->stdout_redirect->redirect_location,
-                    O_WRONLY | O_CREAT | O_TRUNC, mode);
+            int stdout_filedes;
+            if (cmd->stdout_redirect->redirect_type == OUT_REDIR) {
+                stdout_filedes = open(cmd->stdout_redirect->redirect_location,
+                                      O_WRONLY | O_CREAT | O_TRUNC, mode);
+            }
+            else {
+                /* Append instead of truncate */
+                stdout_filedes = open(cmd->stdout_redirect->redirect_location,
+                                      O_RDWR | O_CREAT | O_APPEND, mode);
+            }
 
             dup2(stdout_filedes, STDOUT_FILENO);
             close(stdout_filedes);
@@ -143,9 +152,10 @@ int execute_cmd(Command *cmd, CommandLinkedList *cmds, int input_fd) {
 
         return status;
     }
-    return 1; /* should not get here */
+    return -1; /* should not get here */
 }
 
+/* Wrapper for execute_cmd to restore stdin and stdout */
 int execute_ext_cmd(Command *cmd, CommandLinkedList *cmds) {
     int save_in, save_out, res;
     save_in = dup(STDIN_FILENO);
