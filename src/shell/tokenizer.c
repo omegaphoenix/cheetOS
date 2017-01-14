@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Modify arrays to contain tokens. Return length of array. */
 int parse_tokens(char *line, char **words, token_type *tokens) {
     size_t len = strlen(line);
     token_type *char_tokens = tokenize(line);
@@ -84,6 +85,7 @@ int parse_tokens(char *line, char **words, token_type *tokens) {
     return idx;
 }
 
+/* Return array of tokens corresponding to characters */
 token_type *tokenize(char *line) {
     size_t len = strlen(line);
     static token_type *tokens;
@@ -125,6 +127,7 @@ token_type *tokenize(char *line) {
     return tokens;
 }
 
+/* Return token of current character */
 token_type get_token(bool in_string, char curr_char) {
     if (curr_char == '\"') {
         return QUOTE;
@@ -146,11 +149,13 @@ token_type get_token(bool in_string, char curr_char) {
     }
 }
 
+/* Return true if this token indicates a new word or command */
 bool is_delimiter(token_type token) {
     return token == PIPE || token == IN_REDIR ||
         token == OUT_REDIR || token == WHITE;
 }
 
+/* Return true if this token indicates output append redirection */
 bool is_append_redir(token_type *tokens, int i, int len) {
     return i < len - 1 && tokens[i] == OUT_REDIR &&
         tokens[i + 1] == OUT_REDIR;

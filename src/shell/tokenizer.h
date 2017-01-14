@@ -8,9 +8,7 @@
 typedef enum {WORD, QUOTE, PIPE, IN_REDIR, OUT_REDIR, AP_REDIR, WHITE}
   token_type;
 
-/*
- * Modify arrays to contain tokens. Return length of array.
- */
+/* Modify arrays to contain tokens. Return length of array. */
 int parse_tokens(char *line, char **words, token_type *tokens);
 
 /* Return array of tokens corresponding to characters */
