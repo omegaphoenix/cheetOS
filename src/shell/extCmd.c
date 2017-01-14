@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+/* Execute external command */
 int execute_cmd(Command *cmd, CommandLinkedList *cmds, int input_fd) {
     pid_t pid;
     int status;
@@ -154,6 +155,7 @@ int execute_cmd(Command *cmd, CommandLinkedList *cmds, int input_fd) {
     return -1; /* should not get here */
 }
 
+/* Wrapper for execute_cmd to restore stdin and stdout */
 int execute_ext_cmd(Command *cmd, CommandLinkedList *cmds) {
     int save_in, save_out, res;
     save_in = dup(STDIN_FILENO);

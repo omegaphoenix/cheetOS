@@ -11,15 +11,7 @@
 
 #define MAX_INPUT KiB(1)
 
-void free_char_array(char **char_array, int size_of_array) {
-    int idx;
-    if (char_array) {
-        for (idx = 0; idx < size_of_array; idx++) {
-            free(char_array[idx]);
-        }
-        free(char_array);
-    }
-}
+void free_char_array(char **char_array, int size_of_array);
 
 int main() {
     char *cwd = NULL;
@@ -117,4 +109,14 @@ int main() {
           word_groups = NULL;
     }
     return 0;
+}
+
+void free_char_array(char **char_array, int size_of_array) {
+    int idx;
+    if (char_array) {
+        for (idx = 0; idx < size_of_array; idx++) {
+            free(char_array[idx]);
+        }
+        free(char_array);
+    }
 }
