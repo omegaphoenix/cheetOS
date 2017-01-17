@@ -21,7 +21,7 @@
 	# We choose 0x00020000 (2000:0000 or equivalent), just because.  This
 	# would give us hundreds of KB of memory to use, but we won't use
 	# even a fraction of that space.
-	# 
+	#
 	# At this point, %dl will be the drive number of the boot device
 	# (i.e. the disk that the bootloader # was loaded off of).
 	# This allows us to load additional data from the boot disk.
@@ -44,12 +44,8 @@ boot_start:
 	mov	$STR_LOADING, %si
 	call	print_str
 
-	#---------------------------------------------------------------------
-	# TODO:  Load the remainder of the program into memory using int 10h
-	#        "Extended Read Operation."  If it fails, jump to boot_fail.
-	#
-	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.
-	#---------------------------------------------------------------------
+	# Load the remainder of the program into memory using int 10h
+	# "Extended Read Operation."  If it fails, jump to boot_fail.
 
 	mov	$STR_LOADED, %si
 	call	print_str
@@ -72,44 +68,43 @@ boot_start:
 
 start_protected:
 
-	#---------------------------------------------------------------------
-	# TODO:  Switch from real mode into protected mode.  The process is
-	#        straightforward:
+	# Switch from real mode into protected mode.
 	#
-	#        1)  Disable interrupts, since any interrupt during this
-	#            process would demolish us.  (We don't turn interrupts
-	#            back on until we are safely in our C program, and have
-	#            set up an Interrupt Descriptor Table.)
+	# 1)  Disable interrupts, since any interrupt during this
+	#     process would demolish us.  (We don't turn interrupts
+	#     back on until we are safely in our C program, and have
+	#     set up an Interrupt Descriptor Table.)
+	cli
 	#
-	#        2)  Set the Global Descriptor Table Register (GDTR) to our
-	#            simple Global Descriptor Table specified at the end of
-	#            the boot-loader.  You will need to write it like this,
-	#            since we are still in 16-bit real mode:
+	# 2)  Set the Global Descriptor Table Register (GDTR) to our
+	#     simple Global Descriptor Table specified at the end of
+	#     the boot-loader.  You will need to write it like this,
+	#     since we are still in 16-bit real mode:
 	#
-	#            data32 addr32 lgdt gdtdesc
+	data32 addr32 lgdt gdtdesc
 	#
-	#            (We need a data32 prefix to ensure that all 32 bits of
-	#            the GDT descriptor are loaded; default is to load only
-	#            24 bits.  The CPU doesn't need an addr32 prefix but ELF
-	#            doesn't do 16-bit relocations.)
+	#     (We need a data32 prefix to ensure that all 32 bits of
+	#     the GDT descriptor are loaded; default is to load only
+	#     24 bits.  The CPU doesn't need an addr32 prefix but ELF
+	#     doesn't do 16-bit relocations.)
 	#
-	#        3)  Turn on protected mode by modifying Control Register cr0.
-	#            See IA32 Manual Volume 3A, Section 2.5 for details of
-	#            which bit(s) to set.  Don't turn on paging - we don't
-	#            need it!  Also, you should not modify any other bits in
-	#            cr0:  read it, OR in the appropriate bit(s), then write
-	#            it back.
+	# 3)  Turn on protected mode by modifying Control Register cr0.
+	#     See IA32 Manual Volume 3A, Section 2.5 for details of
+	#     which bit(s) to set.  Don't turn on paging - we don't
+	#     need it!  Also, you should not modify any other bits in
+	#     cr0:  read it, OR in the appropriate bit(s), then write
+	#     it back.
 	#
-	#            You should use the constants in the boot.h header file
-	#            for this step, to make your code more readable.
+	#     You should use the constants in the boot.h header file
+	#     for this step, to make your code more readable.
+	mov %eax, %cr0
+	or  %eax, CR0_PE
+	mov %cr0, $eax
+
 	#
-	#        See also IA32 Manual Volume 3A, Section 8.9.1 for the general
-	#        overview.  (We only do the parts that are relevant to our
-	#        needs in this project!)
-	#
-	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.  (FEEL
-	#        FREE TO INCORPORATE ANY OF THE ABOVE COMMENTS INTO YOUR CODE!)
-	#---------------------------------------------------------------------
+	# See also IA32 Manual Volume 3A, Section 8.9.1 for the general
+	# overview.  (We only do the parts that are relevant to our
+	# needs in this project!)
 
 	# We're now in protected mode, but still in a 16-bit segment.  The
 	# CPU still has the real-mode code segment cached in %cs's segment
