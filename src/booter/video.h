@@ -25,5 +25,16 @@
 
 void init_video(void);
 
+/* Clears the grid but does not change the video buffer */
+int clear();
+
+/* Writes the contents of the grid to the video buffer */
+int display();
+
+/* Draws an actor by adding its icon and color to the grid */
+int draw(int actor, int color);
+
+/* Sets background color for entire display */
+int set_bg_color(int color);
 
 #endif /* VIDEO_H */
