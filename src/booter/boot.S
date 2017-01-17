@@ -21,7 +21,7 @@
 	# We choose 0x00020000 (2000:0000 or equivalent), just because.  This
 	# would give us hundreds of KB of memory to use, but we won't use
 	# even a fraction of that space.
-	# 
+	#
 	# At this point, %dl will be the drive number of the boot device
 	# (i.e. the disk that the bootloader # was loaded off of).
 	# This allows us to load additional data from the boot disk.
