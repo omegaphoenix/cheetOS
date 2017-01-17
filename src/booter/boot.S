@@ -92,7 +92,7 @@ start_protected:
 	# cr0:  read it, OR in the appropriate bit(s), then write
 	# it back.
 	mov %cr0, $eax
-	or  %eax, CR0_PE
+	or  CR0_PE, %eax
 	mov %eax, %cr0
 
 
@@ -143,7 +143,10 @@ call_c_entry:
 	# call is in a register.  The format is:  call *%somereg
 
 	# Don't forget that you are calling a C function, so follow
-	# cdecl!
+	# cdecl! #TODO Clean stack after return
+	mov  PROGRAM_BASE_ADDR, %eax
+	add  E_ENTRY_OFFSET, %eax
+	call *%eax
 
 
 	#=====================================================================
