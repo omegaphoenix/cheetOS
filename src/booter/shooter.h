@@ -19,6 +19,9 @@ typedef struct _Shooter {
     int x_dim;
     int y_dim;
 
+    /* Actual image of the shooter */
+    char *portrait;
+
     /* Shooter speed while moving on board. Will be an added extra. */
     /* TODO: Implement direction if necessary */
     int movement_speed;
