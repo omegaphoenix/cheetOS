@@ -44,8 +44,10 @@ boot_start:
 	mov	$STR_LOADING, %si
 	call	print_str
 
-	# Load the remainder of the program into memory using int 10h
+	# TODO: Load the remainder of the program into memory using int 10h
 	# "Extended Read Operation."  If it fails, jump to boot_fail.
+	jmp boot_fail
+
 
 	mov	$STR_LOADED, %si
 	call	print_str
@@ -91,7 +93,7 @@ start_protected:
 	# need it!  Also, you should not modify any other bits in
 	# cr0:  read it, OR in the appropriate bit(s), then write
 	# it back.
-	mov %cr0, $eax
+  mov %cr0, %eax
 	or  CR0_PE, %eax
 	mov %eax, %cr0
 

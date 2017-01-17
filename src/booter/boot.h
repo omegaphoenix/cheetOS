@@ -22,4 +22,4 @@
 #define SEL_CODESEG       0x08    /* Code selector. */
 #define SEL_DATASEG       0x10    /* Data selector. */
 
-#define E_ENTRY_OFFSET EI_NIDENT + 8 /* Offset of e_entry */
+#define E_ENTRY_OFFSET (24 + 8) /* Offset of e_entry */
