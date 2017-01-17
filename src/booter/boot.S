@@ -67,41 +67,35 @@ boot_start:
 	# switch over to protected mode.
 
 start_protected:
-
 	# Switch from real mode into protected mode.
-	#
-	# 1)  Disable interrupts, since any interrupt during this
-	#     process would demolish us.  (We don't turn interrupts
-	#     back on until we are safely in our C program, and have
-	#     set up an Interrupt Descriptor Table.)
-	cli
-	#
-	# 2)  Set the Global Descriptor Table Register (GDTR) to our
-	#     simple Global Descriptor Table specified at the end of
-	#     the boot-loader.  You will need to write it like this,
-	#     since we are still in 16-bit real mode:
-	#
-	data32 addr32 lgdt gdtdesc
-	#
-	#     (We need a data32 prefix to ensure that all 32 bits of
-	#     the GDT descriptor are loaded; default is to load only
-	#     24 bits.  The CPU doesn't need an addr32 prefix but ELF
-	#     doesn't do 16-bit relocations.)
-	#
-	# 3)  Turn on protected mode by modifying Control Register cr0.
-	#     See IA32 Manual Volume 3A, Section 2.5 for details of
-	#     which bit(s) to set.  Don't turn on paging - we don't
-	#     need it!  Also, you should not modify any other bits in
-	#     cr0:  read it, OR in the appropriate bit(s), then write
-	#     it back.
-	#
-	#     You should use the constants in the boot.h header file
-	#     for this step, to make your code more readable.
-	mov %eax, %cr0
-	or  %eax, CR0_PE
-	mov %cr0, $eax
 
-	#
+	# Disable interrupts, since any interrupt during this
+	# process would demolish us.  (We don't turn interrupts
+	# back on until we are safely in our C program, and have
+	# set up an Interrupt Descriptor Table.)
+	cli
+
+	# Set the Global Descriptor Table Register (GDTR) to our
+	# simple Global Descriptor Table specified at the end of
+	# the boot-loader.  You will need to write it like this,
+	# since we are still in 16-bit real mode:
+	data32 addr32 lgdt gdtdesc
+	# (We need a data32 prefix to ensure that all 32 bits of
+	# the GDT descriptor are loaded; default is to load only
+	# 24 bits.  The CPU doesn't need an addr32 prefix but ELF
+	# doesn't do 16-bit relocations.)
+
+	# Turn on protected mode by modifying Control Register cr0.
+	# See IA32 Manual Volume 3A, Section 2.5 for details of
+	# which bit(s) to set.  Don't turn on paging - we don't
+	# need it!  Also, you should not modify any other bits in
+	# cr0:  read it, OR in the appropriate bit(s), then write
+	# it back.
+	mov %cr0, $eax
+	or  %eax, CR0_PE
+	mov %eax, %cr0
+
+
 	# See also IA32 Manual Volume 3A, Section 8.9.1 for the general
 	# overview.  (We only do the parts that are relevant to our
 	# needs in this project!)
@@ -110,7 +104,7 @@ start_protected:
 	# CPU still has the real-mode code segment cached in %cs's segment
 	# descriptor.  We need to reload %cs, and the easiest way is to use a
 	# far jump.
-	#
+
 	# Because we're not running in a 32-bit segment the data32 prefix is
 	# needed to jump to a 32-bit offset in the target segment.
 	data32 ljmp $SEL_CODESEG, $1f
@@ -136,25 +130,21 @@ call_c_entry:
 	cld			# C code expects this...
 	movl $0, %ebp		# Null-terminate the program's backtrace
 
-	#---------------------------------------------------------------------
-	# TODO:  Call the entry-point of the C program!  The program is
-	#        compiled and linked into an ELF file, so the file's ELF
-	#        header will specify the entry-point into the program.  See
-	#        the e_entry field; it is a 32-bit value.
-	#
-	#        The ELF-header is the very first data-structure in the data
-	#        that was loaded by the boot-loader, so the e_entry field
-	#        will be at a fixed offset from the start of the file data.
-	#
-	#        You will need to use an indirect call, where the address to
-	#        call is in a register.  The format is:  call *%somereg
-	#
-	#        Don't forget that you are calling a C function, so follow
-	#        cdecl!
-	#
-	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.  (FEEL
-	#        FREE TO INCORPORATE ANY OF THE ABOVE COMMENTS INTO YOUR CODE!)
-	#---------------------------------------------------------------------
+	# Call the entry-point of the C program!  The program is
+	# compiled and linked into an ELF file, so the file's ELF
+	# header will specify the entry-point into the program.  See
+	# the e_entry field; it is a 32-bit value.
+
+	# The ELF-header is the very first data-structure in the data
+	# that was loaded by the boot-loader, so the e_entry field
+	# will be at a fixed offset from the start of the file data.
+
+	# You will need to use an indirect call, where the address to
+	# call is in a register.  The format is:  call *%somereg
+
+	# Don't forget that you are calling a C function, so follow
+	# cdecl!
+
 
 	#=====================================================================
 	# The rest of this file contains helper functions for the 16-bit
