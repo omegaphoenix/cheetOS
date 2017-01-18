@@ -105,7 +105,7 @@ start_protected:
 	# need it!  Also, you should not modify any other bits in
 	# cr0:  read it, OR in the appropriate bit(s), then write
 	# it back.
-  mov %cr0, %eax
+	mov %cr0, %eax
 	or  CR0_PE, %eax
 	mov %eax, %cr0
 
