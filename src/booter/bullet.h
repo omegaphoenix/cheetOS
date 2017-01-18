@@ -15,7 +15,7 @@ typedef struct _Bullet {
     Direction direction;
 
     /* Denotes if an alien shot it or a player. Friendly fire off */
-    Sender source;
+    ShooterType source;
 
     /* Speed of the bullet */
     int speed;
@@ -29,7 +29,7 @@ typedef struct _Bullet {
 Bullet *Bullet_new(int x_pos,
                    int y_pos,
                    Direction direction,
-                   Sender source,
+                   ShooterType source,
                    int speed);
 
 /* Dynamic destructor for bullets */

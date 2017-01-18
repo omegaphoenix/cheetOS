@@ -4,12 +4,13 @@
 #include <stdbool.h>
 
 #include "bullet.h"
+#include "gameDefinitions.h"
 
 /*
  * This struct will contain all elements necessary for
  * a shooting object.
  */
-typedef struct _Shooter;
+typedef struct _Shooter Shooter;
 typedef struct _Shooter {
     /* Top-Left corner position of alien. */
     int x_pos;
@@ -18,6 +19,9 @@ typedef struct _Shooter {
     /* Dimension of the alien. The hitbox size, if you will */
     int x_dim;
     int y_dim;
+
+    /* Denotes if you're a player or an alien */
+    ShooterType shooter_type;
 
     /* Actual image of the shooter */
     char *portrait;
@@ -43,6 +47,7 @@ Shooter *Shooter_new(int x_pos,
                      int x_dim,
                      int y_dim,
                      int movement_speed,
+                     ShooterType shooter_type,
                      int health,
                      int shoot_frequency);
 
@@ -90,4 +95,4 @@ void shooter_linked_list_append(ShooterLinkedList *shooter_LL,
  */
 void shooter_linked_list_remove(ShooterLinkedList *shooter_LL,
                                 Shooter *shooter);
-#endif /* SHOOTER_H_
+#endif /* SHOOTER_H_ */
