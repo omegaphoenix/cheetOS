@@ -11,23 +11,23 @@ typedef struct _Game {
     int y_dim;
 
     /* Player shooter */
-    Shooter *player;
+    Shooter player;
 
     /* Alien shooters */
-    ShooterLinkedList *aliens;
+    Shooter aliens[5];
 
     /* Bullets */
-    BulletLinkedList *bullets;
+    Bullet bullets[10];
+
+    /* Current number of bullets. Only needed until array gets full once. */
+    int num_bullets;
 
     /* Difficulty Level */
     int difficulty_level;
 } Game;
 
 /* Instantiate Game. Player will start at a preset speed. */
-Game *Game_new(int x_dim, int y_dim, int difficulty_level);
-
-/* Dynamic destructor */
-void Game_free(Game *game);
+Game Game_new(int x_dim, int y_dim, int difficulty_level);
 
 /* Updates the game. This will become more fleshed out over time */
 void Game_update(Game *game);
