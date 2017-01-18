@@ -99,20 +99,15 @@ start_protected:
 	# simple Global Descriptor Table specified at the end of
 	# the boot-loader.  You will need to write it like this,
 	# since we are still in 16-bit real mode:
-	data32 addr32 lgdt gdtdesc
 	# (We need a data32 prefix to ensure that all 32 bits of
 	# the GDT descriptor are loaded; default is to load only
 	# 24 bits.  The CPU doesn't need an addr32 prefix but ELF
 	# doesn't do 16-bit relocations.)
+	data32 addr32 lgdt gdtdesc
 
 	# Turn on protected mode by modifying Control Register cr0.
-	# See IA32 Manual Volume 3A, Section 2.5 for details of
-	# which bit(s) to set.  Don't turn on paging - we don't
-	# need it!  Also, you should not modify any other bits in
-	# cr0:  read it, OR in the appropriate bit(s), then write
-	# it back.
 	mov	%cr0, %eax
-	or	CR0_PE, %eax
+	or	CR0_PE, %eax	# set protected bit
 	mov	%eax, %cr0
 
 
@@ -154,14 +149,6 @@ call_c_entry:
 	# compiled and linked into an ELF file, so the file's ELF
 	# header will specify the entry-point into the program.  See
 	# the e_entry field; it is a 32-bit value.
-
-	# The ELF-header is the very first data-structure in the data
-	# that was loaded by the boot-loader, so the e_entry field
-	# will be at a fixed offset from the start of the file data.
-
-	# You will need to use an indirect call, where the address to
-	# call is in a register.  The format is:  call *%somereg
-
 	# Don't forget that you are calling a C function, so follow
 	# cdecl! #TODO Clean stack after return
 	mov	PROGRAM_ENTRY, %eax
