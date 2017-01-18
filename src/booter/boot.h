@@ -22,3 +22,6 @@
 #define SEL_CODESEG       0x08    /* Code selector. */
 #define SEL_DATASEG       0x10    /* Data selector. */
 
+/* 16 for e_ident, 2 for e_type, 2 for e_machine, 4 for e_version */
+#define E_ENTRY_OFFSET (16 + 2 + 2 + 4)
+#define PROGRAM_ENTRY (PROGRAM_BASE_ADDR + E_ENTRY_OFFSET)
