@@ -46,19 +46,25 @@ boot_start:
 
 	# Load the remainder of the program into memory using int 10h
 	# "Extended Read Operation."  If it fails, jump to boot_fail.
-	mov $0x42, %ah # Extended Read Sector from Drive
+	mov	$0x42, %ah	# Extended Read Sector from Drive
 
 	# Push parts of DAP onto the stack in reverse
 	# https://en.wikipedia.org/wiki/INT_13H#INT_13h_AH.3D42h:_Extended_Read_Sectors_From_Drive
-	push	$0x01		# read first sector
-	push	$0x2000	# absolute number of the start of sectors to be read
-	push	$0x00		# segment:offset pointer
-	push	$0xF		# number of sectors to be read
+
+	# read first sector
+	pushl	$0x0
+	pushl	$0x1
+
+	# segment:offset pointer
+	push	$0x2000
+	push	$0
+
+	push	$15		# number of sectors to be read
 	push	$0x10		# size of DAP
 
-	mov %sp, %si	# set DS:SI, segment:offset pointer to DAP
-	int $0x13			# read sectors, carry set on error, clear if no error
-	jc boot_fail	# handle error if carry set
+	mov 	%sp, %si	# set DS:SI, segment:offset pointer to DAP
+	int 	$0x13		# read sectors, carry set on error, clear if no error
+	jc 	boot_fail	# handle error if carry set
 
 
 	mov	$STR_LOADED, %si
@@ -105,9 +111,9 @@ start_protected:
 	# need it!  Also, you should not modify any other bits in
 	# cr0:  read it, OR in the appropriate bit(s), then write
 	# it back.
-	mov %cr0, %eax
-	or  CR0_PE, %eax
-	mov %eax, %cr0
+	mov	%cr0, %eax
+	or	CR0_PE, %eax
+	mov	%eax, %cr0
 
 
 	# See also IA32 Manual Volume 3A, Section 8.9.1 for the general
@@ -158,8 +164,8 @@ call_c_entry:
 
 	# Don't forget that you are calling a C function, so follow
 	# cdecl! #TODO Clean stack after return
-	mov  PROGRAM_ENTRY, %eax
-	call *%eax
+	mov	PROGRAM_ENTRY, %eax
+	call	*%eax
 
 
 	#=====================================================================
