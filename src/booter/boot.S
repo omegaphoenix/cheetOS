@@ -46,7 +46,19 @@ boot_start:
 
 	# TODO: Load the remainder of the program into memory using int 10h
 	# "Extended Read Operation."  If it fails, jump to boot_fail.
-	jmp boot_fail
+	mov $0x42, %ah # Extended Read Sector from Drive
+
+	# Push parts of DAP onto the stack in reverse
+	pushl	$0x0
+	pushl	$0x1
+	push	$0x2000
+	push	$0
+	push	$10			# number of sectors to be read
+	push	$0x10		# size of DAP
+
+	mov %sp, %si
+	int $0x13			# read sectors, carry set on error, clear if no error
+	jc boot_fail	# handle error if carry set
 
 
 	mov	$STR_LOADED, %si
@@ -146,8 +158,7 @@ call_c_entry:
 
 	# Don't forget that you are calling a C function, so follow
 	# cdecl! #TODO Clean stack after return
-	mov  PROGRAM_BASE_ADDR, %eax
-	add  E_ENTRY_OFFSET, %eax
+	mov  PROGRAM_ENTRY, %eax
 	call *%eax
 
 
