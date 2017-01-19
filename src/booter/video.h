@@ -32,14 +32,20 @@ void clear();
 void display();
 
 /* Draws an actor by adding its icon and color to the grid */
-void draw(int actor, int color);
+void draw(int actor, char color);
 
 /* Sets background color for entire display */
-void set_bg_color(int color);
+void set_bg_color(char color);
 
 /* Set pixel character and color */
 void set_pix(int x, int y, char color, char character);
 
 /* Return color byte using bg and given color */
-char get_color(char color);
+char get_color(char color, char bg_col);
+
+/* Return color stored at pixel in grid */
+char get_grid_color(int x, int y);
+
+/* Return character stored at pixel in grid */
+char get_grid_char(int x, int y);
 #endif /* VIDEO_H */
