@@ -37,7 +37,7 @@ static int bg_color;
 
 char get_grid_color(int x, int y) {
     short grid_entry = grid[y][x];
-    char color = (grid_entry >> 0) & 0xff;
+    char color = grid_entry & 0xff;
     return color;
 }
 
@@ -64,7 +64,8 @@ void set_pix(int x, int y, char color, char character) {
 }
 
 void set_grid_pix(int x, int y, char color, char character) {
-    grid[y][x] = color + (character << 8);
+    /* Make sure color isn't too big */
+    grid[y][x] = (color & 0xff) + (character << 8);
 }
 
 void clear() {
