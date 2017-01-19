@@ -1,6 +1,7 @@
 #ifndef VIDEO_H
 #define VIDEO_H
 
+#include "shooter.h"
 
 /* Available colors from the 16-color palette used for EGA and VGA, and
  * also for text-mode VGA output.
@@ -32,7 +33,7 @@ void clear();
 void display();
 
 /* Draws an actor by adding its icon and color to the grid */
-void draw(int actor, char color);
+void draw_shooter(Shooter actor, char color);
 
 /* Sets background color for entire display */
 void set_bg_color(char color);

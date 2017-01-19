@@ -1,5 +1,7 @@
 #include "video.h"
 
+#include "shooter.h"
+
 /* This is the address of the VGA text-mode video buffer.  Note that this
  * buffer actually holds 8 pages of text, but only the first page (page 0)
  * will be displayed.
@@ -83,8 +85,16 @@ void display() {
     }
 }
 
-void draw(int actor, char color) {
+void draw_shooter(Shooter actor, char color) {
     /* TODO: store char and fg color in the grids */
+    int i, x, y;
+    char c;
+    for (i = 0; i < 4; i++) {
+        x = actor.x_pos + (i % 2);
+        y = actor.y_pos + (i / 2);
+        c = actor.portrait[i];
+        set_grid_pix(x, y, color, c);
+    }
 };
 
 void set_bg_color(char color) {
@@ -107,6 +117,7 @@ void init_video(void) {
      */
     init_grid();
     test();
+    display();
 }
 
 void test() {
@@ -123,5 +134,4 @@ void test() {
     set_grid_pix(9, 1, color, 'E');
     set_grid_pix(10, 1, color, 'E');
     set_grid_pix(11, 1, color, 'B');
-    display();
 }
