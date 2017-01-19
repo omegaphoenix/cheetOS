@@ -50,7 +50,7 @@ Bullet shooter_shoot(Shooter *shooter) {
     Direction bullet_direction;
     Bullet new_bullet;
 
-    if (shooter->shooter_type == ALIEN) {
+    if (shooter->shooter_type == PLAYER) {
         bullet_direction = UP;
     }
     else {
@@ -73,7 +73,8 @@ int shooter_check_impact(Shooter *shooter, Bullet *bullet) {
     if (bullet->x_pos < shooter->x_pos + 2 &&
         bullet->x_pos >= shooter->x_pos &&
         bullet->y_pos < shooter->y_pos + 2 &&
-        bullet->y_pos >= shooter->y_pos) {
+        bullet->y_pos >= shooter->y_pos &&
+        bullet->source != shooter->shooter_type) {
 
         /* Decrease health, and remove bullet */
         bullet->visible = 0;
