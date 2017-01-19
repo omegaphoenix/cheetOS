@@ -37,14 +37,14 @@ static int bg_color;
 
 char get_grid_color(int x, int y) {
     short grid_entry = grid[y][x];
-    char color = (grid_entry >> 0) & 0xff;
+    char color = grid_entry & 0xff;
     return color;
 }
 
 char get_grid_char(int x, int y) {
     short grid_entry = grid[y][x];
     char character = (grid_entry >> 8) & 0xff;
-    return character + 1; /* Might have off by 1 error elsewhere */
+    return character;
 }
 
 int get_pix_offset(int x, int y) {
@@ -64,7 +64,8 @@ void set_pix(int x, int y, char color, char character) {
 }
 
 void set_grid_pix(int x, int y, char color, char character) {
-    grid[y][x] = color + (character << 8);
+    /* Make sure color isn't too big */
+    grid[y][x] = (color & 0xff) + (character << 8);
 }
 
 void clear() {
@@ -85,16 +86,23 @@ void display() {
     }
 }
 
-void draw_shooter(Shooter actor, char color) {
+void draw_shooter(Shooter actor) {
     /* TODO: store char and fg color in the grids */
     int i, x, y;
-    char c;
+    char c, color;
+    if (actor.shooter_type == PLAYER) {
+        color = get_color(BLUE, bg_color);
+    }
+    else {
+        color = get_color(GREEN, bg_color);
+    }
     for (i = 0; i < 4; i++) {
         x = actor.x_pos + (i % 2);
         y = actor.y_pos + (i / 2);
         c = actor.portrait[i];
         set_grid_pix(x, y, color, c);
     }
+    display();
 };
 
 void set_bg_color(char color) {
@@ -117,11 +125,10 @@ void init_video(void) {
      */
     init_grid();
     test();
-    display();
 }
 
 void test() {
-    set_bg_color(YELLOW);
+    set_bg_color(BLACK);
     char color = get_color(MAGENTA, bg_color);
     set_grid_pix(1, 1, color, 'I');
     set_grid_pix(2, 1, color, '\'');

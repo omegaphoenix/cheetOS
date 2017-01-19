@@ -26,6 +26,8 @@ typedef struct _Game {
     int difficulty_level;
 } Game;
 
+Game game;
+
 /* Instantiate Game. Player will start at a preset speed. */
 void new_game(int x_dim, int y_dim, int difficulty_level);
 
