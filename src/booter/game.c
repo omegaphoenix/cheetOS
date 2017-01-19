@@ -2,26 +2,23 @@
 #include "game.h"
 #include "shooter.h"
 
-Game Game_new(int x_dim, int y_dim, int difficulty_level) {
-    Game new_game;
+void init_game(int x_dim, int y_dim, int difficulty_level) {
     int idx;
     /* Initialize the player */
-    new_game.player = Shooter_new(x_dim / 2, y_dim / 2, 1, PLAYER, 100, 0);
+    // game.player = Shooter_new(x_dim / 2, y_dim / 2, 1, PLAYER, 100, 0);
 
     for (idx = 0; idx < 5; idx++) {
-      new_game.aliens[idx] = Shooter_new(idx * 5 + 10, idx * 5 + 10, 1, ALIEN, 30, idx + 1);
+      // game.aliens[idx] = Shooter_new(idx * 5 + 10, idx * 5 + 10, 1, ALIEN, 30, idx + 1);
     }
 
-    new_game.x_dim = x_dim;
-    new_game.y_dim = y_dim;
-    new_game.difficulty_level = difficulty_level;
-    new_game.num_bullets = 0;
-
-    return new_game;
+    game.x_dim = x_dim;
+    game.y_dim = y_dim;
+    game.difficulty_level = difficulty_level;
+    game.num_bullets = 0;
 }
 
 /* TODO: Game updates */
-void Game_update(Game *game) {
+void update_game(Game *game) {
 
 }
 
@@ -36,7 +33,7 @@ void c_start(void) {
      *        do whatever else you decide to do!
      */
 
-    Game new_game = Game_new(50, 50, 1);
+    init_game(50, 50, 1);
 
     /* Loop forever, so that we don't fall back into the bootloader code. */
     while (1) {}
