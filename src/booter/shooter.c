@@ -7,12 +7,13 @@
  * All function definitions are in the header file.
  */
 
-Shooter Shooter_new(int x_pos,
+void Shooter_new(int x_pos,
                     int y_pos,
                     int movement_speed,
                     ShooterType shooter_type,
                     int health,
                     int shoot_frequency) {
+    /*
     int idx;
     Shooter new_shooter;
 
@@ -35,9 +36,10 @@ Shooter Shooter_new(int x_pos,
     new_shooter.movement_speed = movement_speed;
     new_shooter.health = health;
     new_shooter.shoot_frequency = shoot_frequency;
-    new_shooter.visible = 1; /* All start off visible */
+    */
+    /* new_shooter.visible = 1; *//* All start off visible */
 
-    return new_shooter;
+    /* return new_shooter; */
 }
 
 /* TODO: Will probably similar to frequency of shooting */
@@ -45,8 +47,9 @@ void shooter_move(Shooter *moving_shooter) {
 
 }
 
-Bullet shooter_shoot(Shooter *shooter) {
+void shooter_shoot(Shooter *shooter) {
     /* For now, spawn bullets in the top left */
+    /*
     Direction bullet_direction;
     Bullet new_bullet;
 
@@ -56,9 +59,11 @@ Bullet shooter_shoot(Shooter *shooter) {
     else {
         bullet_direction = DOWN;
     }
+    */
 
     /* For now, all bullets fly at same speed */
     /* TODO: Customize bullet speed if we have time */
+    /*
     new_bullet = Bullet_new(shooter->x_pos,
                             shooter->y_pos,
                             bullet_direction,
@@ -66,6 +71,7 @@ Bullet shooter_shoot(Shooter *shooter) {
                             5);
 
     return new_bullet;
+    */
 }
 
 int shooter_check_impact(Shooter *shooter, Bullet *bullet) {

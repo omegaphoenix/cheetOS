@@ -18,9 +18,10 @@
  * more about this topic, go to http://wiki.osdev.org/Main_Page and look at
  * the VGA links in the "Video" section.
  */
-#define VIDEO_BUFFER ((void *) 0xB8000)
+#define VIDEO_BUFFER ((char *) 0xB8000)
 #define GRID_HEIGHT 25
 #define GRID_WIDTH 80
+#define COLOR_OFFSET 1
 
 
 /* TODO:  You can create static variables here to hold video display state,
@@ -32,34 +33,63 @@
 static int grid[GRID_HEIGHT][GRID_WIDTH];
 static int bg_color;
 
+int get_pix_offset(int x, int y) {
+    int loc = 2 * ((GRID_WIDTH * y) + x);
+}
 
+char get_color(char color) {
+    return (bg_color << 4) + color;
+}
 
-int clear() {
+void set_pix(int x, int y, char color, char character) {
+    int loc = get_pix_offset(x, y);
+    char *video = VIDEO_BUFFER + loc;
+    *video = character;
+    *(video + COLOR_OFFSET) = get_color(color);
+}
+
+void clear() {
     /* TODO: reset grid to default values */
     return 0;
 }
 
-int display() {
+void display() {
     /* TODO: loop through grid and add char, fg color, bg color to buffer */
+    int default_bg_color = BLACK;
     void *video = VIDEO_BUFFER;
-    return 0;
+    set_bg_color(default_bg_color);
 }
 
-int draw(int actor, int color) {
+void draw(int actor, int color) {
     /* TODO: store char and fg color in the grids */
-    return 0;
 };
 
-int set_bg_color(int color) {
+void set_bg_color(int color) {
     bg_color = color;
+    int i, x, y;
+    for (i = 0; i < GRID_HEIGHT * GRID_WIDTH; i++) {
+        x = i % GRID_WIDTH;
+        y = i / GRID_WIDTH;
+        set_pix(x, y, bg_color, ' ');
+    }
 }
 
 void init_video(void) {
     /* TODO:  Do any video display initialization you might want to do, such
      *        as clearing the screen, initializing static variable state, etc.
      */
-
-    /* Testing purposes */
-    *((int*)0xb000) = 0x07690748;
+    bg_color = YELLOW;
+    set_bg_color(bg_color);
+    set_pix(1, 1, MAGENTA, 'I');
+    set_pix(2, 1, MAGENTA, '\'');
+    set_pix(3, 1, MAGENTA, 'M');
+    set_pix(4, 1, MAGENTA, ' ');
+    set_pix(5, 1, MAGENTA, 'A');
+    set_pix(6, 1, MAGENTA, ' ');
+    set_pix(7, 1, MAGENTA, 'D');
+    set_pix(8, 1, MAGENTA, 'W');
+    set_pix(9, 1, MAGENTA, 'E');
+    set_pix(10, 1, MAGENTA, 'E');
+    set_pix(11, 1, MAGENTA, 'B');
 }
 
