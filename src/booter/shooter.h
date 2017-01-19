@@ -34,24 +34,32 @@ typedef struct _Shooter {
     int visible;
 } Shooter;
 
-/* Dynamic constructor for shooting */
-void Shooter_new(int x_pos,
-                    int y_pos,
-                    int movement_speed,
-                    ShooterType shooter_type,
-                    int health,
-                    int shoot_frequency);
+/*
+ * For the sake of ___stack_chk_fail, we will not be returning any
+ * structs and instead, we will pass them in by reference
+ */
+/* shooter assignment */
+void new_shooter(Shooter *shooter,
+                 int x_pos,
+                 int y_pos,
+                 int movement_speed,
+                 ShooterType shooter_type,
+                 int health,
+                 int shoot_frequency);
 
 /* Moving implementation. Lower prio for now. */
-void shooter_move(Shooter *moving_shooter);
+void shooter_move(Shooter *moving_shooter, int x_mov, int y_mov);
 
 /* Shooting function for the alien. Returns a bullet */
-void shooter_shoot(Shooter *shooter);
+void shooter_shoot(Shooter *shooter, Bullet *bullet);
 
 /*
  * Function that checks if a bullet and a shooter collide.
  * Returns 0 if false, 1 if true.
  */
 int shooter_check_impact(Shooter *shooter, Bullet *bullet);
+
+/* Checks if shooter is still alive */
+void shooter_check_health(Shooter *shooter);
 
 #endif /* SHOOTER_H_ */

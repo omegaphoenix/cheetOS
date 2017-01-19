@@ -22,12 +22,13 @@ typedef struct _Bullet {
     int visible;
 } Bullet;
 
-/* Constructor for bullets */
-Bullet Bullet_new(int x_pos,
-                  int y_pos,
-                  Direction direction,
-                  ShooterType source,
-                  int speed);
+/* Bullet assignment */
+void new_bullet(Bullet *bullet,
+                int x_pos,
+                int y_pos,
+                Direction direction,
+                ShooterType source,
+                int speed);
 
 /* Move update for the bullet */
 void bullet_move(Bullet *moving_bullet);
