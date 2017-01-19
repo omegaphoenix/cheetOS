@@ -2,6 +2,6 @@
 #define GAME_DEFINITIONS_H_
 
 typedef enum { UP, DOWN, LEFT, RIGHT } Direction;
-typedef enum { ALIEN, PLAYER } Sender;
+typedef enum { ALIEN, PLAYER } ShooterType;
 
 #endif /* GAME_DEFINITIONS_H_ */
