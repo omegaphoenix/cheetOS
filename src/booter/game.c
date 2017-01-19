@@ -1,11 +1,12 @@
 #include "bullet.h"
 #include "game.h"
-#include "shooter.h"
+/* #include "shooter.h" */
+#include "video.h"
 
-Game Game_new(int x_dim, int y_dim, int difficulty_level) {
+void new_game(int x_dim, int y_dim, int difficulty_level) {
+    /*
     Game new_game;
     int idx;
-    /* Initialize the player */
     new_game.player = Shooter_new(x_dim / 2, y_dim / 2, 1, PLAYER, 100, 0);
 
     for (idx = 0; idx < 5; idx++) {
@@ -18,10 +19,11 @@ Game Game_new(int x_dim, int y_dim, int difficulty_level) {
     new_game.num_bullets = 0;
 
     return new_game;
+    */
 }
 
 /* TODO: Game updates */
-void Game_update(Game *game) {
+void update_game(Game *game) {
 
 }
 
@@ -36,8 +38,7 @@ void c_start(void) {
      *        do whatever else you decide to do!
      */
 
-    /* For testing */
-    *((int*)0xB8000) = 0x07690748;
+    init_video();
 
     /* Loop forever, so that we don't fall back into the bootloader code. */
     while (1) {}

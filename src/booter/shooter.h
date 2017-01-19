@@ -35,7 +35,7 @@ typedef struct _Shooter {
 } Shooter;
 
 /* Dynamic constructor for shooting */
-Shooter Shooter_new(int x_pos,
+void Shooter_new(int x_pos,
                     int y_pos,
                     int movement_speed,
                     ShooterType shooter_type,
@@ -46,7 +46,7 @@ Shooter Shooter_new(int x_pos,
 void shooter_move(Shooter *moving_shooter);
 
 /* Shooting function for the alien. Returns a bullet */
-Bullet shooter_shoot(Shooter *shooter);
+void shooter_shoot(Shooter *shooter);
 
 /*
  * Function that checks if a bullet and a shooter collide.

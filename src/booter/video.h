@@ -1,6 +1,7 @@
 #ifndef VIDEO_H
 #define VIDEO_H
 
+#include "shooter.h"
 
 /* Available colors from the 16-color palette used for EGA and VGA, and
  * also for text-mode VGA output.
@@ -26,15 +27,32 @@
 void init_video(void);
 
 /* Clears the grid but does not change the video buffer */
-int clear();
+void clear();
 
 /* Writes the contents of the grid to the video buffer */
-int display();
+void display();
 
 /* Draws an actor by adding its icon and color to the grid */
-int draw(int actor, int color);
+void draw_shooter(Shooter actor, char color);
 
 /* Sets background color for entire display */
-int set_bg_color(int color);
+void set_bg_color(char color);
 
+/* Set pixel character and color */
+void set_pix(int x, int y, char color, char character);
+
+/* Set grid pixel character and color to be updated on display() */
+void set_grid_pix(int x, int y, char color, char character);
+
+/* Return color byte using bg and given color */
+char get_color(char color, char bg_col);
+
+/* Return color stored at pixel in grid */
+char get_grid_color(int x, int y);
+
+/* Return character stored at pixel in grid */
+char get_grid_char(int x, int y);
+
+/* Print test string */
+void test();
 #endif /* VIDEO_H */

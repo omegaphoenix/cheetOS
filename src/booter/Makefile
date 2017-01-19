@@ -8,8 +8,6 @@
 
 CFLAGS=-g
 
-# __stack_chk_fail occurs without this.
-ASFLAGS=-shared -fno-stack-protector
 BOOT_BIN = boot.bin
 
 OBJS = game.o video.o interrupts.o handlers.o timer.o keyboard.o shooter.o bullet.o
@@ -44,7 +42,7 @@ prog.lds.s: program.lds.S boot.h
 
 # $< is the first prerequisite, so that has to be the linker script.
 $(PROGRAM_OBJ): prog.lds.s $(OBJS)
-	$(LD) $(ASFLAGS) -T $< -o $@ $(OBJS)
+	$(LD) -T $< -o $@ $(OBJS)
 
 $(PROGRAM_BIN): $(PROGRAM_OBJ)
 	objcopy -R .note -R .comment -S $< $@

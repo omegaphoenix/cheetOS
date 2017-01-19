@@ -1,5 +1,7 @@
 #include "video.h"
 
+#include "shooter.h"
+
 /* This is the address of the VGA text-mode video buffer.  Note that this
  * buffer actually holds 8 pages of text, but only the first page (page 0)
  * will be displayed.
@@ -18,9 +20,10 @@
  * more about this topic, go to http://wiki.osdev.org/Main_Page and look at
  * the VGA links in the "Video" section.
  */
-#define VIDEO_BUFFER ((void *) 0xB8000)
+#define VIDEO_BUFFER ((char *) 0xB8000)
 #define GRID_HEIGHT 25
 #define GRID_WIDTH 80
+#define COLOR_OFFSET 1
 
 
 /* TODO:  You can create static variables here to hold video display state,
@@ -29,37 +32,106 @@
  */
 
 /* TODO: holds character and color. Need 2-byte type. Initialize to 0s? */
-static int grid[GRID_HEIGHT][GRID_WIDTH];
+static short grid[GRID_HEIGHT][GRID_WIDTH];
 static int bg_color;
 
-
-
-int clear() {
-    /* TODO: reset grid to default values */
-    return 0;
+char get_grid_color(int x, int y) {
+    short grid_entry = grid[y][x];
+    char color = (grid_entry >> 0) & 0xff;
+    return color;
 }
 
-int display() {
-    /* TODO: loop through grid and add char, fg color, bg color to buffer */
+char get_grid_char(int x, int y) {
+    short grid_entry = grid[y][x];
+    char character = (grid_entry >> 8) & 0xff;
+    return character + 1; /* Might have off by 1 error elsewhere */
+}
+
+int get_pix_offset(int x, int y) {
+    int loc = 2 * ((GRID_WIDTH * y) + x);
+    return loc;
+}
+
+char get_color(char color, char bg_col) {
+    return (bg_col << 4) + color;
+}
+
+void set_pix(int x, int y, char color, char character) {
+    int loc = get_pix_offset(x, y);
+    char *video = VIDEO_BUFFER + loc;
+    *video = character;
+    *(video + COLOR_OFFSET) = color;
+}
+
+void set_grid_pix(int x, int y, char color, char character) {
+    grid[y][x] = color + (character << 8);
+}
+
+void clear() {
+    int default_bg_color = BLACK;
     void *video = VIDEO_BUFFER;
-    return 0;
+    set_bg_color(default_bg_color);
 }
 
-int draw(int actor, int color) {
+void display() {
+    int i, x, y;
+    char color, character;
+    for (i = 0; i < GRID_HEIGHT * GRID_WIDTH; i++) {
+        x = i % GRID_WIDTH;
+        y = i / GRID_WIDTH;
+        color = get_grid_color(x, y);
+        character = get_grid_char(x, y);
+        set_pix(x, y, color, character);
+    }
+}
+
+void draw_shooter(Shooter actor, char color) {
     /* TODO: store char and fg color in the grids */
-    return 0;
+    int i, x, y;
+    char c;
+    for (i = 0; i < 4; i++) {
+        x = actor.x_pos + (i % 2);
+        y = actor.y_pos + (i / 2);
+        c = actor.portrait[i];
+        set_grid_pix(x, y, color, c);
+    }
 };
 
-int set_bg_color(int color) {
+void set_bg_color(char color) {
     bg_color = color;
+}
+
+void init_grid() {
+    int i, x, y;
+    char black = get_color(BLACK, BLACK);
+    for (i = 0; i < GRID_HEIGHT * GRID_WIDTH; i++) {
+        x = i % GRID_WIDTH;
+        y = i / GRID_WIDTH;
+        set_grid_pix(x, y, black, ' ');
+    }
 }
 
 void init_video(void) {
     /* TODO:  Do any video display initialization you might want to do, such
      *        as clearing the screen, initializing static variable state, etc.
      */
-
-    /* Testing purposes */
-    *((int*)0xb000) = 0x07690748;
+    init_grid();
+    test();
+    display();
 }
 
+void test() {
+    set_bg_color(YELLOW);
+    char color = get_color(MAGENTA, bg_color);
+    set_grid_pix(1, 1, color, 'I');
+    set_grid_pix(2, 1, color, '\'');
+    set_grid_pix(3, 1, color, 'M');
+    set_grid_pix(4, 1, color, ' ');
+    set_grid_pix(5, 1, color, 'A');
+    set_grid_pix(6, 1, color, ' ');
+    set_grid_pix(7, 1, color, 'D');
+    set_grid_pix(8, 1, color, 'W');
+    set_grid_pix(9, 1, color, 'E');
+    set_grid_pix(10, 1, color, 'E');
+    set_grid_pix(11, 1, color, 'B');
+}
