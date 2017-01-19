@@ -40,6 +40,9 @@ void set_bg_color(char color);
 /* Set pixel character and color */
 void set_pix(int x, int y, char color, char character);
 
+/* Set grid pixel character and color to be updated on display() */
+void set_grid_pix(int x, int y, char color, char character);
+
 /* Return color byte using bg and given color */
 char get_color(char color, char bg_col);
 
@@ -48,4 +51,7 @@ char get_grid_color(int x, int y);
 
 /* Return character stored at pixel in grid */
 char get_grid_char(int x, int y);
+
+/* Print test string */
+void test();
 #endif /* VIDEO_H */

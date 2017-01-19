@@ -42,7 +42,7 @@ char get_grid_color(int x, int y) {
 char get_grid_char(int x, int y) {
     short grid_entry = grid[y][x];
     char character = (grid_entry >> 8) & 0xff;
-    return character;
+    return character + 1; /* Might have off by 1 error elsewhere */
 }
 
 int get_pix_offset(int x, int y) {
@@ -59,6 +59,10 @@ void set_pix(int x, int y, char color, char character) {
     char *video = VIDEO_BUFFER + loc;
     *video = character;
     *(video + COLOR_OFFSET) = color;
+}
+
+void set_grid_pix(int x, int y, char color, char character) {
+    grid[y][x] = color + (character << 8);
 }
 
 void clear() {
@@ -87,22 +91,37 @@ void set_bg_color(char color) {
     bg_color = color;
 }
 
+void init_grid() {
+    int i, x, y;
+    char black = get_color(BLACK, BLACK);
+    for (i = 0; i < GRID_HEIGHT * GRID_WIDTH; i++) {
+        x = i % GRID_WIDTH;
+        y = i / GRID_WIDTH;
+        set_grid_pix(x, y, black, ' ');
+    }
+}
+
 void init_video(void) {
     /* TODO:  Do any video display initialization you might want to do, such
      *        as clearing the screen, initializing static variable state, etc.
      */
-    set_bg_color(YELLOW);
-    char color = get_color(MAGENTA, bg_color);
-    set_pix(1, 1, color, 'I');
-    set_pix(2, 1, color, '\'');
-    set_pix(3, 1, color, 'M');
-    set_pix(4, 1, color, ' ');
-    set_pix(5, 1, color, 'A');
-    set_pix(6, 1, color, ' ');
-    set_pix(7, 1, color, 'D');
-    set_pix(8, 1, color, 'W');
-    set_pix(9, 1, color, 'E');
-    set_pix(10, 1, color, 'E');
-    set_pix(11, 1, color, 'B');
+    init_grid();
+    test();
 }
 
+void test() {
+    set_bg_color(YELLOW);
+    char color = get_color(MAGENTA, bg_color);
+    set_grid_pix(1, 1, color, 'I');
+    set_grid_pix(2, 1, color, '\'');
+    set_grid_pix(3, 1, color, 'M');
+    set_grid_pix(4, 1, color, ' ');
+    set_grid_pix(5, 1, color, 'A');
+    set_grid_pix(6, 1, color, ' ');
+    set_grid_pix(7, 1, color, 'D');
+    set_grid_pix(8, 1, color, 'W');
+    set_grid_pix(9, 1, color, 'E');
+    set_grid_pix(10, 1, color, 'E');
+    set_grid_pix(11, 1, color, 'B');
+    display();
+}
