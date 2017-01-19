@@ -35,11 +35,8 @@ boot_start:
 	mov	%ax, %ss
 	mov	$0xf000, %esp	# Use %esp since we'll be in 32-bit mode later
 
-	# Hide the cursor, just to be "prettier."  This will carry over into
-	# protected mode execution too.
-	mov	$1, %ah
 	mov	$0x2607, %cx	# Set cursor end-row to come before start-row
-	int	$0x10
+
 
 	mov	$STR_LOADING, %si
 	call	print_str
@@ -69,6 +66,15 @@ boot_start:
 
 	mov	$STR_LOADED, %si
 	call	print_str
+
+	# Set video mode before switching to protected mode
+	mov	$0x00, %ah
+	int	$0x10
+
+	# Hide the cursor, just to be "prettier."  This will carry over into
+	# protected mode execution too.
+	mov	$0x01, %ah
+	int	$0x10
 
 	#---------------------------------------------------------------------
 	# TODO:  If you want to do anything else with the computer hardware
