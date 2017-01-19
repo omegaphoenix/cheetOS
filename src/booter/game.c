@@ -36,7 +36,8 @@ void c_start(void) {
      *        do whatever else you decide to do!
      */
 
-    Game new_game = Game_new(50, 50, 1);
+    /* For testing */
+    *((int*)0xB8000) = 0x07690748;
 
     /* Loop forever, so that we don't fall back into the bootloader code. */
     while (1) {}
