@@ -33,7 +33,7 @@ void clear();
 void display();
 
 /* Draws an actor by adding its icon and color to the grid */
-void draw_shooter(Shooter actor, char color);
+void draw_shooter(Shooter actor);
 
 /* Sets background color for entire display */
 void set_bg_color(char color);

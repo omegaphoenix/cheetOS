@@ -85,16 +85,23 @@ void display() {
     }
 }
 
-void draw_shooter(Shooter actor, char color) {
+void draw_shooter(Shooter actor) {
     /* TODO: store char and fg color in the grids */
     int i, x, y;
-    char c;
+    char c, color;
+    if (actor.shooter_type == PLAYER) {
+        color = get_color(BLUE, bg_color);
+    }
+    else {
+        color = get_color(GREEN, bg_color);
+    }
     for (i = 0; i < 4; i++) {
         x = actor.x_pos + (i % 2);
         y = actor.y_pos + (i / 2);
         c = actor.portrait[i];
         set_grid_pix(x, y, color, c);
     }
+    display();
 };
 
 void set_bg_color(char color) {
@@ -117,7 +124,6 @@ void init_video(void) {
      */
     init_grid();
     test();
-    display();
 }
 
 void test() {

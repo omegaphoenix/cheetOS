@@ -4,22 +4,17 @@
 #include "video.h"
 
 void new_game(int x_dim, int y_dim, int difficulty_level) {
-    /*
-    Game new_game;
     int idx;
-    new_game.player = Shooter_new(x_dim / 2, y_dim / 2, 1, PLAYER, 100, 0);
+    new_shooter(&game.player, x_dim / 2, y_dim - 2, 1, PLAYER, 100, 0);
 
     for (idx = 0; idx < 5; idx++) {
-      new_game.aliens[idx] = Shooter_new(idx * 5 + 10, idx * 5 + 10, 1, ALIEN, 30, idx + 1);
+      // game.aliens[idx] = Shooter_new(idx * 5 + 10, idx * 5 + 10, 1, ALIEN, 30, idx + 1);
     }
 
-    new_game.x_dim = x_dim;
-    new_game.y_dim = y_dim;
-    new_game.difficulty_level = difficulty_level;
-    new_game.num_bullets = 0;
-
-    return new_game;
-    */
+    game.x_dim = x_dim;
+    game.y_dim = y_dim;
+    game.difficulty_level = difficulty_level;
+    game.num_bullets = 0;
 }
 
 /* TODO: Game updates */
@@ -39,6 +34,8 @@ void c_start(void) {
      */
 
     init_video();
+    new_game(40, 12, 1);
+    draw_shooter(game.player);
 
     /* Loop forever, so that we don't fall back into the bootloader code. */
     while (1) {}

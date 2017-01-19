@@ -7,39 +7,35 @@
  * All function definitions are in the header file.
  */
 
-void Shooter_new(int x_pos,
+void new_shooter(Shooter *new_shooter,
+                    int x_pos,
                     int y_pos,
                     int movement_speed,
                     ShooterType shooter_type,
                     int health,
                     int shoot_frequency) {
-    /*
     int idx;
-    Shooter new_shooter;
 
-    new_shooter.x_pos = x_pos;
-    new_shooter.y_pos = y_pos;
+    new_shooter->x_pos = x_pos;
+    new_shooter->y_pos = y_pos;
 
-    new_shooter.shooter_type = shooter_type;
+    new_shooter->shooter_type = shooter_type;
 
     if (shooter_type == ALIEN) {
       for (idx = 0; idx < 4; idx++) {
-        new_shooter.portrait[idx] = 'v';
+        new_shooter->portrait[idx] = 'v';
       }
     }
     else {
       for (idx = 0; idx < 4; idx++) {
-        new_shooter.portrait[idx] = '^';
+        new_shooter->portrait[idx] = '^';
       }
     }
 
-    new_shooter.movement_speed = movement_speed;
-    new_shooter.health = health;
-    new_shooter.shoot_frequency = shoot_frequency;
-    */
-    /* new_shooter.visible = 1; *//* All start off visible */
-
-    /* return new_shooter; */
+    new_shooter->movement_speed = movement_speed;
+    new_shooter->health = health;
+    new_shooter->shoot_frequency = shoot_frequency;
+    new_shooter->visible = 1; /* All start off visible */
 }
 
 /* TODO: Will probably similar to frequency of shooting */
@@ -49,7 +45,6 @@ void shooter_move(Shooter *moving_shooter) {
 
 void shooter_shoot(Shooter *shooter) {
     /* For now, spawn bullets in the top left */
-    /*
     Direction bullet_direction;
     Bullet new_bullet;
 
@@ -59,7 +54,6 @@ void shooter_shoot(Shooter *shooter) {
     else {
         bullet_direction = DOWN;
     }
-    */
 
     /* For now, all bullets fly at same speed */
     /* TODO: Customize bullet speed if we have time */
