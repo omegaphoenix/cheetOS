@@ -44,7 +44,7 @@ char get_grid_color(int x, int y) {
 char get_grid_char(int x, int y) {
     short grid_entry = grid[y][x];
     char character = (grid_entry >> 8) & 0xff;
-    return character + 1; /* Might have off by 1 error elsewhere */
+    return character;
 }
 
 int get_pix_offset(int x, int y) {
@@ -127,7 +127,7 @@ void init_video(void) {
 }
 
 void test() {
-    set_bg_color(YELLOW);
+    set_bg_color(BLACK);
     char color = get_color(MAGENTA, bg_color);
     set_grid_pix(1, 1, color, 'I');
     set_grid_pix(2, 1, color, '\'');

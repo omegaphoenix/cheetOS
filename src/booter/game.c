@@ -8,7 +8,7 @@ void new_game(int x_dim, int y_dim, int difficulty_level) {
     new_shooter(&game.player, x_dim / 2, y_dim - 2, 1, PLAYER, 100, 0);
 
     for (idx = 0; idx < 5; idx++) {
-      // game.aliens[idx] = Shooter_new(idx * 5 + 10, idx * 5 + 10, 1, ALIEN, 30, idx + 1);
+      new_shooter(&game.aliens[idx], idx * 5 + 10, idx * 5 + 10, 1, ALIEN, 30, idx + 1);
     }
 
     game.x_dim = x_dim;
