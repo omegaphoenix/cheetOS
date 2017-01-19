@@ -2,6 +2,7 @@
 #include "game.h"
 /* #include "shooter.h" */
 #include "video.h"
+#include "timer.h"
 
 void new_game(int x_dim, int y_dim, int difficulty_level) {
     int idx;
@@ -36,6 +37,8 @@ void c_start(void) {
     init_video();
     new_game(40, 12, 1);
     draw_shooter(game.player);
+
+    init_interrupts();
 
     /* Loop forever, so that we don't fall back into the bootloader code. */
     while (1) {}

@@ -178,6 +178,18 @@ void init_interrupts(void) {
      *        defined above to install our IDT.
      */
 
+    int i = 0;
+    for (i = 0; i < NUM_INTERRUPTS; ++i) {
+        interrupt_descriptor_table[i].offset_15_0 = 0;
+        interrupt_descriptor_table[i].selector = 0;
+        interrupt_descriptor_table[i].zero = 0;
+        interrupt_descriptor_table[i].type_attr = 0;
+        interrupt_descriptor_table[i].offset_31_16 = 0;
+    }
+
+    lidt(&interrupt_descriptor_table, NUM_INTERRUPTS * sizeof(IDT_Descriptor));
+
+
     /* Remap the Programmable Interrupt Controller to deliver its interrupts
      * to 0x20-0x33 (32-45), so that they don't conflict with the IA32 built-
      * in protected-mode interrupts.  (Each PIC services 7 interrupts, and
