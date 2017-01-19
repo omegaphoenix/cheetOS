@@ -41,7 +41,7 @@ char get_grid_color(int x, int y) {
 
 char get_grid_char(int x, int y) {
     short grid_entry = grid[y][x];
-    char character = (grid_entry >> 1) & 0xff;
+    char character = (grid_entry >> 8) & 0xff;
     return character;
 }
 
