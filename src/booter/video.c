@@ -58,5 +58,8 @@ void init_video(void) {
     /* TODO:  Do any video display initialization you might want to do, such
      *        as clearing the screen, initializing static variable state, etc.
      */
+
+    /* Testing purposes */
+    *((int*)0xb000) = 0x07690748;
 }
 

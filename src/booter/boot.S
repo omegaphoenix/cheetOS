@@ -70,6 +70,10 @@ boot_start:
 	mov	$STR_LOADED, %si
 	call	print_str
 
+	# Set video mode before switching to protected mode
+	mov	$0x00, %ah	
+	int	$0x10
+
 	#---------------------------------------------------------------------
 	# TODO:  If you want to do anything else with the computer hardware
 	#        using the BIOS, here is the place to do it.  After this we
