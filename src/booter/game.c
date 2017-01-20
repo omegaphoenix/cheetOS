@@ -1,5 +1,9 @@
 #include "bullet.h"
 #include "game.h"
+#include "interrupts.h"
+#include "keyboard.h"
+#include "shooter.h"
+#include "timer.h"
 #include "video.h"
 
 void new_game(int x_dim, int y_dim, int difficulty_level) {
@@ -94,17 +98,29 @@ void c_start(void) {
      */
     int idx;
 
+    new_game(40, 12, 1);    
+
     init_video();
-    new_game(40, 12, 1);
+  
+    /* initial drawings - move these to init_video() */
     draw_shooter(game.player);
     for (idx = 0; idx < 5; idx++) {
         draw_shooter(game.aliens[idx]);
     }
-
     create_or_replace_bullet(&game, &game.player);
     display();
 
-    update_game(&game);
+    update_game();
+
+  
+    init_interrupts();
+    //init_keyboard();
+    init_timer();
+
+
+        
+    enable_interrupts();
+
     /* Loop forever, so that we don't fall back into the bootloader code. */
     while (1) {
         /*

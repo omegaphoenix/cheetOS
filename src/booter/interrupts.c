@@ -168,15 +168,21 @@ void IRQ_clear_mask(unsigned char IRQline) {
 
 /* Initialize interrupts */
 void init_interrupts(void) {
-    /* TODO:  INITIALIZE AND LOAD THE INTERRUPT DESCRIPTOR TABLE.
-     *
-     *        The entire Interrupt Descriptor Table should be zeroed out.
-     *        (Unfortunately you have to do this yourself since you don't
-     *        have the C Standard Library to use...)
-     *
-     *        Once the entire IDT has been cleared, use the lidt() function
-     *        defined above to install our IDT.
-     */
+    /* Zero out the entire Interrupt Descriptor Table */
+    int i;
+    for (i = 0; i < NUM_INTERRUPTS; ++i) {
+        interrupt_descriptor_table[i].offset_15_0 = 0;
+        interrupt_descriptor_table[i].selector = 0;
+        interrupt_descriptor_table[i].zero = 0;
+        interrupt_descriptor_table[i].type_attr = 0;
+        interrupt_descriptor_table[i].offset_31_16 = 0;
+
+    }
+
+
+    /* Use the lidt() function defined above to install our IDT */
+    lidt(&interrupt_descriptor_table, NUM_INTERRUPTS * sizeof(IDT_Descriptor));
+
 
     /* Remap the Programmable Interrupt Controller to deliver its interrupts
      * to 0x20-0x33 (32-45), so that they don't conflict with the IA32 built-
@@ -213,6 +219,44 @@ void install_interrupt_handler(int num, void *handler) {
      *        REMOVE THIS COMMENT WHEN YOU WRITE THE CODE.  (FEEL FREE TO
      *        INCORPORATE THE ABOVE COMMENTS IF YOU WISH.)
      */
+
+    IDT_Descriptor new_handler;
+    
+    /* The handler address must be split into two halves, so that it
+     * can be stored into the IDT descriptor.
+     */
+    new_handler.offset_15_0 = ((int) handler) & 0xFFFF; /* lower half */
+    new_handler.offset_31_16 = ((int) handler) >> 16; /* higher half */
+    
+    /* The segment selector should be the code-segment selector
+     * that was set up in the bootloader.  (See boot.h for the
+     * appropriate definition.)
+     */
+    new_handler.selector = SEL_CODESEG;
+    new_handler.zero = 0; /* unused, set to 0 */
+
+    
+    /* type_attr is specified as such:
+     * +---+---+---+---+---+---+---+---+
+     * | P |  DPL  | S |    GateType   |
+     * +---+---+---+---+---+---+---+---+
+     * 
+     * P = 1 to indicate "present"
+     *
+     * The DPL component of the "type_attr" field specifies the
+     * required privilege level to invoke the interrupt. 
+     * Set this to 0 (which allows anything to invoke the interrupt),
+     * but its value isn't really relevant to us.
+     *
+     * S = 0 for interrupt gates
+     * 
+     * Type = 1110 for 32-bit interrupt gate
+     * 
+     * Thus, type_attr = 0b10001110 = 0x8E
+     */
+    new_handler.type_attr = 0x8E;
+
+    interrupt_descriptor_table[num] = new_handler;
 }
 
 

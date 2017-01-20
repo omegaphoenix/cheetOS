@@ -32,7 +32,7 @@ Game game;
 void new_game(int x_dim, int y_dim, int difficulty_level);
 
 /* Updates the game. This will become more fleshed out over time */
-void update_game(Game *game);
+void update_game();
 
 /*
  * Checks if the game is finished. The game finishes if:
