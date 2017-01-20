@@ -29,8 +29,10 @@ void enqueue(char x);
 /* Remove key from key_queue and return */
 char dequeue();
 
+/* Initialize keyboard to handle */
 void init_keyboard(void);
 
+/* Update keyboard by adding key to queue */
 void update_keyboard(void);
 
 #endif /* KEYBOARD_H */

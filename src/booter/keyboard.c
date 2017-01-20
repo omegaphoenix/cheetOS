@@ -64,6 +64,7 @@ int queue_size() {
 
 
 void enqueue(char scan_code) {
+    disable_interrupts();
     if (!is_full_queue(key_queue)) {
         key_queue.rear = (key_queue.rear + 1) % key_queue.capacity;
         key_queue.array[key_queue.rear] = scan_code;
@@ -71,6 +72,7 @@ void enqueue(char scan_code) {
             key_queue.front=key_queue.rear;
         }
     }
+    enable_interrupts();
 }
 
 char dequeue() {
@@ -80,6 +82,7 @@ char dequeue() {
         return 0;
     }
     else {
+        disable_interrupts();
         data = key_queue.array[key_queue.front];
         if (key_queue.front == key_queue.rear) {
             key_queue.front = -1;
@@ -90,6 +93,7 @@ char dequeue() {
         }
     }
 
+    enable_interrupts();
     return data;
 }
 

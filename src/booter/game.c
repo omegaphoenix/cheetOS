@@ -46,7 +46,7 @@ void c_start(void) {
     draw_shooter(game.player);
 
     init_interrupts();
-    //init_keyboard();
+    init_keyboard();
     init_timer();
 
 

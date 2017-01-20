@@ -67,10 +67,6 @@ boot_start:
 	mov	$STR_LOADED, %si
 	call	print_str
 
-	# Set video mode before switching to protected mode
-	mov	$0x00, %ah
-	int	$0x10
-
 	# Hide the cursor, just to be "prettier."  This will carry over into
 	# protected mode execution too.
 	mov	$0x01, %ah
