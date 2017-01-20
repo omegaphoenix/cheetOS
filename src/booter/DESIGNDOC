@@ -143,20 +143,26 @@ then it will check for bullet collisions. Aliens, too, will also update their
 movement based on these timer values.
 
 Keyboard interrupts are used for the player shooter. Whenever the player wishes
-to move, he or she must press the left/right arrow key, the player sprite
-is erased and then the player spot is moved accordingly. Whenever a player presses
-the spacebar, the keyboard interrupt occurs. The game then sets a bullet struct
-to the proper position, a proper trajectory, and draws that bullet on screen.
+to move, he or she must press the left/right arrow key and the key press is
+stored in a queue. At the timer interrupt, the player sprite is erased and
+then the player spot is moved accordingly. Whenever a player presses the
+spacebar or up button, the keyboard interrupt occurs. The key press is stored
+in a queue. During a later timer interrupt, when the key reaches the front of
+the queue, the game then sets a bullet struct to the proper position, the
+proper trajectory, and draws that bullet on screen.
 
 >> A5: Would you say your program relies on polling or busy-waiting anywhere
 >> to accomplish its tasks?  If so, what tasks?
-// TODO.
+
+It relies on polling since it is updating the display and moving the bullets
+at every timer interrupt. It is also polling for key presses, since a
+keyboard interrupt just stores the key into a queue.
 
 ---- RATIONALE ----
 
 >> A6: Why did you choose the project you did?
 
-  The space invaders game is one that isn't too difficult to implement, but
+The space invaders game is one that isn't too difficult to implement, but
 it also gives the creators much room for experimentation and varied
 implementation. Many factors in space invaders can be altered to make the game
 unique; you could have different kinds of bullets, potential power ups,
@@ -164,10 +170,15 @@ different kinds of aliens. Because the game really only relies on
 a few keyboard inputs and because its basic instruction doesn't take too much
 to code, we decided to go for it during the limited time we had.
 
+Also, that is the only game Justin could beat without getting frustrated
+from losing in the first 30 seconds out of the games considered.
+
 >> A7: Did your choice of project affect any of the specific implementation
 >> details of the various subsystems that you needed to use?  (For example,
 >> if you implemented a scrolling game, did you implement specialized high-
 >> performance video code to scroll the screen?)
+
+Yes.
 
 >> A8: Did you run into any technical or resource limitations in the
 >> implementation of your program?  (For example, bootloader didn't fit,
