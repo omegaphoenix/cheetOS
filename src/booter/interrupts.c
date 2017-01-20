@@ -225,8 +225,8 @@ void install_interrupt_handler(int num, void *handler) {
     /* The handler address must be split into two halves, so that it
      * can be stored into the IDT descriptor.
      */
-    new_handler.offset_15_0 = ((int) handler & 0xFFFF); /* lower half */
-    new_handler.offset_31_16 = ((int) handler >> 16); /* higher half */
+    new_handler.offset_15_0 = ((int) handler) & 0xFFFF; /* lower half */
+    new_handler.offset_31_16 = ((int) handler) >> 16; /* higher half */
     
     /* The segment selector should be the code-segment selector
      * that was set up in the bootloader.  (See boot.h for the
@@ -235,12 +235,26 @@ void install_interrupt_handler(int num, void *handler) {
     new_handler.selector = SEL_CODESEG;
     new_handler.zero = 0; /* unused, set to 0 */
 
-    /* The DPL component of the "type_attr" field specifies the
-     * required privilege level to invoke the interrupt.  You can
-     * set this to 0 (which allows anything to invoke the interrupt),
+    
+    /* type_attr is specified as such:
+     * +---+---+---+---+---+---+---+---+
+     * | P |  DPL  | S |    GateType   |
+     * +---+---+---+---+---+---+---+---+
+     * 
+     * P = 1 to indicate "present"
+     *
+     * The DPL component of the "type_attr" field specifies the
+     * required privilege level to invoke the interrupt. 
+     * Set this to 0 (which allows anything to invoke the interrupt),
      * but its value isn't really relevant to us.
+     *
+     * S = 0 for interrupt gates
+     * 
+     * Type = 1110 for 32-bit interrupt gate
+     * 
+     * Thus, type_attr = 0b10001110 = 0x8E
      */
-    new_handler.type_attr = 0;
+    new_handler.type_attr = 0x8E;
 
     interrupt_descriptor_table[num] = new_handler;
 }
