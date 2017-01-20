@@ -1,5 +1,4 @@
 #include "bullet.h"
-#include "video.h"
 
 void new_bullet(Bullet *bullet,
                 int x_pos,
@@ -25,12 +24,10 @@ void new_bullet(Bullet *bullet,
 
 /* TODO: Not sure how I'll handle this yet. */
 void bullet_move(Bullet *moving_bullet) {
-    clear_bullet(*moving_bullet);
     if (moving_bullet->direction == UP) {
         moving_bullet->y_pos--;
     }
     else {
         moving_bullet->y_pos++;
     }
-    draw_bullet(*moving_bullet);
 }

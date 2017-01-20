@@ -117,7 +117,6 @@ void draw_shooter(Shooter actor) {
         c = actor.portrait[i];
         set_grid_pix(x, y, color, c);
     }
-    display();
 };
 
 void draw_bullet(Bullet bullet) {
@@ -126,7 +125,6 @@ void draw_bullet(Bullet bullet) {
     char c = '.';
     char color = get_color(LIGHT_GRAY, bg_color);
     set_grid_pix(x_pos, y_pos, color, c);
-    display();
 }
 
 void set_bg_color(char color) {

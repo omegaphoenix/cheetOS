@@ -72,7 +72,7 @@ void shooter_shoot(Shooter *shooter, Bullet *bullet) {
 
 }
 
-int shooter_check_impact(Shooter *shooter, Bullet *bullet) {
+void shooter_handle_impact(Shooter *shooter, Bullet *bullet) {
     /* Check if bullet is inside the shooter's box */
     if (bullet->x_pos < shooter->x_pos + 2 &&
         bullet->x_pos >= shooter->x_pos &&
@@ -84,13 +84,12 @@ int shooter_check_impact(Shooter *shooter, Bullet *bullet) {
         bullet->visible = 0;
         shooter->health -= 15;
         shooter_check_health(shooter);
-        return 1;
     }
-    return 0;
 }
 
 void shooter_check_health(Shooter *shooter) {
     if (shooter->health <= 0) {
         shooter->visible = 0;
+        clear_shooter(*shooter);
     }
 }
