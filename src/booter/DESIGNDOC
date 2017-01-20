@@ -58,19 +58,20 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-   Justin Leong:
+   Justin Leong: Approximately 13:15:48 (hh:mm:ss)
    John Li: Approximately 15-16 hours.
    Christina Lin: 
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
-   Justin Leong:
+   Justin Leong: Bootloader, keyboard interrupts, final implementation of
+   video/display API, shooter actions, levels, score
 
-   John Li: Implementation of game, including structs, struct methods, 
+   John Li: Implementation of game, including structs, struct methods,
    utility functions, and game instruction and checks.
 
-   Christina Lin: Initial implementation of video/display API; handling of 
+   Christina Lin: Initial implementation of video/display API; handling of
    general interrupts; timer interrupts.
 
 Note that this design document is a bit long.  Most of the questions can be
@@ -87,7 +88,7 @@ not required by the question.
 
 We built a mini Space Invaders game. The user, controlling a shooter at the
 bottom of the screen, battles a fleet of alien invaders positioned at the top
-of the screen. 
+of the screen.
 
 >> A2: In a few sentences, how does the user interact with the program?
 >> What are the controls?  What should the user try to do?
@@ -95,7 +96,9 @@ of the screen.
 The user moves the shooter right/left with arrow keys and fires bullets with
 the spacebar. The shooter's bullets destroy alien spaceships upon impact, and
 likewise, the aliens' bullets destroy the user's shooter. The user's goal is to
-destroy the aliens before getting destroyed.
+destroy the aliens before getting destroyed and to achieve a high score. Both
+the user and the alien have a health count that decrements every time they
+are hit by a bullet.
 
 ---- DATA STRUCTURES ----
 
@@ -104,9 +107,9 @@ destroy the aliens before getting destroyed.
 >> handlers; we will look at that later.  Rather, focus on state that is
 >> part of the game implementation itself.
 
-The program maintains a global 'game' variable. 'game' is an instance of the 
+The program maintains a global 'game' variable. 'game' is an instance of the
 Game struct, and it holds data on the x- and y- dimensions of the game board,
-the player, an array of aliens, an array of bullets, the total number of 
+the player, an array of aliens, an array of bullets, the total number of
 bullets, and current level of difficulty. Because we implemented a random
 function, the game also holds a seed.
 
@@ -117,6 +120,9 @@ speed, health, shooting frequency, and visibility (whether shooter is alive)).
 
 Additionally, each bullet stores its own position, direction, speed, source,
 and visibility in the Bullet struct.
+
+A global 2D array for the color and character at each rectangle is also kept
+track of to update the display.
 
 
 ---- SYNCHRONIZATION ----
@@ -130,7 +136,7 @@ and visibility in the Bullet struct.
 
 For the space invaders game, the game relies on both the timer interrupt and
 the keyboard interrupt. First, since players and aliens are shooting each other,
-the timer interrupt is necessary to update the bullet trajectory/path once 
+the timer interrupt is necessary to update the bullet trajectory/path once
 it has been shot. Once a timer interrupt hits, the program first will
 update all the bullet movements (and clear the previous images of the bullets),
 then it will check for bullet collisions. Aliens, too, will also update their
@@ -153,7 +159,7 @@ to the proper position, a proper trajectory, and draws that bullet on screen.
   The space invaders game is one that isn't too difficult to implement, but
 it also gives the creators much room for experimentation and varied
 implementation. Many factors in space invaders can be altered to make the game
-unique; you could have different kinds of bullets, potential power ups, 
+unique; you could have different kinds of bullets, potential power ups,
 different kinds of aliens. Because the game really only relies on
 a few keyboard inputs and because its basic instruction doesn't take too much
 to code, we decided to go for it during the limited time we had.
@@ -170,15 +176,15 @@ to code, we decided to go for it during the limited time we had.
 >> take to try to overcome those limitations?
 
   We noticed that our bootloader would often loop whenever we would call
-certain functions. Functions that return struct objects and return 
+certain functions. Functions that return struct objects and return
 integers have caused these loops to occur (which we assumed to be QEMU
 crashing and restarting). While we still haven't pinpointed the cause, we
 got around this case through the use of the global game state and passing
 values in by reference. This is why we have a majority of void functions.
 
-  Because space invaders also involves lots of bullets, John really 
-desired there to be access to dynamic allocation, but once he learned 
-that this wasn't allowed, we set a maximum number of bullets allowed 
+  Because space invaders also involves lots of bullets, John really
+desired there to be access to dynamic allocation, but once he learned
+that this wasn't allowed, we set a maximum number of bullets allowed
 in the game at any particular time. We then emulated "endless" bullets
 by allowing the game to replace any "invisible" bullets (bullets that
 have expired).
@@ -217,12 +223,12 @@ have expired).
 >> represented in this mode?  (Please be brief; we don't need complete
 >> documentation on the video system.)
 
-Our program uses text mode. The video buffer starts at 0xB8000. The display 
+Our program uses text mode. The video buffer starts at 0xB8000. The display
 consists of text arranged into 25 80-char lines, and this text is stored in
 the video buffer. Each character on the screen is represented by two bytes:
 the first byte is the char, and the second byte is its color -- the lowest
-four bits hold the foreground color and the highest three bits hold the 
-background color. 
+four bits hold the foreground color and the highest three bits hold the
+background color.
 
 >> C2: Does your video code maintain any variables or data structures to
 >> facilitate video output?  Briefly describe these values and their
@@ -231,11 +237,11 @@ background color.
 Our video system stores data in 'grid,' a 2D array. Each element in the array
 is two bytes, representing a character on screen in the convention described
 in C1. The grid makes it easy to draw() shooters and bullets to (X, Y)
-positions on the screen, or to set specific "pixels" on the screen. When 
+positions on the screen, or to set specific "pixels" on the screen. When
 display() is called, the data stored in 'grid' is transferred to the video
 buffer.
 
-We also store a default background color, since we don't anticipate that 
+We also store a default background color, since we don't anticipate that
 individual characters will typically different background colors.
 
 
@@ -246,14 +252,14 @@ individual characters will typically different background colors.
 
 Our video API allows us to call functions like draw_shooter(), draw_bullet(),
 clear_shooter(), and clear_bullet(). The higher-level draw() functions take
-a Shooter or Bullet struct as a parameter. The structs specify the (X, Y) 
-coordinates of the top left corner, as well as a 2x2 "image" of the 
+a Shooter or Bullet struct as a parameter. The structs specify the (X, Y)
+coordinates of the top left corner, as well as a 2x2 "image" of the
 Shooter/Bullet. The functions transform these attributes into the correct
 data format to store in the grid. Similarly, the clear() functions remove the
 Shooter/Bullet from the grid.
 
-These higher-level operations allow us greater ease in drawing pictures 
-composed of more than one character. Additionally, we implemented the 
+These higher-level operations allow us greater ease in drawing pictures
+composed of more than one character. Additionally, we implemented the
 set_pix() and set_grid_pix() functions to modify characters at specific (X, Y)
 coordinates by transforming X and Y into an offset to add to the video buffer.
 
@@ -267,7 +273,7 @@ coordinates by transforming X and Y into an offset to add to the video buffer.
 
   We wanted the colors of the player and the alien to be distinct yet visible.
 Initially, the player was a dark blue color, but combined with the black background
-this was not very visible. So, we changed the color for the player to be 
+this was not very visible. So, we changed the color for the player to be
 completely white, and the aliens to be bright green. Bullets were also light grey
 to promote visibility as well as to distinguish it as separate from the player and aliens.
 
