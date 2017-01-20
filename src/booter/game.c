@@ -40,7 +40,7 @@ void c_start(void) {
      *        do whatever else you decide to do!
      */
 
-    new_game(40, 12, 1);    
+    new_game(40, 12, 1);
 
     init_video();
     draw_shooter(game.player);
@@ -50,7 +50,7 @@ void c_start(void) {
     init_timer();
 
 
-        
+
     enable_interrupts();
 
 

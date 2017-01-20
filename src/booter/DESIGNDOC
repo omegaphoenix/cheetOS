@@ -30,6 +30,9 @@ FirstName LastName <email@domain.example>
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
 
+https://en.wikipedia.org/wiki/INT_13H#INT_13h_AH.3D42h:_Extended_Read_Sectors_From_Drive
+http://stackoverflow.com/questions/20619234/circular-queue-implementation
+
 			     PC BOOTER
 			     =========
 
