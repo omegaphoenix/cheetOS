@@ -68,7 +68,7 @@ void shooter_shoot(Shooter *shooter, Bullet *bullet) {
                shooter->y_pos,
                bullet_direction,
                shooter->shooter_type,
-               5);
+               2);
 
 }
 
