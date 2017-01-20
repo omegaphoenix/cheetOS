@@ -41,13 +41,15 @@
  */
 
 void init_queue() {
-    if (are_interrupts_enabled()) {
+    /* True if interrupts were previously enabled */
+    int interrupts_on = are_interrupts_enabled();
+    if (interrupts_on) {
         disable_interrupts();
     }
     key_queue.capacity = QUEUE_LEN;
     key_queue.front = -1;
     key_queue.rear = -1;
-    if (are_interrupts_enabled()) {
+    if (interrupts_on) {
         enable_interrupts();
     }
 }
@@ -70,7 +72,10 @@ int queue_size() {
 
 
 void enqueue(unsigned char scan_code) {
-    disable_interrupts();
+    int interrupts_on = are_interrupts_enabled();
+    if (interrupts_on) {
+        disable_interrupts();
+    }
     if (!is_full_queue(key_queue)) {
         key_queue.rear = (key_queue.rear + 1) % key_queue.capacity;
         key_queue.array[key_queue.rear] = scan_code;
@@ -78,14 +83,22 @@ void enqueue(unsigned char scan_code) {
             key_queue.front=key_queue.rear;
         }
     }
-    enable_interrupts();
+    if (interrupts_on) {
+        enable_interrupts();
+    }
 }
 
 unsigned char dequeue() {
     char data = 0;
 
-    disable_interrupts();
+    int interrupts_on = are_interrupts_enabled();
+    if (interrupts_on) {
+        disable_interrupts();
+    }
     if (is_empty_queue(key_queue)) {
+        if (interrupts_on) {
+            enable_interrupts();
+        }
         return 0;
     }
     else {
@@ -99,7 +112,9 @@ unsigned char dequeue() {
         }
     }
 
-    enable_interrupts();
+    if (interrupts_on) {
+        enable_interrupts();
+    }
     return data;
 }
 

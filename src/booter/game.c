@@ -22,7 +22,7 @@ void next_level() {
      * These values were set arbitrarily;
      * they didn't seem to overwhelm the player
      */
-    int level_bullet_speed = 15 - game.difficulty_level;
+    int level_bullet_speed = (7 - game.difficulty_level) * 2;
     if (level_bullet_speed < 0) {
         level_bullet_speed = 0;
     }
@@ -73,7 +73,7 @@ void new_game(int x_dim, int y_dim, int difficulty_level) {
      * These values were set arbitrarily;
      * they didn't seem to overwhelm the player
      */
-    int level_bullet_speed = 15 - game.difficulty_level;
+    int level_bullet_speed = (7 - game.difficulty_level) * 2;
 
     /* To smooth shooting frequencies, generate two random numbers */
     int random_shoot_freq;

@@ -4,10 +4,10 @@
 #include "bullet.h"
 #include "shooter.h"
 
-#define NUM_ALIENS 10 /* vary with difficulty level? */
+#define NUM_ALIENS 10
 #define NUM_BULLETS 200
 /*
- * These parameters are for random0 found on wikipedia
+ * These parameters are for a pseudo random number generator
  * https://en.wikipedia.org/wiki/Linear_congruential_generator
  */
 #define RANDOM_A 918

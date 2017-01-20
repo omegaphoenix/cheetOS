@@ -1,6 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-
+#include "game.h"
 #include "shooter.h"
 #include "video.h"
 /*
@@ -74,8 +72,9 @@ void shooter_shoot(Shooter *shooter, Bullet *bullet) {
     /* For now, all bullets fly at same speed */
     /* TODO: Customize bullet speed if we have time */
 
+    rand();
     new_bullet(bullet,
-               shooter->x_pos,
+               shooter->x_pos + (game.seed % 2),
                shooter->y_pos,
                bullet_direction,
                shooter->shooter_type,
