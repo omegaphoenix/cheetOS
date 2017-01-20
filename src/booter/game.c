@@ -27,7 +27,7 @@ void new_game(int x_dim, int y_dim, int difficulty_level) {
     int random_shoot_freq;
     int smooth_random_freq;
 
-    new_shooter(&game.player, x_dim / 2, y_dim - 2, 1, PLAYER, 100, 0);
+    new_shooter(&game.player, x_dim / 2, y_dim - 2, 1, PLAYER, 10, 0);
 
     for (idx = 0; idx < NUM_ALIENS; idx++) {
         rand();
@@ -40,7 +40,7 @@ void new_game(int x_dim, int y_dim, int difficulty_level) {
                     0,
                     1,
                     ALIEN,
-                    1000,
+                    3,
                     (random_shoot_freq + level_bullet_speed) *
                     (smooth_random_freq + level_bullet_speed));
     }
@@ -146,7 +146,7 @@ void c_start(void) {
      */
     int idx;
 
-    new_game(40, 12, 5);
+    new_game(40, 12, 1);
 
     init_video();
   
