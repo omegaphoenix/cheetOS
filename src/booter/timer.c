@@ -4,7 +4,7 @@
 #include "handlers.h"
 #include "game.h"
 
-/*============================================================================
+/* ===========================================================================
  * PROGRAMMABLE INTERVAL TIMER
  *
  * The Programmable Interrupt Timer receives a clock of 1193182 Hz.  It has

@@ -20,8 +20,10 @@ static inline void outb(uint16_t port, uint8_t val) {
 static inline uint8_t inb(uint16_t port) {
     uint8_t ret;
     asm volatile ( "inb %[port], %[ret]"
-                   // using symbolic operand names as an example,
-                   // mainly because they're not used in order
+                   /*
+                    * using symbolic operand names as an example,
+                    * mainly because they're not used in order
+                    */
                    : [ret] "=a"(ret) : [port] "Nd"(port) );
     return ret;
 }
