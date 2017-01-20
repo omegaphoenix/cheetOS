@@ -73,6 +73,17 @@ int is_game_finished(Game *game) {
     return 1;
 }
 
+void create_or_replace_bullet(Game *game, Shooter *shooter) {
+    int idx;
+
+    for (idx = 0; idx < 10; idx++) {
+        if (game->bullets[idx].visible == 0) {
+            shooter_shoot(shooter, &game->bullets[idx]);
+            return;
+        }
+    }
+    return ;
+}
 /* This is the entry-point for the game! */
 void c_start(void) {
     /* TODO:  You will need to initialize various subsystems here.  This
@@ -90,8 +101,7 @@ void c_start(void) {
         draw_shooter(game.aliens[idx]);
     }
 
-    shooter_shoot(&game.player, &game.bullets[0]);
-    draw_bullet(game.bullets[0]);
+    create_or_replace_bullet(&game, &game.player);
     display();
 
     update_game(&game);

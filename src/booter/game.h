@@ -40,4 +40,10 @@ void update_game(Game *game);
  * 2) All aliens are dead
  */
 int is_game_finished(Game *game);
+
+/*
+ * If the maximum of 10 bullets is reached, this will just replace
+ * Any bullet that is now invisible
+ */
+void create_or_replace_bullet(Game *game, Shooter *shooter);
 #endif /* GAME_H_ */
