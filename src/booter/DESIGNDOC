@@ -36,6 +36,9 @@ http://wiki.osdev.org/Printing_to_Screen
 Interrupt Descriptor Table:
 http://wiki.osdev.org/Interrupt_Descriptor_Table
 
+Linear Congruential Generator
+https://en.wikipedia.org/wiki/Linear_congruential_generator
+http://stackoverflow.com/questions/3062746/special-simple-random-number-generator
 
 
 			     PC BOOTER
@@ -51,7 +54,7 @@ which parts.
    Make sure that each member's total time is listed.
 
    Justin Leong:
-   John Li:
+   John Li: Approximately 15-16 hours.
    Christina Lin: 
 
 >> L2: What did each team member focus on for this assignment?  Keep
@@ -59,7 +62,8 @@ which parts.
 
    Justin Leong:
 
-   John Li:
+   John Li: Implementation of game, including structs, struct methods, 
+   utility functions, and game instruction and checks.
 
    Christina Lin: Initial implementation of video/display API; handling of 
    general interrupts; timer interrupts.
@@ -98,15 +102,16 @@ destroy the aliens before getting destroyed.
 The program maintains a global 'game' variable. 'game' is an instance of the 
 Game struct, and it holds data on the x- and y- dimensions of the game board,
 the player, an array of aliens, an array of bullets, the total number of 
-bullets, and current level of difficulty.
+bullets, and current level of difficulty. Because we implemented a random
+function, the game also holds a seed.
 
 The player and aliens are all instances of the Shooter struct. They store the
 states of the shooters on the game board, including position, shooter type
 (player or alien), portrait (how the shooter is represented on the screen),
-speed, health, shooting frequency, and visibility (whether shooter is alive).
+speed, health, shooting frequency, and visibility (whether shooter is alive)).
 
 Additionally, each bullet stores its own position, direction, speed, source,
-and visibility.
+and visibility in the Bullet struct.
 
 
 ---- SYNCHRONIZATION ----
@@ -118,12 +123,35 @@ and visibility.
 >> Similarly, when a keyboard interrupt occurs, what does your program do
 >> in response?
 
+For the space invaders game, the game relies on both the timer interrupt and
+the keyboard interrupt. First, since players and aliens are shooting each other,
+the timer interrupt is necessary to update the bullet trajectory/path once 
+it has been shot. Once a timer interrupt hits, the program first will
+update all the bullet movements (and clear the previous images of the bullets),
+then it will check for bullet collisions. Aliens, too, will also update their
+movement based on these timer values.
+
+Keyboard interrupts are used for the player shooter. Whenever the player wishes
+to move, he or she must press the left/right arrow key, the player sprite
+is erased and then the player spot is moved accordingly. Whenever a player presses
+the spacebar, the keyboard interrupt occurs. The game then sets a bullet struct
+to the proper position, a proper trajectory, and draws that bullet on screen.
+
 >> A5: Would you say your program relies on polling or busy-waiting anywhere
 >> to accomplish its tasks?  If so, what tasks?
+// TODO.
 
 ---- RATIONALE ----
 
 >> A6: Why did you choose the project you did?
+
+  The space invaders game is one that isn't too difficult to implement, but
+it also gives the creators much room for experimentation and varied
+implementation. Many factors in space invaders can be altered to make the game
+unique; you could have different kinds of bullets, potential power ups, 
+different kinds of aliens. Because the game really only relies on
+a few keyboard inputs and because its basic instruction doesn't take too much
+to code, we decided to go for it during the limited time we had.
 
 >> A7: Did your choice of project affect any of the specific implementation
 >> details of the various subsystems that you needed to use?  (For example,
@@ -136,6 +164,19 @@ and visibility.
 >> achieve the desired performance level, etc.)  If so, what steps did you
 >> take to try to overcome those limitations?
 
+  We noticed that our bootloader would often loop whenever we would call
+certain functions. Functions that return struct objects and return 
+integers have caused these loops to occur (which we assumed to be QEMU
+crashing and restarting). While we still haven't pinpointed the cause, we
+got around this case through the use of the global game state and passing
+values in by reference. This is why we have a majority of void functions.
+
+  Because space invaders also involves lots of bullets, John really 
+desired there to be access to dynamic allocation, but once he learned 
+that this wasn't allowed, we set a maximum number of bullets allowed 
+in the game at any particular time. We then emulated "endless" bullets
+by allowing the game to replace any "invisible" bullets (bullets that
+have expired).
 
 			     BOOT SECTOR
 			     ===========
@@ -219,6 +260,17 @@ coordinates by transforming X and Y into an offset to add to the video buffer.
 >> program's display output?  For example, using Extended ASCII Codes, or
 >> choosing specific colors to represent different things?
 
+  We wanted the colors of the player and the alien to be distinct yet visible.
+Initially, the player was a dark blue color, but combined with the black background
+this was not very visible. So, we changed the color for the player to be 
+completely white, and the aliens to be bright green. Bullets were also light grey
+to promote visibility as well as to distinguish it as separate from the player and aliens.
+
+Aliens were also at the top, and they were shooting down, so we represented their
+icon as a 2 by 2 block of "v", since "v" represents the direction that they're
+shooting. Players also have an icon made up of a 2 by 2 block of "^", since
+the players are always shooting up. The bullet is just a single char "." for simplicity
+and its light gray color was for its visibility.
 
 			  TIMER SUBSYSTEM
 			  ===============
@@ -248,6 +300,10 @@ refresh the video buffer with the updated positions.
 >> for timer interrupts to generate race conditions in updating your
 >> program's global state?  If so, what steps did you take to ensure that
 >> such situations cannot occur?
+
+There is no potential for race conditions to occur. Once a timer interrupt occurs
+the entire game updates at once. The game is also small enough size that two
+game updates will not occur simultaneously.
 
 			KEYBOARD SUBSYSTEM
 			==================
