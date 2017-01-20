@@ -13,9 +13,56 @@ void rand() {
     game.seed = (RANDOM_A * game.seed + RANDOM_C) % RANDOM_M;
 }
 
+void next_level() {
+    int idx;
+    game.score = game.score + game.difficulty_level * 50;
+    game.difficulty_level = game.difficulty_level + 1;
+
+    /*
+     * These values were set arbitrarily;
+     * they didn't seem to overwhelm the player
+     */
+    int level_bullet_speed = (7 - game.difficulty_level) * 2;
+
+    /* To smooth shooting frequencies, generate two random numbers */
+    int random_shoot_freq;
+    int smooth_random_freq;
+
+    game.player.health++;
+
+    for (idx = 0; idx < NUM_ALIENS; idx++) {
+        rand();
+        random_shoot_freq = (game.seed % 10) + 1;
+
+        rand();
+        smooth_random_freq = (game.seed % 10) + 1;
+        new_shooter(&game.aliens[idx],
+                    idx * 7 + 5,
+                    0,
+                    1,
+                    ALIEN,
+                    3,
+                    (random_shoot_freq + level_bullet_speed) *
+                    (smooth_random_freq + level_bullet_speed));
+    }
+
+    /* Redraw aliens */
+    for (idx = 0; idx < NUM_ALIENS; idx++) {
+        draw_shooter(game.aliens[idx]);
+    }
+
+    /* Clear old bullets */
+    for (idx = 0; idx < NUM_BULLETS; idx++) {
+        clear_bullet(game.bullets[idx]);
+        game.bullets[idx].visible = 0;
+    }
+}
+
+
 void new_game(int x_dim, int y_dim, int difficulty_level) {
     int idx;
-    game.seed = 123456789;
+    /* Set initial game seed to any number */
+    game.seed = 666;
     game.difficulty_level = difficulty_level;
 
     /*
@@ -28,7 +75,7 @@ void new_game(int x_dim, int y_dim, int difficulty_level) {
     int random_shoot_freq;
     int smooth_random_freq;
 
-    new_shooter(&game.player, x_dim / 2, y_dim - 2, 1, PLAYER, 10, 0);
+    new_shooter(&game.player, x_dim / 2, y_dim - 3, 1, PLAYER, 10, 0);
 
     for (idx = 0; idx < NUM_ALIENS; idx++) {
         rand();
@@ -53,6 +100,7 @@ void new_game(int x_dim, int y_dim, int difficulty_level) {
 
     game.x_dim = x_dim;
     game.y_dim = y_dim;
+    game.score = 0;
 }
 
 /*
@@ -77,6 +125,9 @@ void update_game(int timer_count) {
                 if (game.aliens[alien_idx].visible) {
                     shooter_handle_impact(&game.aliens[alien_idx],
                                           &game.bullets[bullet_idx]);
+                    if (game.aliens[alien_idx].visible == 0) {
+                        game.score += 5 * game.difficulty_level;
+                    }
                 }
             }
 
@@ -123,10 +174,17 @@ void update_game(int timer_count) {
         }
     }
 
+    update_score(game.score);
     display();
+
+    if (is_game_finished(&game)) {
+        if (game.player.visible) {
+            next_level();
+        }
+    }
 }
 
-/* 1 is true. 0 is false. */
+/* 0 is false. 1 is game over or next level. */
 int is_game_finished(Game *game) {
     int idx;
 
@@ -186,11 +244,6 @@ void c_start(void) {
 
     /* Loop forever, so that we don't fall back into the bootloader code. */
     while (1) {
-        /*
-        int is_finished = is_game_finished(game);
-        if (!is_finished) {
-            update_game(game);
-        } */
     }
 }
 
