@@ -106,6 +106,7 @@ void update_game(int timer_count) {
                 break;
         }
     }
+
     /* Iterate through aliens and make some of them shoot */
     for (alien_idx = 0; alien_idx < NUM_ALIENS; alien_idx++) {
         if (game.aliens[alien_idx].visible == 1) {
@@ -171,7 +172,6 @@ void c_start(void) {
     }
     create_or_replace_bullet(&game, &game.player);
     display();
-
 
     update_game(0);
     init_interrupts();
