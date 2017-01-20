@@ -55,11 +55,7 @@ void next_level() {
         draw_shooter(game.aliens[idx]);
     }
 
-    /* Clear old bullets */
-    for (idx = 0; idx < NUM_BULLETS; idx++) {
-        clear_bullet(game.bullets[idx]);
-        game.bullets[idx].visible = 0;
-    }
+    init_queue();
 }
 
 
@@ -112,6 +108,15 @@ void new_game(int x_dim, int y_dim, int difficulty_level) {
  * timer works
  */
 void update_game(int timer_count) {
+    if (is_game_finished(&game)) {
+        if (game.player.visible) {
+            next_level();
+        }
+        else {
+            game_over(game.difficulty_level);
+        }
+    }
+
     int alien_idx;
     int bullet_idx;
 
@@ -180,15 +185,6 @@ void update_game(int timer_count) {
 
     update_score(game.score);
     display();
-
-    if (is_game_finished(&game)) {
-        if (game.player.visible) {
-            next_level();
-        }
-        else {
-            game_over(game.difficulty_level);
-        }
-    }
 }
 
 /* 0 is false. 1 is game over or next level. */
