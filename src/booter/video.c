@@ -106,7 +106,7 @@ void draw_shooter(Shooter actor) {
     int i, x, y;
     char c, color;
     if (actor.shooter_type == PLAYER) {
-        color = get_color(BLUE, bg_color);
+        color = get_color(WHITE, bg_color);
     }
     else {
         color = get_color(GREEN, bg_color);
