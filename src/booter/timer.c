@@ -49,12 +49,11 @@
  *        compiler knows they can be changed by exceptional control flow.
  */
 
-// static volatile int timer_count;
+static volatile int timer_count;
 
 void update_timer(void) {
     timer_count++;
-    // update_game();
-    return;
+    update_game(timer_count);
 }
 
 void init_timer(void) {

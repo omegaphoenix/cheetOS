@@ -1,53 +1,88 @@
 #include "bullet.h"
 #include "game.h"
+#include "gameDefinitions.h"
 #include "interrupts.h"
 #include "keyboard.h"
 #include "shooter.h"
 #include "timer.h"
 #include "video.h"
 
+/* Starting random seed */
+void rand() {
+    game.seed = (RANDOM_A * game.seed + RANDOM_C) % RANDOM_M;
+}
+
 void new_game(int x_dim, int y_dim, int difficulty_level) {
     int idx;
-    new_shooter(&game.player, x_dim / 2, y_dim - 2, 1, PLAYER, 100, 0);
+    game.seed = 123456789;
+    game.difficulty_level = difficulty_level;
 
-    for (idx = 0; idx < 5; idx++) {
-        new_shooter(&game.aliens[idx], idx * 5 + 10, 0, 1, ALIEN, 15, idx + 1);
+    /*
+     * These values were set arbitrarily;
+     * they didn't seem to overwhelm the player
+     */
+    int level_bullet_speed = (7 - game.difficulty_level) * 2;
+
+    /* To smooth shooting frequencies, generate two random numbers */
+    int random_shoot_freq;
+    int smooth_random_freq;
+
+    new_shooter(&game.player, x_dim / 2, y_dim - 2, 1, PLAYER, 10, 0);
+
+    for (idx = 0; idx < NUM_ALIENS; idx++) {
+        rand();
+        random_shoot_freq = (game.seed % 10) + 1;
+
+        rand();
+        smooth_random_freq = (game.seed % 10) + 1;
+        new_shooter(&game.aliens[idx],
+                    idx * 7 + 5,
+                    0,
+                    1,
+                    ALIEN,
+                    3,
+                    (random_shoot_freq + level_bullet_speed) *
+                    (smooth_random_freq + level_bullet_speed));
     }
 
     /* For now, all we need is for the bullets to not be visible. */
-    for (idx = 0; idx < 10; idx++) {
+    for (idx = 0; idx < NUM_BULLETS; idx++) {
         game.bullets[idx].visible = 0;
     }
 
     game.x_dim = x_dim;
     game.y_dim = y_dim;
-    game.difficulty_level = difficulty_level;
-    game.num_bullets = 0;
 }
 
 /*
  * Handles bullet movement. Will deal with shooting frequency later once I see how
  * timer works
  */
-void update_game() {
+void update_game(int timer_count) {
     int alien_idx;
     int bullet_idx;
 
     /* Iterate through bullets to update their movement */
-    for (bullet_idx = 0; bullet_idx < 10; bullet_idx++) {
+    for (bullet_idx = 0; bullet_idx < NUM_BULLETS; bullet_idx++) {
         if (game.bullets[bullet_idx].visible == 1) {
 
             /* First, update movements. then, check collisions */
             clear_bullet(game.bullets[bullet_idx]);
-            bullet_move(&game.bullets[bullet_idx]);
+            bullet_move(&game.bullets[bullet_idx], timer_count);
 
             /* Check potential impacts */
             shooter_handle_impact(&game.player, &game.bullets[bullet_idx]);
-            for (alien_idx = 0; alien_idx < 5; alien_idx++) {
+            for (alien_idx = 0; alien_idx < NUM_ALIENS; alien_idx++) {
                 if (game.aliens[alien_idx].visible) {
                     shooter_handle_impact(&game.aliens[alien_idx],
                                           &game.bullets[bullet_idx]);
                 }
+            }
+
+            /* If bullet goes offscreen */
+            if (game.bullets[bullet_idx].y_pos > game.y_dim ||
+                game.bullets[bullet_idx].y_pos < 0) {
+                game.bullets[bullet_idx].visible = 0;
             }
 
             /* If not impacted, draw it again */
@@ -68,6 +103,18 @@ void update_game() {
                 break;
         }
     }
+    /* Iterate through aliens and make some of them shoot */
+    for (alien_idx = 0; alien_idx < NUM_ALIENS; alien_idx++) {
+        if (game.aliens[alien_idx].visible == 1) {
+            int shoot_frequency = game.aliens[alien_idx].shoot_frequency;
+            if ((timer_count % shoot_frequency == 0 ||
+                 timer_count % shoot_frequency == 5) &&
+                timer_count > shoot_frequency / 2) {
+                create_or_replace_bullet(&game, &game.aliens[alien_idx]);
+            }
+        }
+    }
+
     display();
 }
 
@@ -91,7 +138,7 @@ int is_game_finished(Game *game) {
 void create_or_replace_bullet(Game *game, Shooter *shooter) {
     int idx;
 
-    for (idx = 0; idx < 10; idx++) {
+    for (idx = 0; idx < NUM_BULLETS; idx++) {
         if (game->bullets[idx].visible == 0) {
             shooter_shoot(shooter, &game->bullets[idx]);
             return;
@@ -99,6 +146,7 @@ void create_or_replace_bullet(Game *game, Shooter *shooter) {
     }
     return ;
 }
+
 /* This is the entry-point for the game! */
 void c_start(void) {
     /* TODO:  You will need to initialize various subsystems here.  This
@@ -121,11 +169,11 @@ void c_start(void) {
     create_or_replace_bullet(&game, &game.player);
     display();
 
+    update_game(0);
+
     init_interrupts();
     init_keyboard();
     init_timer();
-
-    update_game();
 
     enable_interrupts();
 

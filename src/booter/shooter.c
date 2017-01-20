@@ -71,7 +71,7 @@ void shooter_shoot(Shooter *shooter, Bullet *bullet) {
                shooter->y_pos,
                bullet_direction,
                shooter->shooter_type,
-               5);
+               2);
 
 }
 
@@ -85,7 +85,7 @@ void shooter_handle_impact(Shooter *shooter, Bullet *bullet) {
 
         /* Decrease health, and remove bullet */
         bullet->visible = 0;
-        shooter->health -= 15;
+        shooter->health -= 1;
         shooter_check_health(shooter);
     }
 }
