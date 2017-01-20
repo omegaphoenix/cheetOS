@@ -74,6 +74,21 @@ void clear() {
     set_bg_color(default_bg_color);
 }
 
+void clear_bullet(Bullet bullet) {
+    char color = get_color(BLACK, bg_color);
+    set_grid_pix(bullet.x_pos, bullet.y_pos, color, ' ');
+}
+
+void clear_shooter(Shooter shooter) {
+    int idx, x_pos, y_pos;
+    char color = get_color(BLACK, bg_color);
+    for (idx = 0; idx < 4; idx++) {
+        x_pos = shooter.x_pos + (idx % 2);
+        y_pos = shooter.y_pos + (idx / 2);
+        set_grid_pix(x_pos, y_pos, color, ' ');
+    }
+}
+
 void display() {
     int i, x, y;
     char color, character;
@@ -102,8 +117,15 @@ void draw_shooter(Shooter actor) {
         c = actor.portrait[i];
         set_grid_pix(x, y, color, c);
     }
-    display();
 };
+
+void draw_bullet(Bullet bullet) {
+    int x_pos = bullet.x_pos;
+    int y_pos = bullet.y_pos;
+    char c = '.';
+    char color = get_color(LIGHT_GRAY, bg_color);
+    set_grid_pix(x_pos, y_pos, color, c);
+}
 
 void set_bg_color(char color) {
     bg_color = color;
@@ -124,7 +146,6 @@ void init_video(void) {
      *        as clearing the screen, initializing static variable state, etc.
      */
     init_grid();
-    test();
 }
 
 void test() {

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "shooter.h"
-
+#include "video.h"
 /*
  * All function definitions are in the header file.
  */
@@ -39,14 +39,19 @@ void new_shooter(Shooter *new_shooter,
 }
 
 /* TODO: Will probably similar to frequency of shooting */
-void shooter_move(Shooter *moving_shooter) {
+void shooter_move(Shooter *moving_shooter, int x_mov, int y_mov) {
+    clear_shooter(*moving_shooter);
 
+    /* TODO: Do some moving poop */
+    moving_shooter->x_pos += x_mov;
+    moving_shooter->y_pos += y_mov;
+
+    draw_shooter(*moving_shooter);
 }
 
-void shooter_shoot(Shooter *shooter) {
+void shooter_shoot(Shooter *shooter, Bullet *bullet) {
     /* For now, spawn bullets in the top left */
     Direction bullet_direction;
-    Bullet new_bullet;
 
     if (shooter->shooter_type == PLAYER) {
         bullet_direction = UP;
@@ -57,18 +62,17 @@ void shooter_shoot(Shooter *shooter) {
 
     /* For now, all bullets fly at same speed */
     /* TODO: Customize bullet speed if we have time */
-    /*
-    new_bullet = Bullet_new(shooter->x_pos,
-                            shooter->y_pos,
-                            bullet_direction,
-                            shooter->shooter_type,
-                            5);
 
-    return new_bullet;
-    */
+    new_bullet(bullet,
+               shooter->x_pos,
+               shooter->y_pos,
+               bullet_direction,
+               shooter->shooter_type,
+               5);
+
 }
 
-int shooter_check_impact(Shooter *shooter, Bullet *bullet) {
+void shooter_handle_impact(Shooter *shooter, Bullet *bullet) {
     /* Check if bullet is inside the shooter's box */
     if (bullet->x_pos < shooter->x_pos + 2 &&
         bullet->x_pos >= shooter->x_pos &&
@@ -79,7 +83,13 @@ int shooter_check_impact(Shooter *shooter, Bullet *bullet) {
         /* Decrease health, and remove bullet */
         bullet->visible = 0;
         shooter->health -= 15;
-        return 1;
+        shooter_check_health(shooter);
     }
-    return 0;
+}
+
+void shooter_check_health(Shooter *shooter) {
+    if (shooter->health <= 0) {
+        shooter->visible = 0;
+        clear_shooter(*shooter);
+    }
 }
