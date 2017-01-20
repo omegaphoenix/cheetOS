@@ -4,6 +4,9 @@
 #include "bullet.h"
 #include "shooter.h"
 
+#define NUM_ALIENS 5 /* vary with difficulty level? */
+#define NUM_BULLETS 10
+
 /* This struct will contain all the game information necessary */
 typedef struct _Game {
     /* Game board dimension */
@@ -14,10 +17,10 @@ typedef struct _Game {
     Shooter player;
 
     /* Alien shooters */
-    Shooter aliens[5];
+    Shooter aliens[NUM_ALIENS];
 
     /* Bullets */
-    Bullet bullets[10];
+    Bullet bullets[NUM_BULLETS];
 
     /* Current number of bullets. Only needed until array gets full once. */
     int num_bullets;

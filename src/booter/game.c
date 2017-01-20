@@ -1,5 +1,6 @@
 #include "bullet.h"
 #include "game.h"
+#include "gameDefinitions.h"
 #include "interrupts.h"
 #include "keyboard.h"
 #include "shooter.h"
@@ -10,12 +11,12 @@ void new_game(int x_dim, int y_dim, int difficulty_level) {
     int idx;
     new_shooter(&game.player, x_dim / 2, y_dim - 2, 1, PLAYER, 100, 0);
 
-    for (idx = 0; idx < 5; idx++) {
+    for (idx = 0; idx < NUM_ALIENS; idx++) {
         new_shooter(&game.aliens[idx], idx * 5 + 10, 0, 1, ALIEN, 15, idx + 1);
     }
 
     /* For now, all we need is for the bullets to not be visible. */
-    for (idx = 0; idx < 10; idx++) {
+    for (idx = 0; idx < NUM_BULLETS; idx++) {
         game.bullets[idx].visible = 0;
     }
 
@@ -53,6 +54,18 @@ void update_game(int timer_count) {
             /* If not impacted, draw it again */
             if (game.bullets[bullet_idx].visible == 1) {
                 draw_bullet(game.bullets[bullet_idx]);
+            }
+        }
+    }
+
+    /* Don't shoot in the first few secs of game */
+    if (timer_count > 150) {
+        /* Iterate through aliens and make some of them shoot */
+        for (alien_idx = 0; alien_idx < NUM_ALIENS; alien_idx++) {
+            if (game.aliens[alien_idx].visible == 1) {
+                if (timer_count % 300 == alien_idx) {
+                    create_or_replace_bullet(&game, &game.aliens[alien_idx]);
+                }
             }
         }
     }
