@@ -25,13 +25,7 @@
 #define GRID_WIDTH 80
 #define COLOR_OFFSET 1
 
-
-/* TODO:  You can create static variables here to hold video display state,
- *        such as the current foreground and background color, a cursor
- *        position, or any other details you might want to keep track of!
- */
-
-/* TODO: holds character and color. Need 2-byte type. Initialize to 0s? */
+/* grid stores the character and color of each "pixel" on the screen*/
 static short grid[GRID_HEIGHT][GRID_WIDTH];
 static int bg_color;
 
@@ -102,11 +96,10 @@ void display() {
 }
 
 void draw_shooter(Shooter actor) {
-    /* TODO: store char and fg color in the grids */
     int i, x, y;
     char c, color;
     if (actor.shooter_type == PLAYER) {
-        color = get_color(BLUE, bg_color);
+        color = get_color(WHITE, bg_color);
     }
     else {
         color = get_color(GREEN, bg_color);
