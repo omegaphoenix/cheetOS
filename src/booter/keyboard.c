@@ -41,9 +41,15 @@
  */
 
 void init_queue() {
+    if (are_interrupts_enabled()) {
+        disable_interrupts();
+    }
     key_queue.capacity = QUEUE_LEN;
     key_queue.front = -1;
     key_queue.rear = -1;
+    if (are_interrupts_enabled()) {
+        enable_interrupts();
+    }
 }
 
 int is_empty_queue() {

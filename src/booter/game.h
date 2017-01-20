@@ -5,14 +5,14 @@
 #include "shooter.h"
 
 #define NUM_ALIENS 10 /* vary with difficulty level? */
-#define NUM_BULLETS 100
+#define NUM_BULLETS 200
 /*
  * These parameters are for random0 found on wikipedia
  * https://en.wikipedia.org/wiki/Linear_congruential_generator
  */
-#define RANDOM_A 91895
-#define RANDOM_C 11395
-#define RANDOM_M 103290
+#define RANDOM_A 918
+#define RANDOM_C 113
+#define RANDOM_M 1995
 /* This struct will contain all the game information necessary */
 typedef struct _Game {
     /* Game board dimension */
