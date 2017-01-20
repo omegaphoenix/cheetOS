@@ -29,30 +29,30 @@ void new_game(int x_dim, int y_dim, int difficulty_level) {
  * Handles bullet movement. Will deal with shooting frequency later once I see how
  * timer works
  */
-void update_game(Game *game) {
+void update_game() {
     int alien_idx;
     int bullet_idx;
 
     /* Iterate through bullets to update their movement */
     for (bullet_idx = 0; bullet_idx < 10; bullet_idx++) {
-        if (game->bullets[bullet_idx].visible == 1) {
+        if (game.bullets[bullet_idx].visible == 1) {
 
             /* First, update movements. then, check collisions */
-            clear_bullet(game->bullets[bullet_idx]);
-            bullet_move(&game->bullets[bullet_idx]);
+            clear_bullet(game.bullets[bullet_idx]);
+            bullet_move(&game.bullets[bullet_idx]);
 
             /* Check potential impacts */
-            shooter_handle_impact(&game->player, &game->bullets[bullet_idx]);
+            shooter_handle_impact(&game.player, &game.bullets[bullet_idx]);
             for (alien_idx = 0; alien_idx < 5; alien_idx++) {
-                if (game->aliens[alien_idx].visible) {
-                    shooter_handle_impact(&game->aliens[alien_idx],
-                                          &game->bullets[bullet_idx]);
+                if (game.aliens[alien_idx].visible) {
+                    shooter_handle_impact(&game.aliens[alien_idx],
+                                          &game.bullets[bullet_idx]);
                 }
             }
 
             /* If not impacted, draw it again */
-            if (game->bullets[bullet_idx].visible == 1) {
-                draw_bullet(game->bullets[bullet_idx]);
+            if (game.bullets[bullet_idx].visible == 1) {
+                draw_bullet(game.bullets[bullet_idx]);
             }
         }
     }
