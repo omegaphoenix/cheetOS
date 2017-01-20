@@ -135,7 +135,7 @@ int is_game_finished(Game *game) {
         return 1;
     }
 
-    for (idx = 0; idx < 5; idx++) {
+    for (idx = 0; idx < NUM_ALIENS; idx++) {
         if (game->aliens[idx].visible) {
           return 0;
         }
@@ -171,7 +171,7 @@ void c_start(void) {
 
     /* initial drawings - move these to init_video() */
     draw_shooter(game.player);
-    for (idx = 0; idx < 5; idx++) {
+    for (idx = 0; idx < NUM_ALIENS; idx++) {
         draw_shooter(game.aliens[idx]);
     }
     create_or_replace_bullet(&game, &game.player);

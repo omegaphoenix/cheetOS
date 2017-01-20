@@ -4,7 +4,7 @@
 #include "bullet.h"
 #include "shooter.h"
 
-#define NUM_ALIENS 5 /* vary with difficulty level? */
+#define NUM_ALIENS 10 /* vary with difficulty level? */
 #define NUM_BULLETS 15
 /*
  * These parameters are for random0 found on wikipedia
