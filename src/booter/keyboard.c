@@ -63,10 +63,10 @@ int queue_size() {
 }
 
 
-void enqueue(char x) {
+void enqueue(char scan_code) {
     if (!is_full_queue(key_queue)) {
         key_queue.rear = (key_queue.rear + 1) % key_queue.capacity;
-        key_queue.array[key_queue.rear] = x;
+        key_queue.array[key_queue.rear] = scan_code;
         if (key_queue.front == -1) {
             key_queue.front=key_queue.rear;
         }
@@ -86,7 +86,7 @@ char dequeue() {
             key_queue.rear = -1;
         }
         else {
-            key_queue.front = (key_queue.front+1) % key_queue.capacity;
+            key_queue.front = (key_queue.front + 1) % key_queue.capacity;
         }
     }
 
