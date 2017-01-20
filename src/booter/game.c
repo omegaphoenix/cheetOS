@@ -186,7 +186,7 @@ void update_game(int timer_count) {
             next_level();
         }
         else {
-            game_over(game.seed);
+            game_over(game.difficulty_level);
         }
     }
 }
