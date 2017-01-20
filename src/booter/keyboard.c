@@ -63,7 +63,7 @@ int queue_size() {
 }
 
 
-void enqueue(char scan_code) {
+void enqueue(unsigned char scan_code) {
     disable_interrupts();
     if (!is_full_queue(key_queue)) {
         key_queue.rear = (key_queue.rear + 1) % key_queue.capacity;
@@ -75,7 +75,7 @@ void enqueue(char scan_code) {
     enable_interrupts();
 }
 
-char dequeue() {
+unsigned char dequeue() {
     char data = 0;
 
     if (is_empty_queue(key_queue)) {

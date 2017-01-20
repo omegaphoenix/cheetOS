@@ -1,12 +1,15 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
+#define LEFT_KEY 0x4b
+#define RIGHT_KEY 0x4d
+
 #define QUEUE_LEN 100
 
 typedef struct CircQueue {
     int front, rear;
     int capacity;
-    char array[QUEUE_LEN];
+    unsigned char array[QUEUE_LEN];
 } CircQueue;
 
 volatile CircQueue key_queue;
@@ -24,10 +27,10 @@ int is_full_queue();
 int queue_size();
 
 /* Add key to key_queue. Does nothing if queue is full */
-void enqueue(char x);
+void enqueue(unsigned char x);
 
 /* Remove key from key_queue and return */
-char dequeue();
+unsigned char dequeue();
 
 /* Initialize keyboard to handle */
 void init_keyboard(void);

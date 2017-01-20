@@ -57,6 +57,17 @@ void update_game() {
         }
     }
 
+    if (!is_empty_queue()) {
+        unsigned char key_code = dequeue();
+        switch (key_code) {
+            case LEFT_KEY:
+                shooter_move(&game.player, 1);
+                break;
+            case RIGHT_KEY:
+                shooter_move(&game.player, 0);
+                break;
+        }
+    }
     display();
 }
 
@@ -98,10 +109,10 @@ void c_start(void) {
      */
     int idx;
 
-    new_game(40, 12, 1);
+    new_game(80, 25, 1);
 
     init_video();
-  
+
     /* initial drawings - move these to init_video() */
     draw_shooter(game.player);
     for (idx = 0; idx < 5; idx++) {
@@ -110,14 +121,11 @@ void c_start(void) {
     create_or_replace_bullet(&game, &game.player);
     display();
 
-    update_game();
-
-  
     init_interrupts();
     init_keyboard();
     init_timer();
 
-
+    update_game();
 
     enable_interrupts();
 
