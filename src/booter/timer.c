@@ -53,9 +53,7 @@ static volatile int timer_count;
 
 void update_timer(void) {
     timer_count++;
-    if (timer_count % 30 == 0) { /* make this dependent on bullet speed... */
-        update_game();
-    }
+    update_game(timer_count);
 }
 
 void init_timer(void) {

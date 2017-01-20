@@ -29,7 +29,7 @@ void new_game(int x_dim, int y_dim, int difficulty_level) {
  * Handles bullet movement. Will deal with shooting frequency later once I see how
  * timer works
  */
-void update_game() {
+void update_game(int timer_count) {
     int alien_idx;
     int bullet_idx;
 
@@ -39,7 +39,7 @@ void update_game() {
 
             /* First, update movements. then, check collisions */
             clear_bullet(game.bullets[bullet_idx]);
-            bullet_move(&game.bullets[bullet_idx]);
+            bullet_move(&game.bullets[bullet_idx], timer_count);
 
             /* Check potential impacts */
             shooter_handle_impact(&game.player, &game.bullets[bullet_idx]);
@@ -110,7 +110,7 @@ void c_start(void) {
     create_or_replace_bullet(&game, &game.player);
     display();
 
-    update_game();
+    update_game(0);
 
   
     init_interrupts();

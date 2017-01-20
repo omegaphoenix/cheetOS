@@ -31,6 +31,6 @@ void new_bullet(Bullet *bullet,
                 int speed);
 
 /* Move update for the bullet */
-void bullet_move(Bullet *moving_bullet);
+void bullet_move(Bullet *moving_bullet, int timer_count);
 
 #endif /* BULLET_H_ */
