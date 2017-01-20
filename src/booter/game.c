@@ -1,6 +1,9 @@
 #include "bullet.h"
 #include "game.h"
-/* #include "shooter.h" */
+#include "interrupts.h"
+#include "keyboard.h"
+#include "shooter.h"
+#include "timer.h"
 #include "video.h"
 
 void new_game(int x_dim, int y_dim, int difficulty_level) {
@@ -18,11 +21,15 @@ void new_game(int x_dim, int y_dim, int difficulty_level) {
 }
 
 /* TODO: Game updates */
-void update_game(Game *game) {
-
+void update_game() {
+    // set_bg_color(WHITE);
+    // draw_shooter(game.player);
+    return;
 }
 
 
+/* for debugging */
+static int statcount = 0;
 
 /* This is the entry-point for the game! */
 void c_start(void) {
@@ -33,9 +40,19 @@ void c_start(void) {
      *        do whatever else you decide to do!
      */
 
+    new_game(40, 12, 1);    
+
     init_video();
-    new_game(40, 12, 1);
     draw_shooter(game.player);
+
+    init_interrupts();
+    //init_keyboard();
+    init_timer();
+
+
+        
+    enable_interrupts();
+
 
     /* Loop forever, so that we don't fall back into the bootloader code. */
     while (1) {}
