@@ -99,20 +99,37 @@ void shooter_handle_impact(Shooter *shooter, Bullet *bullet) {
 
 void shooter_check_health(Shooter *shooter) {
     /* declining health */
-    if (shooter->health <= 10 && shooter->health > 5) {
-        shooter->portrait[0] = 222;
-        shooter->portrait[1] = 179;
-        shooter->portrait[2] = 177;
-        shooter->portrait[3] = 177;
+    if (shooter->health <= 9 && shooter->health > 5) {
+        if (shooter->shooter_type == PLAYER) {
+            shooter->portrait[0] = 222;
+            shooter->portrait[1] = 179;
+            shooter->portrait[2] = 177;
+            shooter->portrait[3] = 177;
+        }
+        else {
+            shooter->portrait[0] = 177;
+            shooter->portrait[1] = 177;
+            shooter->portrait[2] = 254;
+            shooter->portrait[3] = 254;
+        }
         draw_shooter(*shooter);
     }
     /* low health */
     else if (shooter->health <= 5 && shooter->health > 0) {
-        shooter->portrait[0] = 179;
-        shooter->portrait[1] = 179;
-        shooter->portrait[2] = 176;
-        shooter->portrait[3] = 176;
+        if (shooter->shooter_type == PLAYER) {
+            shooter->portrait[0] = 179;
+            shooter->portrait[1] = 179;
+            shooter->portrait[2] = 176;
+            shooter->portrait[3] = 176;
+        }
+        else {
+            shooter->portrait[0] = 176;
+            shooter->portrait[1] = 176;
+            shooter->portrait[2] = 254;
+            shooter->portrait[3] = 254;
+        }
         draw_shooter(*shooter);
+        
     }
     /* dead */
     else if (shooter->health <= 0) {
