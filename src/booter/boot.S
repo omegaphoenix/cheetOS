@@ -44,6 +44,7 @@ boot_start:
 	# Load the remainder of the program into memory using int 10h
 	# "Extended Read Operation."  If it fails, jump to boot_fail.
 	mov	$0x42, %ah	# Extended Read Sector from Drive
+	push	%ebp	# Store where stack pointer was
 
 	# Push parts of DAP onto the stack in reverse
 	# https://en.wikipedia.org/wiki/INT_13H#INT_13h_AH.3D42h:_Extended_Read_Sectors_From_Drive
@@ -56,12 +57,13 @@ boot_start:
 	push	$0x2000
 	push	$0
 
-	push	$15		# number of sectors to be read
+	push	$26		# number of sectors to be read
 	push	$0x10		# size of DAP
 
 	mov 	%sp, %si	# set DS:SI, segment:offset pointer to DAP
 	int 	$0x13		# read sectors, carry set on error, clear if no error
 	jc 	boot_fail	# handle error if carry set
+	pop	%ebp	# Restore stack pointer
 
 
 	mov	$STR_LOADED, %si

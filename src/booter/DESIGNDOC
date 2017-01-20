@@ -171,14 +171,17 @@ a few keyboard inputs and because its basic instruction doesn't take too much
 to code, we decided to go for it during the limited time we had.
 
 Also, that is the only game Justin could beat without getting frustrated
-from losing in the first 30 seconds out of the games considered.
+from losing in the first 30 seconds out of the games considered (Donkey Kong,
+Pac Man, Galaga).
 
 >> A7: Did your choice of project affect any of the specific implementation
 >> details of the various subsystems that you needed to use?  (For example,
 >> if you implemented a scrolling game, did you implement specialized high-
 >> performance video code to scroll the screen?)
 
-Yes.
+Yes, we needed to update the display at a constant rate using the timer
+interrupt instead of busy waiting because the bullets would need to be
+constantly updated.
 
 >> A8: Did you run into any technical or resource limitations in the
 >> implementation of your program?  (For example, bootloader didn't fit,
@@ -186,14 +189,14 @@ Yes.
 >> achieve the desired performance level, etc.)  If so, what steps did you
 >> take to try to overcome those limitations?
 
-  We noticed that our bootloader would often loop whenever we would call
-certain functions. Functions that return struct objects and return
-integers have caused these loops to occur (which we assumed to be QEMU
+We noticed that our bootloader would often loop whenever we would call
+certain functions. Functions that return struct objects
+have caused these loops to occur (which we assumed to be QEMU
 crashing and restarting). While we still haven't pinpointed the cause, we
 got around this case through the use of the global game state and passing
 values in by reference. This is why we have a majority of void functions.
 
-  Because space invaders also involves lots of bullets, John really
+Because space invaders also involves lots of bullets, John really
 desired there to be access to dynamic allocation, but once he learned
 that this wasn't allowed, we set a maximum number of bullets allowed
 in the game at any particular time. We then emulated "endless" bullets
@@ -209,12 +212,25 @@ have expired).
 >> memory occupied by the DAP get reclaimed after it is used?  If not,
 >> why not?
 
+We stored the DAP on the stack. We reclaimed the memory by moving the stack
+pointer back to before the arguments were pushed to satisfy
+cdecl which says that the caller should clean the stack.
+
 >> B2: How many sectors does your bootloader load?  How did you arrive
 >> at this number?  Briefly explain your rationale.
+
+Each bullet takes 24 bytes. Each player or alien takes 29 bytes.  Thus
+to store (11 shooters * 25 character height * 2) 550 bullets and 11 player or
+aliens and 5 ints, the game struct takes up 13539 bytes, which is over
+26 sectors of 512 bytes. Since this is a conservative overestimate since
+we are using an upper bound on the number of bullets, 26 sectors should be
+plenty.
 
 >> B3: Does your bootloader pass any information to the main program?
 >> (If not, just say no.)  If so, what information is passed, and how
 >> is it passed?
+
+No.
 
 ---- ALGORITHMS ----
 
@@ -223,6 +239,8 @@ have expired).
 
 >> B4: Did you add any BIOS calls to your bootloader to prepare for your
 >> main program?  (i.e. things that aren't available in protected mode)
+
+No.
 
 			  VIDEO SUBSYSTEM
 			  ===============
@@ -253,7 +271,7 @@ display() is called, the data stored in 'grid' is transferred to the video
 buffer.
 
 We also store a default background color, since we don't anticipate that
-individual characters will typically different background colors.
+individual characters will typically have different background colors.
 
 
 ---- ALGORITHMS ----
