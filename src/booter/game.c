@@ -1,9 +1,10 @@
 #include "bullet.h"
 #include "game.h"
-/* #include "shooter.h" */
-#include "video.h"
-#include "timer.h"
 #include "interrupts.h"
+#include "keyboard.h"
+#include "shooter.h"
+#include "timer.h"
+#include "video.h"
 
 void new_game(int x_dim, int y_dim, int difficulty_level) {
     int idx;
@@ -45,8 +46,10 @@ void c_start(void) {
     draw_shooter(game.player);
 
     init_interrupts();
-
+    //init_keyboard();
     init_timer();
+
+
         
     enable_interrupts();
 
