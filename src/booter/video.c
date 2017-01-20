@@ -173,9 +173,10 @@ void init_score() {
 void game_over(int message) {
     int num_messages = 2;
     set_bg_color(BLACK);
-    char color = get_color(MAGENTA, bg_color);
+    char color = get_color(LIGHT_RED, bg_color);
     char *word;
     char length;
+
     switch (message % num_messages) {
         case 0:
             word = "GAME OVER DWEEB";
@@ -195,7 +196,8 @@ void game_over(int message) {
             break;
     }
     int i;
+    int center_offset = (GRID_WIDTH - length) / 2;
     for (i = 0; i < length; i++) {
-        set_grid_pix(i, GRID_HEIGHT / 2, color, word[i]);
+        set_grid_pix(center_offset + i, GRID_HEIGHT / 2, color, word[i]);
     }
 }
