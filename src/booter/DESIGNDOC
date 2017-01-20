@@ -8,17 +8,17 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Justin Leong <jleong@caltech.edu>
+John Li <jzli@caltech.edu>
+Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment: 0 
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL: https://github.com/omegaphoenix/cheetOS
    commit ...
 
 ---- PRELIMINARIES ----
@@ -29,6 +29,14 @@ FirstName LastName <email@domain.example>
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
+
+Printing to screen:
+http://wiki.osdev.org/Printing_to_Screen
+
+Interrupt Descriptor Table:
+http://wiki.osdev.org/Interrupt_Descriptor_Table
+
+
 
 			     PC BOOTER
 			     =========
@@ -42,8 +50,19 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
+   Justin Leong:
+   John Li:
+   Christina Lin: 
+
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+
+   Justin Leong:
+
+   John Li:
+
+   Christina Lin: Initial implementation of video/display API; handling of 
+   general interrupts; timer interrupts.
 
 Note that this design document is a bit long.  Most of the questions can be
 answered pretty briefly.  Don't feel a need to write a long answer if it is
@@ -57,8 +76,17 @@ not required by the question.
 >> A1: In a few sentences, describe what kind of game or demo program your
 >> PC booter implements.
 
+We built a mini Space Invaders game. The user, controlling a shooter at the
+bottom of the screen, battles a fleet of alien invaders positioned at the top
+of the screen. 
+
 >> A2: In a few sentences, how does the user interact with the program?
 >> What are the controls?  What should the user try to do?
+
+The user moves the shooter right/left with arrow keys and fires bullets with
+the spacebar. The shooter's bullets destroy alien spaceships upon impact, and
+likewise, the aliens' bullets destroy the user's shooter. The user's goal is to
+destroy the aliens before getting destroyed.
 
 ---- DATA STRUCTURES ----
 
@@ -66,6 +94,20 @@ not required by the question.
 >> perform its operations.  Don't focus on state managed within interrupt
 >> handlers; we will look at that later.  Rather, focus on state that is
 >> part of the game implementation itself.
+
+The program maintains a global 'game' variable. 'game' is an instance of the 
+Game struct, and it holds data on the x- and y- dimensions of the game board,
+the player, an array of aliens, an array of bullets, the total number of 
+bullets, and current level of difficulty.
+
+The player and aliens are all instances of the Shooter struct. They store the
+states of the shooters on the game board, including position, shooter type
+(player or alien), portrait (how the shooter is represented on the screen),
+speed, health, shooting frequency, and visibility (whether shooter is alive).
+
+Additionally, each bullet stores its own position, direction, speed, source,
+and visibility.
+
 
 ---- SYNCHRONIZATION ----
 
@@ -93,6 +135,7 @@ not required by the question.
 >> or a really useful standard library wasn't available, or you couldn't
 >> achieve the desired performance level, etc.)  If so, what steps did you
 >> take to try to overcome those limitations?
+
 
 			     BOOT SECTOR
 			     ===========
@@ -128,20 +171,54 @@ not required by the question.
 >> represented in this mode?  (Please be brief; we don't need complete
 >> documentation on the video system.)
 
+Our program uses text mode. The video buffer starts at 0xB8000. The display 
+consists of text arranged into 25 80-char lines, and this text is stored in
+the video buffer. Each character on the screen is represented by two bytes:
+the first byte is the char, and the second byte is its color -- the lowest
+four bits hold the foreground color and the highest three bits hold the 
+background color. 
+
 >> C2: Does your video code maintain any variables or data structures to
 >> facilitate video output?  Briefly describe these values and their
 >> purposes here.
+
+Our video system stores data in 'grid,' a 2D array. Each element in the array
+is two bytes, representing a character on screen in the convention described
+in C1. The grid makes it easy to draw() shooters and bullets to (X, Y)
+positions on the screen, or to set specific "pixels" on the screen. When 
+display() is called, the data stored in 'grid' is transferred to the video
+buffer.
+
+We also store a default background color, since we don't anticipate that 
+individual characters will typically different background colors.
+
 
 ---- ALGORITHMS ----
 
 >> C3: What abstraction does your video code present to your main program?
 >> Briefly describe the higher-level operations you decided to implement.
 
+Our video API allows us to call functions like draw_shooter(), draw_bullet(),
+clear_shooter(), and clear_bullet(). The higher-level draw() functions take
+a Shooter or Bullet struct as a parameter. The structs specify the (X, Y) 
+coordinates of the top left corner, as well as a 2x2 "image" of the 
+Shooter/Bullet. The functions transform these attributes into the correct
+data format to store in the grid. Similarly, the clear() functions remove the
+Shooter/Bullet from the grid.
+
+These higher-level operations allow us greater ease in drawing pictures 
+composed of more than one character. Additionally, we implemented the 
+set_pix() and set_grid_pix() functions to modify characters at specific (X, Y)
+coordinates by transforming X and Y into an offset to add to the video buffer.
+
+
+
 ---- RATIONALE ----
 
 >> C4: Did you take any specific steps to improve the appearance of your
 >> program's display output?  For example, using Extended ASCII Codes, or
 >> choosing specific colors to represent different things?
+
 
 			  TIMER SUBSYSTEM
 			  ===============
@@ -150,6 +227,12 @@ not required by the question.
 
 >> D1: What state does your timer subsystem manage?  Describe the variables
 >> or data structures that it maintains, and how they are used.
+
+The timer subsystem stores a static int, timer_count, which is incremented
+each time the a timer interrupt is fired. After each interrupt, timer_count
+is passed to update_game(). Based on the value of timer_count, the aliens will
+shoot bullets and the existing bullets will move. display() is also called to
+refresh the video buffer with the updated positions.
 
 ---- ALGORITHMS ----
 
