@@ -181,7 +181,7 @@ void init_interrupts(void) {
 
 
     /* Use the lidt() function defined above to install our IDT */
-    lidt(&interrupt_descriptor_table, 100);
+    lidt(&interrupt_descriptor_table, NUM_INTERRUPTS * sizeof(IDT_Descriptor));
 
 
     /* Remap the Programmable Interrupt Controller to deliver its interrupts
@@ -225,8 +225,8 @@ void install_interrupt_handler(int num, void *handler) {
     /* The handler address must be split into two halves, so that it
      * can be stored into the IDT descriptor.
      */
-    new_handler.offset_15_0 = ((int) handler) & 0xFFFF; /* lower half */
-    new_handler.offset_31_16 = ((int) handler) >> 16; /* higher half */
+    new_handler.offset_15_0 = ((int) handler & 0xFFFF); /* lower half */
+    new_handler.offset_31_16 = ((int) handler >> 16); /* higher half */
     
     /* The segment selector should be the code-segment selector
      * that was set up in the bootloader.  (See boot.h for the
