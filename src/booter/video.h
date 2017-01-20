@@ -29,11 +29,20 @@ void init_video(void);
 /* Clears the grid but does not change the video buffer */
 void clear();
 
+/* Clears bullet from grid but not display */
+void clear_bullet(Bullet bullet);
+
+/* Clears shooter from grid but not display. */
+void clear_shooter(Shooter actor);
+
 /* Writes the contents of the grid to the video buffer */
 void display();
 
 /* Draws an actor by adding its icon and color to the grid */
 void draw_shooter(Shooter actor);
+
+/* Draws a bullet by adding its icon and color to grid */
+void draw_bullet(Bullet bullet);
 
 /* Sets background color for entire display */
 void set_bg_color(char color);
