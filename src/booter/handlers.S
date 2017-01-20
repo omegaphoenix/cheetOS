@@ -36,7 +36,7 @@ timer_handler:
         pusha
         cld
 
-        call update_timer()
+        call update_timer
 
         mov     $0x20, %al
         out     %al, $0x20
