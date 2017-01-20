@@ -1,8 +1,9 @@
 #include "timer.h"
-#include "ports.h"
-#include "interrupts.h"
-#include "handlers.h"
+
 #include "game.h"
+#include "handlers.h"
+#include "interrupts.h"
+#include "ports.h"
 
 /*============================================================================
  * PROGRAMMABLE INTERVAL TIMER
@@ -49,12 +50,11 @@
  *        compiler knows they can be changed by exceptional control flow.
  */
 
-// static volatile int timer_count;
+static volatile int timer_count;
 
 void update_timer(void) {
     timer_count++;
-    // update_game();
-    return;
+    update_game(timer_count);
 }
 
 void init_timer(void) {
@@ -79,5 +79,5 @@ void init_timer(void) {
      */
 
     install_interrupt_handler(TIMER_INTERRUPT, timer_handler);
-    
+
 }

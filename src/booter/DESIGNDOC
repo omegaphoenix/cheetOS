@@ -12,7 +12,7 @@ Justin Leong <jleong@caltech.edu>
 John Li <jzli@caltech.edu>
 Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment: 0 
+>> Specify how many late tokens you are using on this assignment: 0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
@@ -40,6 +40,11 @@ Linear Congruential Generator
 https://en.wikipedia.org/wiki/Linear_congruential_generator
 http://stackoverflow.com/questions/3062746/special-simple-random-number-generator
 
+Bootloader INT13H
+https://en.wikipedia.org/wiki/INT_13H#INT_13h_AH.3D42h:_Extended_Read_Sectors_From_Drive
+
+Circular Queue
+http://stackoverflow.com/questions/20619234/circular-queue-implementation
 
 			     PC BOOTER
 			     =========

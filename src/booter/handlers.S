@@ -45,4 +45,16 @@ timer_handler:
         iret    # Go back to interrupted code
 
 
-    
+.align 4
+.globl keyboard_handler
+keyboard_handler:
+        pusha
+        cld
+
+        call update_keyboard
+
+        mov     $0x20, %al
+        out     %al, $0x20
+
+        popa    # Restore all registers
+        iret    # Go back to interrupted code

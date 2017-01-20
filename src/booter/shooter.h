@@ -48,7 +48,7 @@ void new_shooter(Shooter *shooter,
                  int shoot_frequency);
 
 /* Moving implementation. Lower prio for now. */
-void shooter_move(Shooter *moving_shooter, int x_mov, int y_mov);
+void shooter_move(Shooter *moving_shooter, int left);
 
 /* Shooting function for the alien. Returns a bullet */
 void shooter_shoot(Shooter *shooter, Bullet *bullet);
@@ -57,7 +57,7 @@ void shooter_shoot(Shooter *shooter, Bullet *bullet);
  * Function that checks if a bullet and a shooter collide.
  * Returns 0 if false, 1 if true.
  */
-int shooter_check_impact(Shooter *shooter, Bullet *bullet);
+void shooter_handle_impact(Shooter *shooter, Bullet *bullet);
 
 /* Checks if shooter is still alive */
 void shooter_check_health(Shooter *shooter);

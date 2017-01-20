@@ -4,6 +4,15 @@
 #include "bullet.h"
 #include "shooter.h"
 
+#define NUM_ALIENS 10
+#define NUM_BULLETS 200
+/*
+ * These parameters are for a pseudo random number generator
+ * https://en.wikipedia.org/wiki/Linear_congruential_generator
+ */
+#define RANDOM_A 8121
+#define RANDOM_C 28411
+#define RANDOM_M 134456
 /* This struct will contain all the game information necessary */
 typedef struct _Game {
     /* Game board dimension */
@@ -14,16 +23,18 @@ typedef struct _Game {
     Shooter player;
 
     /* Alien shooters */
-    Shooter aliens[5];
+    Shooter aliens[NUM_ALIENS];
 
     /* Bullets */
-    Bullet bullets[10];
-
-    /* Current number of bullets. Only needed until array gets full once. */
-    int num_bullets;
+    Bullet bullets[NUM_BULLETS];
 
     /* Difficulty Level */
     int difficulty_level;
+
+    /* Random seed */
+    int seed;
+
+    int score;
 } Game;
 
 Game game;
@@ -46,4 +57,10 @@ int is_game_finished(Game *game);
  * Any bullet that is now invisible
  */
 void create_or_replace_bullet(Game *game, Shooter *shooter);
+
+/*
+ * Implementation of random0 using Linear Congruential Generator
+ * https://en.wikipedia.org/wiki/Linear_congruential_generator
+ */
+void rand();
 #endif /* GAME_H_ */

@@ -23,6 +23,11 @@
 #define YELLOW        14
 #define WHITE         15
 
+#define MAX_SCORE     999999
+#define MAX_DIGITS    6
+
+#define GRID_HEIGHT 25
+#define GRID_WIDTH 80
 
 void init_video(void);
 
@@ -62,6 +67,12 @@ char get_grid_color(int x, int y);
 /* Return character stored at pixel in grid */
 char get_grid_char(int x, int y);
 
-/* Print test string */
-void test();
+/* Print insulting comment */
+void game_over();
+
+/* Initialize score on screen */
+void init_score();
+
+/* Update on-screen score */
+void update_score(int score);
 #endif /* VIDEO_H */

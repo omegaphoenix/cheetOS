@@ -21,17 +21,9 @@
  * the VGA links in the "Video" section.
  */
 #define VIDEO_BUFFER ((char *) 0xB8000)
-#define GRID_HEIGHT 25
-#define GRID_WIDTH 80
 #define COLOR_OFFSET 1
 
-
-/* TODO:  You can create static variables here to hold video display state,
- *        such as the current foreground and background color, a cursor
- *        position, or any other details you might want to keep track of!
- */
-
-/* TODO: holds character and color. Need 2-byte type. Initialize to 0s? */
+/* grid stores the character and color of each "pixel" on the screen*/
 static short grid[GRID_HEIGHT][GRID_WIDTH];
 static int bg_color;
 
@@ -102,11 +94,10 @@ void display() {
 }
 
 void draw_shooter(Shooter actor) {
-    /* TODO: store char and fg color in the grids */
     int i, x, y;
     char c, color;
     if (actor.shooter_type == PLAYER) {
-        color = get_color(BLUE, bg_color);
+        color = get_color(WHITE, bg_color);
     }
     else {
         color = get_color(GREEN, bg_color);
@@ -146,20 +137,65 @@ void init_video(void) {
      *        as clearing the screen, initializing static variable state, etc.
      */
     init_grid();
+    init_score();
 }
 
-void test() {
+void update_score(int score) {
+    init_score();
+    int new_score = score;
+    int pow_of_ten = 1;
+    int length = 13;
+    char color = get_color(CYAN, BLACK);
+    if (new_score > MAX_SCORE) {
+        new_score = MAX_SCORE;
+    }
+    int i;
+    for (i = 0; i < MAX_DIGITS; i++) {
+        int curr_dig = new_score / pow_of_ten;
+        curr_dig = curr_dig % 10;
+        char character = curr_dig + '0';
+        set_grid_pix(length - i, GRID_HEIGHT - 1, color, character);
+        pow_of_ten *= 10;
+    }
+}
+
+void init_score() {
+    int i;
+    int y = GRID_HEIGHT - 1;
+    char *word = "SCORE: 000000";
+    int length = 13;
+    char color = get_color(CYAN, BLACK);
+    for (i = 0; i < length; i++) {
+        set_grid_pix(i + 1, GRID_HEIGHT - 1, color, word[i]);
+    }
+}
+
+void game_over(int message) {
+    int num_messages = 2;
     set_bg_color(BLACK);
     char color = get_color(MAGENTA, bg_color);
-    set_grid_pix(1, 1, color, 'I');
-    set_grid_pix(2, 1, color, '\'');
-    set_grid_pix(3, 1, color, 'M');
-    set_grid_pix(4, 1, color, ' ');
-    set_grid_pix(5, 1, color, 'A');
-    set_grid_pix(6, 1, color, ' ');
-    set_grid_pix(7, 1, color, 'D');
-    set_grid_pix(8, 1, color, 'W');
-    set_grid_pix(9, 1, color, 'E');
-    set_grid_pix(10, 1, color, 'E');
-    set_grid_pix(11, 1, color, 'B');
+    char *word;
+    char length;
+    switch (message % num_messages) {
+        case 0:
+            word = "GAME OVER DWEEB";
+            length = 15;
+            break;
+        case 1:
+            word = "BETTER LUCK NEXT TIME";
+            length = 21;
+            break;
+        case 2:
+            word = "YO MAMA SHOOTS BETTER THAN YOU";
+            length = 30;
+            break;
+        default:
+            word = "GAME OVER";
+            length = 9;
+            break;
+    }
+    int i;
+    for (i = 0; i < length; i++) {
+        set_grid_pix(i, GRID_HEIGHT / 2, color, word[i]);
+    }
 }

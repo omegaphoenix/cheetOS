@@ -1,6 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-
+#include "game.h"
 #include "shooter.h"
 #include "video.h"
 /*
@@ -23,12 +21,18 @@ void new_shooter(Shooter *new_shooter,
 
     if (shooter_type == ALIEN) {
       for (idx = 0; idx < 4; idx++) {
-        new_shooter->portrait[idx] = 'v';
+        new_shooter->portrait[0] = 219;
+        new_shooter->portrait[1] = 219;
+        new_shooter->portrait[2] = 254;
+        new_shooter->portrait[3] = 254;
       }
     }
     else {
       for (idx = 0; idx < 4; idx++) {
-        new_shooter->portrait[idx] = '^';
+        new_shooter->portrait[0] = 222;
+        new_shooter->portrait[1] = 221;
+        new_shooter->portrait[2] = 178;
+        new_shooter->portrait[3] = 178;
       }
     }
 
@@ -39,14 +43,19 @@ void new_shooter(Shooter *new_shooter,
 }
 
 /* TODO: Will probably similar to frequency of shooting */
-void shooter_move(Shooter *moving_shooter, int x_mov, int y_mov) {
-    clear_shooter(*moving_shooter);
+void shooter_move(Shooter *moving_shooter, int left) {
+    if (moving_shooter->visible) {
+        clear_shooter(*moving_shooter);
 
-    /* TODO: Do some moving poop */
-    moving_shooter->x_pos += x_mov;
-    moving_shooter->y_pos += y_mov;
+        if (left) {
+            moving_shooter->x_pos -= 1;
+        }
+        else {
+            moving_shooter->x_pos += 1;
+        }
 
-    draw_shooter(*moving_shooter);
+        draw_shooter(*moving_shooter);
+    }
 }
 
 void shooter_shoot(Shooter *shooter, Bullet *bullet) {
@@ -63,12 +72,13 @@ void shooter_shoot(Shooter *shooter, Bullet *bullet) {
     /* For now, all bullets fly at same speed */
     /* TODO: Customize bullet speed if we have time */
 
+    rand();
     new_bullet(bullet,
-               shooter->x_pos,
+               shooter->x_pos + (game.seed % 2),
                shooter->y_pos,
                bullet_direction,
                shooter->shooter_type,
-               5);
+               2);
 
 }
 
@@ -82,7 +92,7 @@ void shooter_handle_impact(Shooter *shooter, Bullet *bullet) {
 
         /* Decrease health, and remove bullet */
         bullet->visible = 0;
-        shooter->health -= 15;
+        shooter->health -= 1;
         shooter_check_health(shooter);
     }
 }
