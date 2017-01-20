@@ -3,9 +3,10 @@
 
 #include "bullet.h"
 #include "shooter.h"
+#include "video.h"
 
 #define NUM_ALIENS 10
-#define NUM_BULLETS 200
+#define NUM_BULLETS (NUM_ALIENS + 1) * GRID_HEIGHT * 2
 /*
  * These parameters are for a pseudo random number generator
  * https://en.wikipedia.org/wiki/Linear_congruential_generator
