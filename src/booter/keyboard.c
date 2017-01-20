@@ -78,11 +78,11 @@ void enqueue(unsigned char scan_code) {
 unsigned char dequeue() {
     char data = 0;
 
+    disable_interrupts();
     if (is_empty_queue(key_queue)) {
         return 0;
     }
     else {
-        disable_interrupts();
         data = key_queue.array[key_queue.front];
         if (key_queue.front == key_queue.rear) {
             key_queue.front = -1;

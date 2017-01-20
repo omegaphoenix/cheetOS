@@ -43,10 +43,10 @@ void shooter_move(Shooter *moving_shooter, int left) {
     clear_shooter(*moving_shooter);
 
     if (left) {
-        moving_shooter->x_pos += 1;
+        moving_shooter->x_pos -= 1;
     }
     else {
-        moving_shooter->x_pos -= 1;
+        moving_shooter->x_pos += 1;
     }
 
     draw_shooter(*moving_shooter);

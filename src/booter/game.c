@@ -1,5 +1,6 @@
-#include "bullet.h"
 #include "game.h"
+
+#include "bullet.h"
 #include "gameDefinitions.h"
 #include "interrupts.h"
 #include "keyboard.h"
@@ -92,7 +93,7 @@ void update_game(int timer_count) {
         }
     }
 
-    if (!is_empty_queue()) {
+    if (timer_count > 0 && !is_empty_queue()) {
         unsigned char key_code = dequeue();
         switch (key_code) {
             case LEFT_KEY:
@@ -100,6 +101,8 @@ void update_game(int timer_count) {
                 break;
             case RIGHT_KEY:
                 shooter_move(&game.player, 0);
+                break;
+            default:
                 break;
         }
     }
@@ -169,8 +172,8 @@ void c_start(void) {
     create_or_replace_bullet(&game, &game.player);
     display();
 
-    update_game(0);
 
+    update_game(0);
     init_interrupts();
     init_keyboard();
     init_timer();
