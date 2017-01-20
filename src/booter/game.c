@@ -102,6 +102,10 @@ void update_game(int timer_count) {
             case RIGHT_KEY:
                 shooter_move(&game.player, 0);
                 break;
+            case UP_KEY:
+            case SPACE_KEY:
+                create_or_replace_bullet(&game, &game.player);
+                break;
             default:
                 break;
         }

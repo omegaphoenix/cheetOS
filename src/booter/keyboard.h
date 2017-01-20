@@ -3,6 +3,8 @@
 
 #define LEFT_KEY 0x4b
 #define RIGHT_KEY 0x4d
+#define UP_KEY 0x48
+#define SPACE_KEY 0x39
 
 #define QUEUE_LEN 100
 

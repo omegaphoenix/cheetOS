@@ -23,12 +23,18 @@ void new_shooter(Shooter *new_shooter,
 
     if (shooter_type == ALIEN) {
       for (idx = 0; idx < 4; idx++) {
-        new_shooter->portrait[idx] = 'v';
+        new_shooter->portrait[0] = 219;
+        new_shooter->portrait[1] = 219;
+        new_shooter->portrait[2] = 254;
+        new_shooter->portrait[3] = 254;
       }
     }
     else {
       for (idx = 0; idx < 4; idx++) {
-        new_shooter->portrait[idx] = '^';
+        new_shooter->portrait[0] = 222;
+        new_shooter->portrait[1] = 221;
+        new_shooter->portrait[2] = 178;
+        new_shooter->portrait[3] = 178;
       }
     }
 
@@ -40,16 +46,18 @@ void new_shooter(Shooter *new_shooter,
 
 /* TODO: Will probably similar to frequency of shooting */
 void shooter_move(Shooter *moving_shooter, int left) {
-    clear_shooter(*moving_shooter);
+    if (moving_shooter->visible) {
+        clear_shooter(*moving_shooter);
 
-    if (left) {
-        moving_shooter->x_pos -= 1;
-    }
-    else {
-        moving_shooter->x_pos += 1;
-    }
+        if (left) {
+            moving_shooter->x_pos -= 1;
+        }
+        else {
+            moving_shooter->x_pos += 1;
+        }
 
-    draw_shooter(*moving_shooter);
+        draw_shooter(*moving_shooter);
+    }
 }
 
 void shooter_shoot(Shooter *shooter, Bullet *bullet) {
