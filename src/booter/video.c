@@ -139,6 +139,37 @@ void init_video(void) {
      *        as clearing the screen, initializing static variable state, etc.
      */
     init_grid();
+    init_score();
+}
+
+void update_score(int score) {
+    init_score();
+    int new_score = score;
+    int pow_of_ten = 1;
+    int length = 13;
+    char color = get_color(CYAN, BLACK);
+    if (new_score > MAX_SCORE) {
+        new_score = MAX_SCORE;
+    }
+    int i;
+    for (i = 0; i < MAX_DIGITS; i++) {
+        int curr_dig = new_score / pow_of_ten;
+        curr_dig = curr_dig % 10;
+        char character = curr_dig + '0';
+        set_grid_pix(length - i, GRID_HEIGHT - 1, color, character);
+        pow_of_ten *= 10;
+    }
+}
+
+void init_score() {
+    int i;
+    int y = GRID_HEIGHT - 1;
+    char *word = "SCORE: 000000";
+    int length = 13;
+    char color = get_color(CYAN, BLACK);
+    for (i = 0; i < length; i++) {
+        set_grid_pix(i + 1, GRID_HEIGHT - 1, color, word[i]);
+    }
 }
 
 void test() {
