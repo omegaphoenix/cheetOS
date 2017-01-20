@@ -53,8 +53,9 @@
 
 void update_timer(void) {
     timer_count++;
-    // update_game();
-    return;
+    if (timer_count % 30 == 0) { /* make this dependent on bullet speed... */
+        update_game();
+    }
 }
 
 void init_timer(void) {
