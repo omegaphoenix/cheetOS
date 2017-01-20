@@ -1,3 +1,7 @@
+#include "keyboard.h"
+
+#include "handlers.h"
+#include "interrupts.h"
 #include "ports.h"
 
 /* This is the IO port of the PS/2 controller, where the keyboard's scan
@@ -36,12 +40,72 @@
  *        so that nothing gets mangled...
  */
 
-
-void init_keyboard(void) {
-    /* TODO:  Initialize any state required by the keyboard handler. */
-
-    /* TODO:  You might want to install your keyboard interrupt handler
-     *        here as well.
-     */
+void init_queue() {
+    key_queue.capacity = QUEUE_LEN;
+    key_queue.front = -1;
+    key_queue.rear = -1;
 }
 
+int is_empty_queue() {
+    return key_queue.front == -1;
+}
+
+int is_full_queue() {
+    int num_elements = (key_queue.rear + 1) % key_queue.capacity;
+    return num_elements == key_queue.rear;
+}
+
+int queue_size() {
+    int diff = key_queue.rear - key_queue.front;
+    int size_multiple = key_queue.capacity - diff;
+    int size = size_multiple % key_queue.capacity;
+    return size;
+}
+
+
+void enqueue(unsigned char scan_code) {
+    disable_interrupts();
+    if (!is_full_queue(key_queue)) {
+        key_queue.rear = (key_queue.rear + 1) % key_queue.capacity;
+        key_queue.array[key_queue.rear] = scan_code;
+        if (key_queue.front == -1) {
+            key_queue.front=key_queue.rear;
+        }
+    }
+    enable_interrupts();
+}
+
+unsigned char dequeue() {
+    char data = 0;
+
+    disable_interrupts();
+    if (is_empty_queue(key_queue)) {
+        return 0;
+    }
+    else {
+        data = key_queue.array[key_queue.front];
+        if (key_queue.front == key_queue.rear) {
+            key_queue.front = -1;
+            key_queue.rear = -1;
+        }
+        else {
+            key_queue.front = (key_queue.front + 1) % key_queue.capacity;
+        }
+    }
+
+    enable_interrupts();
+    return data;
+}
+
+
+void init_keyboard(void) {
+    /* Initialize key_queue */
+    init_queue();
+
+    install_interrupt_handler(KEYBOARD_INTERRUPT, keyboard_handler);
+}
+
+void update_keyboard(void) {
+    unsigned char scan_code = inb(KEYBOARD_PORT);
+    enqueue(scan_code);
+}

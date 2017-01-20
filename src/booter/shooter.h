@@ -48,7 +48,7 @@ void new_shooter(Shooter *shooter,
                  int shoot_frequency);
 
 /* Moving implementation. Lower prio for now. */
-void shooter_move(Shooter *moving_shooter, int x_mov, int y_mov);
+void shooter_move(Shooter *moving_shooter, int left);
 
 /* Shooting function for the alien. Returns a bullet */
 void shooter_shoot(Shooter *shooter, Bullet *bullet);

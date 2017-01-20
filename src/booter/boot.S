@@ -67,30 +67,17 @@ boot_start:
 	mov	$STR_LOADED, %si
 	call	print_str
 
-	# Set video mode before switching to protected mode
-	mov	$0x00, %ah
-	int	$0x10
-
 	# Hide the cursor, just to be "prettier."  This will carry over into
 	# protected mode execution too.
 	mov	$0x01, %ah
 	int	$0x10
-
-	#---------------------------------------------------------------------
-	# TODO:  If you want to do anything else with the computer hardware
-	#        using the BIOS, here is the place to do it.  After this we
-	#        will transition into 32-bit protected mode, and the BIOS will
-	#        no longer be available to use.
-	#
-	#        REMOVE THIS COMMENT BLOCK WHEN YOU WRITE THIS CODE.
-	#        (OR IF YOU DECIDE YOU DON'T WANT TO PUT ANYTHING HERE.)
-	#---------------------------------------------------------------------
 
 	#=====================================================================
 	# Next, set up for transition from 16-bit real mode to 32-bit
 	# protected mode.  All we strictly need for this is a Global
 	# Descriptor Table, since we can leave paging off.  Then we can
 	# switch over to protected mode.
+	#=====================================================================
 
 start_protected:
 	# Switch from real mode into protected mode.

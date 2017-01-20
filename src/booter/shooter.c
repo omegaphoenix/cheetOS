@@ -39,12 +39,15 @@ void new_shooter(Shooter *new_shooter,
 }
 
 /* TODO: Will probably similar to frequency of shooting */
-void shooter_move(Shooter *moving_shooter, int x_mov, int y_mov) {
+void shooter_move(Shooter *moving_shooter, int left) {
     clear_shooter(*moving_shooter);
 
-    /* TODO: Do some moving poop */
-    moving_shooter->x_pos += x_mov;
-    moving_shooter->y_pos += y_mov;
+    if (left) {
+        moving_shooter->x_pos -= 1;
+    }
+    else {
+        moving_shooter->x_pos += 1;
+    }
 
     draw_shooter(*moving_shooter);
 }

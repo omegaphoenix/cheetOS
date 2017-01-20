@@ -1,8 +1,9 @@
 #include "timer.h"
-#include "ports.h"
-#include "interrupts.h"
-#include "handlers.h"
+
 #include "game.h"
+#include "handlers.h"
+#include "interrupts.h"
+#include "ports.h"
 
 /*============================================================================
  * PROGRAMMABLE INTERVAL TIMER
@@ -78,5 +79,5 @@ void init_timer(void) {
      */
 
     install_interrupt_handler(TIMER_INTERRUPT, timer_handler);
-    
+
 }

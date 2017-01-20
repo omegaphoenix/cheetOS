@@ -1,5 +1,6 @@
-#include "bullet.h"
 #include "game.h"
+
+#include "bullet.h"
 #include "gameDefinitions.h"
 #include "interrupts.h"
 #include "keyboard.h"
@@ -92,6 +93,20 @@ void update_game(int timer_count) {
         }
     }
 
+    if (timer_count > 0 && !is_empty_queue()) {
+        unsigned char key_code = dequeue();
+        switch (key_code) {
+            case LEFT_KEY:
+                shooter_move(&game.player, 1);
+                break;
+            case RIGHT_KEY:
+                shooter_move(&game.player, 0);
+                break;
+            default:
+                break;
+        }
+    }
+
     /* Iterate through aliens and make some of them shoot */
     for (alien_idx = 0; alien_idx < NUM_ALIENS; alien_idx++) {
         if (game.aliens[alien_idx].visible == 1) {
@@ -146,10 +161,10 @@ void c_start(void) {
      */
     int idx;
 
-    new_game(40, 12, 1);
+    new_game(80, 25, 1);
 
     init_video();
-  
+
     /* initial drawings - move these to init_video() */
     draw_shooter(game.player);
     for (idx = 0; idx < 5; idx++) {
@@ -159,14 +174,10 @@ void c_start(void) {
     display();
 
     update_game(0);
-
-  
     init_interrupts();
-    //init_keyboard();
+    init_keyboard();
     init_timer();
 
-
-        
     enable_interrupts();
 
     /* Loop forever, so that we don't fall back into the bootloader code. */
