@@ -21,8 +21,6 @@
  * the VGA links in the "Video" section.
  */
 #define VIDEO_BUFFER ((char *) 0xB8000)
-#define GRID_HEIGHT 25
-#define GRID_WIDTH 80
 #define COLOR_OFFSET 1
 
 /* grid stores the character and color of each "pixel" on the screen*/
@@ -172,18 +170,32 @@ void init_score() {
     }
 }
 
-void test() {
+void game_over(int message) {
+    int num_messages = 2;
     set_bg_color(BLACK);
     char color = get_color(MAGENTA, bg_color);
-    set_grid_pix(1, 1, color, 'I');
-    set_grid_pix(2, 1, color, '\'');
-    set_grid_pix(3, 1, color, 'M');
-    set_grid_pix(4, 1, color, ' ');
-    set_grid_pix(5, 1, color, 'A');
-    set_grid_pix(6, 1, color, ' ');
-    set_grid_pix(7, 1, color, 'D');
-    set_grid_pix(8, 1, color, 'W');
-    set_grid_pix(9, 1, color, 'E');
-    set_grid_pix(10, 1, color, 'E');
-    set_grid_pix(11, 1, color, 'B');
+    char *word;
+    char length;
+    switch (message % num_messages) {
+        case 0:
+            word = "GAME OVER DWEEB";
+            length = 15;
+            break;
+        case 1:
+            word = "BETTER LUCK NEXT TIME";
+            length = 21;
+            break;
+        case 2:
+            word = "YO MAMA SHOOTS BETTER THAN YOU";
+            length = 30;
+            break;
+        default:
+            word = "GAME OVER";
+            length = 9;
+            break;
+    }
+    int i;
+    for (i = 0; i < length; i++) {
+        set_grid_pix(i, GRID_HEIGHT / 2, color, word[i]);
+    }
 }

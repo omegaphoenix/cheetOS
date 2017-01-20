@@ -23,6 +23,9 @@ void next_level() {
      * they didn't seem to overwhelm the player
      */
     int level_bullet_speed = (7 - game.difficulty_level) * 2;
+    if (level_bullet_speed < 0) {
+        level_bullet_speed = 0;
+    }
 
     /* To smooth shooting frequencies, generate two random numbers */
     int random_shoot_freq;
@@ -41,13 +44,14 @@ void next_level() {
                     0,
                     1,
                     ALIEN,
-                    3,
+                    game.difficulty_level,
                     (random_shoot_freq + level_bullet_speed) *
                     (smooth_random_freq + level_bullet_speed));
     }
 
     /* Redraw aliens */
     for (idx = 0; idx < NUM_ALIENS; idx++) {
+        game.aliens[idx].visible = 1;
         draw_shooter(game.aliens[idx]);
     }
 
@@ -88,7 +92,7 @@ void new_game(int x_dim, int y_dim, int difficulty_level) {
                     0,
                     1,
                     ALIEN,
-                    3,
+                    game.difficulty_level,
                     (random_shoot_freq + level_bullet_speed) *
                     (smooth_random_freq + level_bullet_speed));
     }
@@ -181,6 +185,9 @@ void update_game(int timer_count) {
         if (game.player.visible) {
             next_level();
         }
+        else {
+            game_over(game.seed);
+        }
     }
 }
 
@@ -223,7 +230,7 @@ void c_start(void) {
      */
     int idx;
 
-    new_game(80, 25, 1);
+    new_game(GRID_WIDTH, GRID_HEIGHT, 1);
 
     init_video();
 
