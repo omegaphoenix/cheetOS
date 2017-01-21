@@ -13,40 +13,45 @@ void rand() {
     game.seed = (RANDOM_A * game.seed + RANDOM_C) % RANDOM_M;
 }
 
-void next_level() {
-    int idx;
-    game.score = game.score + game.difficulty_level * 50;
-    game.difficulty_level = game.difficulty_level + 1;
-
-    /*
-     * These values were set arbitrarily;
-     * they didn't seem to overwhelm the player
-     */
+int generate_shoot_frequency() {
+    /* To smooth shooting frequencies, generate two random numbers */
+    int random_shoot_freq;
+    int smooth_random_freq;
     int level_bullet_speed = (7 - game.difficulty_level) * 2;
     if (level_bullet_speed < 0) {
         level_bullet_speed = 0;
     }
 
-    /* To smooth shooting frequencies, generate two random numbers */
-    int random_shoot_freq;
-    int smooth_random_freq;
+    rand();
 
+    /* We only want a random digit between 1-10 */
+    random_shoot_freq = (game.seed % 10) + 1;
+
+    rand();
+
+    /* We only want a random digit between 1-10 */
+    smooth_random_freq = (game.seed % 10) + 1;
+
+    return (random_shoot_freq + level_bullet_speed) *
+                    (smooth_random_freq + level_bullet_speed);
+}
+
+void next_level() {
+    int idx;
+    game.score = game.score + game.difficulty_level * 50;
+    game.difficulty_level++;
     game.player.health++;
 
     for (idx = 0; idx < NUM_ALIENS; idx++) {
-        rand();
-        random_shoot_freq = (game.seed % 10) + 1;
+        int shoot_frequency = generate_shoot_frequency();
 
-        rand();
-        smooth_random_freq = (game.seed % 10) + 1;
         new_shooter(&game.aliens[idx],
-                    idx * 7 + 5,
+                    idx * 7 + 5, /* Spaces aliens evenly on the screen */
                     0,
                     1,
                     ALIEN,
                     game.difficulty_level,
-                    (random_shoot_freq + level_bullet_speed) *
-                    (smooth_random_freq + level_bullet_speed));
+                    shoot_frequency);
     }
 
     /* Redraw aliens */
@@ -62,35 +67,20 @@ void next_level() {
 void new_game(int x_dim, int y_dim, int difficulty_level) {
     int idx;
     /* Set initial game seed to any number */
-    game.seed = 666;
+    game.seed = RANDOM_SEED;
     game.difficulty_level = difficulty_level;
-
-    /*
-     * These values were set arbitrarily;
-     * they didn't seem to overwhelm the player
-     */
-    int level_bullet_speed = (7 - game.difficulty_level) * 2;
-
-    /* To smooth shooting frequencies, generate two random numbers */
-    int random_shoot_freq;
-    int smooth_random_freq;
 
     new_shooter(&game.player, x_dim / 2, y_dim - 3, 1, PLAYER, 10, 0);
 
     for (idx = 0; idx < NUM_ALIENS; idx++) {
-        rand();
-        random_shoot_freq = (game.seed % 10) + 1;
-
-        rand();
-        smooth_random_freq = (game.seed % 10) + 1;
+        int shoot_frequency = generate_shoot_frequency();
         new_shooter(&game.aliens[idx],
                     idx * 7 + 5,
                     0,
                     1,
                     ALIEN,
                     game.difficulty_level,
-                    (random_shoot_freq + level_bullet_speed) *
-                    (smooth_random_freq + level_bullet_speed));
+                    shoot_frequency);
     }
 
     /* For now, all we need is for the bullets to not be visible. */
@@ -175,8 +165,11 @@ void update_game(int timer_count) {
     for (alien_idx = 0; alien_idx < NUM_ALIENS; alien_idx++) {
         if (game.aliens[alien_idx].visible == 1) {
             int shoot_frequency = game.aliens[alien_idx].shoot_frequency;
+
+            /* Arbitrary numbers were selected for balanced bullet rate */
             if ((timer_count % shoot_frequency == 0 ||
                  timer_count % shoot_frequency == 5) &&
+                /* We do not want aliens to immediately fire */
                 timer_count > shoot_frequency / 2) {
                 create_or_replace_bullet(&game, &game.aliens[alien_idx]);
             }
