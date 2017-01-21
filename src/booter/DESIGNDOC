@@ -75,7 +75,7 @@ which parts.
    utility functions, and game instruction and checks.
 
    Christina Lin: Initial implementation of video/display API; handling of
-   general interrupts; timer interrupts.
+   general interrupts; timer interrupts; bullet movement
 
 Note that this design document is a bit long.  Most of the questions can be
 answered pretty briefly.  Don't feel a need to write a long answer if it is
@@ -355,8 +355,8 @@ No.
 >> program's global state?  If so, what steps did you take to ensure that
 >> such situations cannot occur?
 
-There is no potential for race conditions to occur. Once a timer interrupt occurs
-the entire game updates at once. The game is also small enough size that two
+There is little potential for race conditions to occur. Once a timer interrupt 
+occurs the entire game updates. The game is also small enough size that two
 game updates will not occur simultaneously.
 
 			KEYBOARD SUBSYSTEM
