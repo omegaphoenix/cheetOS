@@ -13,7 +13,7 @@ void new_bullet(Bullet *bullet,
 
     /* Position is top left, so you have to add two to aliens */
     else {
-        bullet->y_pos = y_pos + 2;
+        bullet->y_pos = y_pos + SHOOTER_HEIGHT;
     }
 
     bullet->direction = direction;
