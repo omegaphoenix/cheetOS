@@ -307,10 +307,10 @@ completely white, and the aliens to be bright green. Bullets were also light gre
 to promote visibility as well as to distinguish it as separate from the player and aliens.
 
 Aliens were also at the top, and they were shooting down, so we represented their
-icon as a 2 by 2 block of "v", since "v" represents the direction that they're
-shooting. Players also have an icon made up of a 2 by 2 block of "^", since
-the players are always shooting up. The bullet is just a single char "." for simplicity
-and its light gray color was for its visibility.
+icon as a block with their guns pointing downwards, since they shoot down.
+Players also have an icon with a gun pointing upward, since the players are always
+shooting up. The bullet is just a single char "." for simplicity and its light gray
+color was for its visibility.
 
 			  TIMER SUBSYSTEM
 			  ===============
