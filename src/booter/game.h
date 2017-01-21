@@ -10,6 +10,7 @@
  * These parameters are for a pseudo random number generator
  * https://en.wikipedia.org/wiki/Linear_congruential_generator
  */
+#define RANDOM_SEED 666
 #define RANDOM_A 8121
 #define RANDOM_C 28411
 #define RANDOM_M 134456
