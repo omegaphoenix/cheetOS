@@ -27,19 +27,6 @@
  */
 #define KEYBOARD_PORT 0x60
 
-
-/* TODO:  You can create static variables here to hold keyboard state.
- *        Note that if you create some kind of circular queue (a very good
- *        idea, you should declare it "volatile" so that the compiler knows
- *        that it can be changed by exceptional control flow.
- *
- *        Also, don't forget that interrupts can interrupt *any* code,
- *        including code that fetches key data!  If you are manipulating a
- *        shared data structure that is also manipulated from an interrupt
- *        handler, you might want to disable interrupts while you access it,
- *        so that nothing gets mangled...
- */
-
 void init_queue() {
     /* True if interrupts were previously enabled */
     int interrupts_on = are_interrupts_enabled();

@@ -133,9 +133,6 @@ void init_grid() {
 }
 
 void init_video(void) {
-    /* TODO:  Do any video display initialization you might want to do, such
-     *        as clearing the screen, initializing static variable state, etc.
-     */
     init_grid();
     init_score();
 }
