@@ -43,13 +43,6 @@
 #define PIT_CHAN2_DATA 0x42
 #define PIT_MODE_CMD   0x43
 
-
-/* TODO:  You can create static variables here to hold timer state.
- *
- *        You should probably declare variables "volatile" so that the
- *        compiler knows they can be changed by exceptional control flow.
- */
-
 static volatile int timer_count;
 
 void update_timer(void) {
@@ -71,13 +64,10 @@ void init_timer(void) {
     outb(PIT_CHAN0_DATA, 0x9c);
     outb(PIT_CHAN0_DATA, 0x2e);
 
-    /* TODO:  Initialize other timer state here. */
+    /* Initialize other timer state */
     timer_count = 0;
 
-    /* TODO:  You might want to install your timer interrupt handler
-     *        here as well.
-     */
-
+    /* Intall timer interrupt handler */
     install_interrupt_handler(TIMER_INTERRUPT, timer_handler);
 
 }
