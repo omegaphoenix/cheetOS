@@ -46,6 +46,9 @@ https://en.wikipedia.org/wiki/INT_13H#INT_13h_AH.3D42h:_Extended_Read_Sectors_Fr
 Circular Queue
 http://stackoverflow.com/questions/20619234/circular-queue-implementation
 
+Boot Sequence
+http://wiki.osdev.org/Boot_Sequence#Loading
+
 			     PC BOOTER
 			     =========
 
@@ -58,9 +61,9 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-   Justin Leong: Approximately 13:15:48 (hh:mm:ss)
+   Justin Leong: Approximately 15:02:19 (hh:mm:ss)
    John Li: Approximately 15-16 hours.
-   Christina Lin: 
+   Christina Lin: Approximately 13 hours
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
@@ -72,7 +75,7 @@ which parts.
    utility functions, and game instruction and checks.
 
    Christina Lin: Initial implementation of video/display API; handling of
-   general interrupts; timer interrupts.
+   general interrupts; timer interrupts; bullet movement
 
 Note that this design document is a bit long.  Most of the questions can be
 answered pretty briefly.  Don't feel a need to write a long answer if it is
@@ -237,6 +240,10 @@ No.
 >> B3: Briefly describe how your bootloader brings your program into
 >> memory.  Does it perform one large load, or multiple smaller loads?
 
+It performs one large load to load it into memory in real mode and then
+switches to protected mode and jumps to the e_entry of the program to
+start executing.
+
 >> B4: Did you add any BIOS calls to your bootloader to prepare for your
 >> main program?  (i.e. things that aren't available in protected mode)
 
@@ -300,17 +307,18 @@ coordinates by transforming X and Y into an offset to add to the video buffer.
 >> program's display output?  For example, using Extended ASCII Codes, or
 >> choosing specific colors to represent different things?
 
-  We wanted the colors of the player and the alien to be distinct yet visible.
+We wanted the colors of the player and the alien to be distinct yet visible.
 Initially, the player was a dark blue color, but combined with the black background
 this was not very visible. So, we changed the color for the player to be
 completely white, and the aliens to be bright green. Bullets were also light grey
 to promote visibility as well as to distinguish it as separate from the player and aliens.
 
-Aliens were also at the top, and they were shooting down, so we represented their
-icon as a 2 by 2 block of "v", since "v" represents the direction that they're
-shooting. Players also have an icon made up of a 2 by 2 block of "^", since
-the players are always shooting up. The bullet is just a single char "." for simplicity
-and its light gray color was for its visibility.
+Aliens and players look similar, but aliens point down and players point up to
+indicate the direction that their bullets shoot. We used Extended ASCII Codes
+to simulate a fading effect as player and alien health declined.
+
+The bullet is just a single char "." for simplicity and its light gray color
+was for its visibility.
 
 			  TIMER SUBSYSTEM
 			  ===============
@@ -331,8 +339,14 @@ refresh the video buffer with the updated positions.
 >> D2: What abstraction does your timer code present to your main program?
 >> Briefly describe the higher-level operations you decided to implement.
 
+Our game and program did not require any higher-level operations or
+abstractions. Instead, we passed the timer_count variable to various functions
+and used it directly to adjust speed or movement and animation.
+
 >> D3: Did you change the timer frequency from 100Hz?  If so, what did you
 >> change it to, and why?
+
+No.
 
 ---- SYNCHRONIZATION ----
 
@@ -341,8 +355,8 @@ refresh the video buffer with the updated positions.
 >> program's global state?  If so, what steps did you take to ensure that
 >> such situations cannot occur?
 
-There is no potential for race conditions to occur. Once a timer interrupt occurs
-the entire game updates at once. The game is also small enough size that two
+There is little potential for race conditions to occur. Once a timer interrupt 
+occurs the entire game updates. The game is also small enough size that two
 game updates will not occur simultaneously.
 
 			KEYBOARD SUBSYSTEM
@@ -353,17 +367,35 @@ game updates will not occur simultaneously.
 >> E1: What state does your keyboard subsystem manage?  Describe the variables
 >> or data structures that it maintains, and how they are used.
 
+The keyboard subsystem manages a circular queue of up to the last 100 key
+presses that have not been processed by the timer interrupt. When a keyboard
+interrupt occurs, the scan-code is enqueued and at the timer interrupt, one
+key is dequeued and handled appropriately if the queue is not empty.
+
 >> E2: How do your data structures handle keys with multi-byte scan-codes?
+
+It would just interpret each byte of the scan code separately and insert
+them into the queue.  Then the main loop would just ignore the bytes that
+don't correspond to the keys we are looking for.
 
 ---- ALGORITHMS ----
 
 >> E3: What abstraction does your keyboard code present to your main program?
 >> Briefly describe the higher-level operations you decided to implement.
 
+The high-level operations were update_keyboard() which enqueues a new scan-
+code when a keyboard operation occurs and init_keyboard() which sets up
+the interrupt handler and initializes the queue. There is also the dequeue()
+function which returns the scan-code at the head of the queue and removes it.
+Finally there is the is_empty_queue() function to check if the queue is
+empty before dequeue().
+
 >> E4: Does your keyboard subsystem expose scan-codes directly to your main
 >> program, or does it preprocess them and expose other information to your
 >> main program?  If scan-code data is preprocessed, briefly describe what
 >> information is actually exposed, and how it is derived from scan-codes.
+
+It exposes scan-codes directly. We define the key codes we care about.
 
 ---- SYNCHRONIZATION ----
 
@@ -372,16 +404,31 @@ game updates will not occur simultaneously.
 >> internal state?  If so, what steps did you take to ensure that such
 >> situations cannot occur?
 
+Yes, there is the potential for a race condition if the timer interrupt fires
+in the middle of updating or reading data from a queue. To ensure that this
+did not occur, at the functions described earlier which are used in the
+main loop or in the interrupt handler, we disable interrupts if they are
+enabled and then reenable them after the function finishes its operations.
+
 >> E6: Given how your program handles keyboard events, is there any
 >> potential for keyboard interrupts to generate race conditions in updating
 >> your program's global state?  If so, what steps did you take to ensure
 >> that such situations cannot occur?
+
+No, because in the main loop it just handles one key press at a time and then
+modifies the global state.
 
 ---- RATIONALE ----
 
 >> E7: Why did you choose the design and data representation that your
 >> keyboard subsystem uses?  How is it suited to your program's overall
 >> operation?
+
+A circular queue is simple to implement and is not as bug prone as checking
+if the keys required are pressed or released. In addition, the circular queue
+trivializes handling multi-byte scan-codes. It is suited for the program
+because the timer interrupt can update the shooter's state when it updates
+the bullet movements based on the keys pressed.
 
 			  SURVEY QUESTIONS
 			  ================

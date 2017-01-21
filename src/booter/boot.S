@@ -145,7 +145,7 @@ call_c_entry:
 	# header will specify the entry-point into the program.  See
 	# the e_entry field; it is a 32-bit value.
 	# Don't forget that you are calling a C function, so follow
-	# cdecl! #TODO Clean stack after return
+	# cdecl!
 	mov	PROGRAM_ENTRY, %eax
 	call	*%eax
 
