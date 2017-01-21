@@ -18,10 +18,9 @@ typedef struct _Shooter {
     ShooterType shooter_type;
 
     /* Actual image of the shooter. Will be a 2 by 2 box. */
-    char portrait[4];
+    char portrait[SHOOTER_WIDTH * SHOOTER_HEIGHT];
 
     /* Shooter speed while moving on board. Will be an added extra. */
-    /* TODO: Implement direction if necessary */
     int movement_speed;
 
     /* Shooter stamina */

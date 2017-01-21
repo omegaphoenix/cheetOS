@@ -20,20 +20,17 @@ void new_shooter(Shooter *new_shooter,
     new_shooter->shooter_type = shooter_type;
 
     if (shooter_type == ALIEN) {
-      for (idx = 0; idx < 4; idx++) {
         new_shooter->portrait[0] = 219;
         new_shooter->portrait[1] = 219;
         new_shooter->portrait[2] = 254;
         new_shooter->portrait[3] = 254;
-      }
+
     }
     else {
-      for (idx = 0; idx < 4; idx++) {
         new_shooter->portrait[0] = 222;
         new_shooter->portrait[1] = 221;
         new_shooter->portrait[2] = 178;
         new_shooter->portrait[3] = 178;
-      }
     }
 
     new_shooter->movement_speed = movement_speed;
@@ -69,9 +66,6 @@ void shooter_shoot(Shooter *shooter, Bullet *bullet) {
         bullet_direction = DOWN;
     }
 
-    /* For now, all bullets fly at same speed */
-    /* TODO: Customize bullet speed if we have time */
-
     rand();
     new_bullet(bullet,
                shooter->x_pos + (game.seed % 2),
@@ -84,9 +78,9 @@ void shooter_shoot(Shooter *shooter, Bullet *bullet) {
 
 void shooter_handle_impact(Shooter *shooter, Bullet *bullet) {
     /* Check if bullet is inside the shooter's box */
-    if (bullet->x_pos < shooter->x_pos + 2 &&
+    if (bullet->x_pos < shooter->x_pos + SHOOTER_WIDTH &&
         bullet->x_pos >= shooter->x_pos &&
-        bullet->y_pos < shooter->y_pos + 2 &&
+        bullet->y_pos < shooter->y_pos + SHOOTER_HEIGHT &&
         bullet->y_pos >= shooter->y_pos &&
         bullet->source != shooter->shooter_type) {
 
