@@ -7,14 +7,14 @@ git stash -q --keep-index
 # TODO: Add test script
 # ./run_tests.sh
 
-FILES_PATTERN=$(find -regex '.*/.*\.\(c\|h\)$')
-RESULT=$(c_style_check $FILES_PATTERN)
-echo $RESULT
+# FILES_PATTERN=$(find -regex '.*/.*\.\(c\|h\)$')
+# RESULT=$(c_style_check $FILES_PATTERN)
+# echo $RESULT
 
 git stash pop -q
-if [ -n "$RESULT" ]; then
-  echo "failed"
-  exit 1
-else
-  exit 0
-fi
+# if [ -n "$RESULT" ]; then
+#   echo "failed"
+#   exit 1
+# else
+#   exit 0
+# fi

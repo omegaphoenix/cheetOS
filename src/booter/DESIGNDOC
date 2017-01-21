@@ -1,0 +1,460 @@
+			+-----------------------+
+			|         CS 124        |
+			| PROJECT 2: BOOTLOADER |
+			|    DESIGN DOCUMENT    |
+			+-----------------------+
+
+---- GROUP ----
+
+>> Fill in the names and email addresses of your group members.
+
+Justin Leong <jleong@caltech.edu>
+John Li <jzli@caltech.edu>
+Christina Lin <cylin@caltech.edu>
+
+>> Specify how many late tokens you are using on this assignment: 0
+
+>> What is the Git repository and commit hash for your submission?
+   (You only need to include the commit-hash in the file you submit
+   on Moodle.)
+
+   Repository URL: https://github.com/omegaphoenix/cheetOS
+   commit ...
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course instructors.
+
+Printing to screen:
+http://wiki.osdev.org/Printing_to_Screen
+
+Interrupt Descriptor Table:
+http://wiki.osdev.org/Interrupt_Descriptor_Table
+
+Linear Congruential Generator
+https://en.wikipedia.org/wiki/Linear_congruential_generator
+http://stackoverflow.com/questions/3062746/special-simple-random-number-generator
+
+Bootloader INT13H
+https://en.wikipedia.org/wiki/INT_13H#INT_13h_AH.3D42h:_Extended_Read_Sectors_From_Drive
+
+Circular Queue
+http://stackoverflow.com/questions/20619234/circular-queue-implementation
+
+Boot Sequence
+http://wiki.osdev.org/Boot_Sequence#Loading
+
+			     PC BOOTER
+			     =========
+
+---- LOGISTICS ----
+
+These questions will help us to keep track of the difficulty level of
+assignments, as well as keeping track of which team members worked on
+which parts.
+
+>> L1: How many hours did each team member spend on this assignment?
+   Make sure that each member's total time is listed.
+
+   Justin Leong: Approximately 15:02:19 (hh:mm:ss)
+   John Li: Approximately 15-16 hours.
+   Christina Lin: Approximately 13 hours
+
+>> L2: What did each team member focus on for this assignment?  Keep
+   descriptions to 25-30 words or less.
+
+   Justin Leong: Bootloader, keyboard interrupts, final implementation of
+   video/display API, shooter actions, levels, score
+
+   John Li: Implementation of game, including structs, struct methods,
+   utility functions, and game instruction and checks.
+
+   Christina Lin: Initial implementation of video/display API; handling of
+   general interrupts; timer interrupts; bullet movement
+
+Note that this design document is a bit long.  Most of the questions can be
+answered pretty briefly.  Don't feel a need to write a long answer if it is
+not required by the question.
+
+			     GAME / DEMO
+			     ===========
+
+---- ALGORITHMS ----
+
+>> A1: In a few sentences, describe what kind of game or demo program your
+>> PC booter implements.
+
+We built a mini Space Invaders game. The user, controlling a shooter at the
+bottom of the screen, battles a fleet of alien invaders positioned at the top
+of the screen.
+
+>> A2: In a few sentences, how does the user interact with the program?
+>> What are the controls?  What should the user try to do?
+
+The user moves the shooter right/left with arrow keys and fires bullets with
+the spacebar. The shooter's bullets destroy alien spaceships upon impact, and
+likewise, the aliens' bullets destroy the user's shooter. The user's goal is to
+destroy the aliens before getting destroyed and to achieve a high score. Both
+the user and the alien have a health count that decrements every time they
+are hit by a bullet.
+
+---- DATA STRUCTURES ----
+
+>> A3: Describe any global state that your program manages in order to
+>> perform its operations.  Don't focus on state managed within interrupt
+>> handlers; we will look at that later.  Rather, focus on state that is
+>> part of the game implementation itself.
+
+The program maintains a global 'game' variable. 'game' is an instance of the
+Game struct, and it holds data on the x- and y- dimensions of the game board,
+the player, an array of aliens, an array of bullets, the total number of
+bullets, and current level of difficulty. Because we implemented a random
+function, the game also holds a seed.
+
+The player and aliens are all instances of the Shooter struct. They store the
+states of the shooters on the game board, including position, shooter type
+(player or alien), portrait (how the shooter is represented on the screen),
+speed, health, shooting frequency, and visibility (whether shooter is alive)).
+
+Additionally, each bullet stores its own position, direction, speed, source,
+and visibility in the Bullet struct.
+
+A global 2D array for the color and character at each rectangle is also kept
+track of to update the display.
+
+
+---- SYNCHRONIZATION ----
+
+>> A4: From the perspective of the entire program, briefly describe how
+>> the various interrupts are handled and processed within your program.
+>> For example, when a timer interrupt occurs, what is the general sequence
+>> of operations or updates that is performed within your program?
+>> Similarly, when a keyboard interrupt occurs, what does your program do
+>> in response?
+
+For the space invaders game, the game relies on both the timer interrupt and
+the keyboard interrupt. First, since players and aliens are shooting each other,
+the timer interrupt is necessary to update the bullet trajectory/path once
+it has been shot. Once a timer interrupt hits, the program first will
+update all the bullet movements (and clear the previous images of the bullets),
+then it will check for bullet collisions. Aliens, too, will also update their
+movement based on these timer values.
+
+Keyboard interrupts are used for the player shooter. Whenever the player wishes
+to move, he or she must press the left/right arrow key and the key press is
+stored in a queue. At the timer interrupt, the player sprite is erased and
+then the player spot is moved accordingly. Whenever a player presses the
+spacebar or up button, the keyboard interrupt occurs. The key press is stored
+in a queue. During a later timer interrupt, when the key reaches the front of
+the queue, the game then sets a bullet struct to the proper position, the
+proper trajectory, and draws that bullet on screen.
+
+>> A5: Would you say your program relies on polling or busy-waiting anywhere
+>> to accomplish its tasks?  If so, what tasks?
+
+It relies on polling since it is updating the display and moving the bullets
+at every timer interrupt. It is also polling for key presses, since a
+keyboard interrupt just stores the key into a queue.
+
+---- RATIONALE ----
+
+>> A6: Why did you choose the project you did?
+
+The space invaders game is one that isn't too difficult to implement, but
+it also gives the creators much room for experimentation and varied
+implementation. Many factors in space invaders can be altered to make the game
+unique; you could have different kinds of bullets, potential power ups,
+different kinds of aliens. Because the game really only relies on
+a few keyboard inputs and because its basic instruction doesn't take too much
+to code, we decided to go for it during the limited time we had.
+
+Also, that is the only game Justin could beat without getting frustrated
+from losing in the first 30 seconds out of the games considered (Donkey Kong,
+Pac Man, Galaga).
+
+>> A7: Did your choice of project affect any of the specific implementation
+>> details of the various subsystems that you needed to use?  (For example,
+>> if you implemented a scrolling game, did you implement specialized high-
+>> performance video code to scroll the screen?)
+
+Yes, we needed to update the display at a constant rate using the timer
+interrupt instead of busy waiting because the bullets would need to be
+constantly updated.
+
+>> A8: Did you run into any technical or resource limitations in the
+>> implementation of your program?  (For example, bootloader didn't fit,
+>> or a really useful standard library wasn't available, or you couldn't
+>> achieve the desired performance level, etc.)  If so, what steps did you
+>> take to try to overcome those limitations?
+
+We noticed that our bootloader would often loop whenever we would call
+certain functions. Functions that return struct objects
+have caused these loops to occur (which we assumed to be QEMU
+crashing and restarting). While we still haven't pinpointed the cause, we
+got around this case through the use of the global game state and passing
+values in by reference. This is why we have a majority of void functions.
+
+Because space invaders also involves lots of bullets, John really
+desired there to be access to dynamic allocation, but once he learned
+that this wasn't allowed, we set a maximum number of bullets allowed
+in the game at any particular time. We then emulated "endless" bullets
+by allowing the game to replace any "invisible" bullets (bullets that
+have expired).
+
+			     BOOT SECTOR
+			     ===========
+
+---- DATA STRUCTURES ----
+
+>> B1: How did you decide to store the Disk Address Packet?  Does the
+>> memory occupied by the DAP get reclaimed after it is used?  If not,
+>> why not?
+
+We stored the DAP on the stack. We reclaimed the memory by moving the stack
+pointer back to before the arguments were pushed to satisfy
+cdecl which says that the caller should clean the stack.
+
+>> B2: How many sectors does your bootloader load?  How did you arrive
+>> at this number?  Briefly explain your rationale.
+
+Each bullet takes 24 bytes. Each player or alien takes 29 bytes.  Thus
+to store (11 shooters * 25 character height * 2) 550 bullets and 11 player or
+aliens and 5 ints, the game struct takes up 13539 bytes, which is over
+26 sectors of 512 bytes. Since this is a conservative overestimate since
+we are using an upper bound on the number of bullets, 26 sectors should be
+plenty.
+
+>> B3: Does your bootloader pass any information to the main program?
+>> (If not, just say no.)  If so, what information is passed, and how
+>> is it passed?
+
+No.
+
+---- ALGORITHMS ----
+
+>> B3: Briefly describe how your bootloader brings your program into
+>> memory.  Does it perform one large load, or multiple smaller loads?
+
+It performs one large load to load it into memory in real mode and then
+switches to protected mode and jumps to the e_entry of the program to
+start executing.
+
+>> B4: Did you add any BIOS calls to your bootloader to prepare for your
+>> main program?  (i.e. things that aren't available in protected mode)
+
+No.
+
+			  VIDEO SUBSYSTEM
+			  ===============
+
+---- DATA STRUCTURES ----
+
+>> C1: What video display mode does your program use?  Is it a text mode
+>> or a graphical mode?  Where does the video buffer start?  How is data
+>> represented in this mode?  (Please be brief; we don't need complete
+>> documentation on the video system.)
+
+Our program uses text mode. The video buffer starts at 0xB8000. The display
+consists of text arranged into 25 80-char lines, and this text is stored in
+the video buffer. Each character on the screen is represented by two bytes:
+the first byte is the char, and the second byte is its color -- the lowest
+four bits hold the foreground color and the highest three bits hold the
+background color.
+
+>> C2: Does your video code maintain any variables or data structures to
+>> facilitate video output?  Briefly describe these values and their
+>> purposes here.
+
+Our video system stores data in 'grid,' a 2D array. Each element in the array
+is two bytes, representing a character on screen in the convention described
+in C1. The grid makes it easy to draw() shooters and bullets to (X, Y)
+positions on the screen, or to set specific "pixels" on the screen. When
+display() is called, the data stored in 'grid' is transferred to the video
+buffer.
+
+We also store a default background color, since we don't anticipate that
+individual characters will typically have different background colors.
+
+
+---- ALGORITHMS ----
+
+>> C3: What abstraction does your video code present to your main program?
+>> Briefly describe the higher-level operations you decided to implement.
+
+Our video API allows us to call functions like draw_shooter(), draw_bullet(),
+clear_shooter(), and clear_bullet(). The higher-level draw() functions take
+a Shooter or Bullet struct as a parameter. The structs specify the (X, Y)
+coordinates of the top left corner, as well as a 2x2 "image" of the
+Shooter/Bullet. The functions transform these attributes into the correct
+data format to store in the grid. Similarly, the clear() functions remove the
+Shooter/Bullet from the grid.
+
+These higher-level operations allow us greater ease in drawing pictures
+composed of more than one character. Additionally, we implemented the
+set_pix() and set_grid_pix() functions to modify characters at specific (X, Y)
+coordinates by transforming X and Y into an offset to add to the video buffer.
+
+
+
+---- RATIONALE ----
+
+>> C4: Did you take any specific steps to improve the appearance of your
+>> program's display output?  For example, using Extended ASCII Codes, or
+>> choosing specific colors to represent different things?
+
+We wanted the colors of the player and the alien to be distinct yet visible.
+Initially, the player was a dark blue color, but combined with the black background
+this was not very visible. So, we changed the color for the player to be
+completely white, and the aliens to be bright green. Bullets were also light grey
+to promote visibility as well as to distinguish it as separate from the player and aliens.
+
+Aliens and players look similar, but aliens point down and players point up to
+indicate the direction that their bullets shoot. We used Extended ASCII Codes
+to simulate a fading effect as player and alien health declined.
+
+The bullet is just a single char "." for simplicity and its light gray color
+was for its visibility.
+
+			  TIMER SUBSYSTEM
+			  ===============
+
+---- DATA STRUCTURES ----
+
+>> D1: What state does your timer subsystem manage?  Describe the variables
+>> or data structures that it maintains, and how they are used.
+
+The timer subsystem stores a static int, timer_count, which is incremented
+each time the a timer interrupt is fired. After each interrupt, timer_count
+is passed to update_game(). Based on the value of timer_count, the aliens will
+shoot bullets and the existing bullets will move. display() is also called to
+refresh the video buffer with the updated positions.
+
+---- ALGORITHMS ----
+
+>> D2: What abstraction does your timer code present to your main program?
+>> Briefly describe the higher-level operations you decided to implement.
+
+Our game and program did not require any higher-level operations or
+abstractions. Instead, we passed the timer_count variable to various functions
+and used it directly to adjust speed or movement and animation.
+
+>> D3: Did you change the timer frequency from 100Hz?  If so, what did you
+>> change it to, and why?
+
+No.
+
+---- SYNCHRONIZATION ----
+
+>> D4: Given how your program handles timer events, is there any potential
+>> for timer interrupts to generate race conditions in updating your
+>> program's global state?  If so, what steps did you take to ensure that
+>> such situations cannot occur?
+
+There is little potential for race conditions to occur. Once a timer interrupt 
+occurs the entire game updates. The game is also small enough size that two
+game updates will not occur simultaneously.
+
+			KEYBOARD SUBSYSTEM
+			==================
+
+---- DATA STRUCTURES ----
+
+>> E1: What state does your keyboard subsystem manage?  Describe the variables
+>> or data structures that it maintains, and how they are used.
+
+The keyboard subsystem manages a circular queue of up to the last 100 key
+presses that have not been processed by the timer interrupt. When a keyboard
+interrupt occurs, the scan-code is enqueued and at the timer interrupt, one
+key is dequeued and handled appropriately if the queue is not empty.
+
+>> E2: How do your data structures handle keys with multi-byte scan-codes?
+
+It would just interpret each byte of the scan code separately and insert
+them into the queue.  Then the main loop would just ignore the bytes that
+don't correspond to the keys we are looking for.
+
+---- ALGORITHMS ----
+
+>> E3: What abstraction does your keyboard code present to your main program?
+>> Briefly describe the higher-level operations you decided to implement.
+
+The high-level operations were update_keyboard() which enqueues a new scan-
+code when a keyboard operation occurs and init_keyboard() which sets up
+the interrupt handler and initializes the queue. There is also the dequeue()
+function which returns the scan-code at the head of the queue and removes it.
+Finally there is the is_empty_queue() function to check if the queue is
+empty before dequeue().
+
+>> E4: Does your keyboard subsystem expose scan-codes directly to your main
+>> program, or does it preprocess them and expose other information to your
+>> main program?  If scan-code data is preprocessed, briefly describe what
+>> information is actually exposed, and how it is derived from scan-codes.
+
+It exposes scan-codes directly. We define the key codes we care about.
+
+---- SYNCHRONIZATION ----
+
+>> E5: Given how your keyboard interrupt handler operates, is there any
+>> potential for race conditions in updating the keyboard subsystem's
+>> internal state?  If so, what steps did you take to ensure that such
+>> situations cannot occur?
+
+Yes, there is the potential for a race condition if the timer interrupt fires
+in the middle of updating or reading data from a queue. To ensure that this
+did not occur, at the functions described earlier which are used in the
+main loop or in the interrupt handler, we disable interrupts if they are
+enabled and then reenable them after the function finishes its operations.
+
+>> E6: Given how your program handles keyboard events, is there any
+>> potential for keyboard interrupts to generate race conditions in updating
+>> your program's global state?  If so, what steps did you take to ensure
+>> that such situations cannot occur?
+
+No, because in the main loop it just handles one key press at a time and then
+modifies the global state.
+
+---- RATIONALE ----
+
+>> E7: Why did you choose the design and data representation that your
+>> keyboard subsystem uses?  How is it suited to your program's overall
+>> operation?
+
+A circular queue is simple to implement and is not as bug prone as checking
+if the keys required are pressed or released. In addition, the circular queue
+trivializes handling multi-byte scan-codes. It is suited for the program
+because the timer interrupt can update the shooter's state when it updates
+the bullet movements based on the keys pressed.
+
+			  SURVEY QUESTIONS
+			  ================
+
+Answering these questions is optional, but it will help us improve the
+course in future years.  Feel free to tell us anything you want - these
+questions are just to spur your thoughts.  Also, feel free to be completely
+honest if there are issues with the assignment or the course - you won't be
+penalized.  We can't fix things until we know about them.  :-)
+
+>> In your opinion, was this assignment, or any of the parts of it, too
+>> easy or too hard?  Did it take too long or too little time?
+
+>> Did you find that working on a particular part of the assignment gave
+>> you greater insight into some aspect of OS design?
+
+>> Were there any parts of the assignment that you felt were unnecessarily
+>> tedious or pointless?
+
+>> Is there some particular fact or hint we should give students in
+>> future quarters to help them solve the problems?  Conversely, did you
+>> find any of our guidance to be misleading?
+
+>> Do you have any suggestions for the instructor and/or TAs to more
+>> effectively assist students, either for future quarters or the remaining
+>> projects?
+
+>> Any other comments?
+
