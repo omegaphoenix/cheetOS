@@ -3,22 +3,22 @@
 			| PROJECT 3: THREADS |
 			|   DESIGN DOCUMENT  |
 			+--------------------+
-				   
+
 ---- GROUP ----
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Justin Leong <jleong@caltech.edu>
+John Li <jzli@caltech.edu>
+Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment: 0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL: https://github.com/omegaphoenix/cheetOS
    commit ...
 
 ---- PRELIMINARIES ----
@@ -54,26 +54,54 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+  struct thread *t = thread_current();
+  This thread was to get the current thread to set the sleep counter.
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to timer_sleep(),
 >> including the effects of the timer interrupt handler.
 
+  It turns off interrupts before setting the sleep_counter on the thread
+  and blocking the thread. Then it turns the interrupts back on.
+  During the timer interrupt handler, every thread is checked and
+  its sleep_counter decremented if positive. The thread is unblocked
+  when its sleep_counter reaches 0.
+
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
+
+  We tried to minimize the amount of code in decrement_sleep_counter
+  which just modifies the sleep_counter member of the thread and
+  unblocks if necessary.
 
 ---- SYNCHRONIZATION ----
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
+  The problem is that one could disable interrupts and then the other
+  thread also tries to disable interrupts.
+  TODO: Not sure how we avoid this.
+
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
+
+  Interrupts are disabled until a thread is blocked so a timer interrupt
+  cannot occur during the critical section of the call to timer_sleep
+  where the thread is put to sleep.
 
 ---- RATIONALE ----
 
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
+
+  TODO: An alternate design might have been to keep the blocked threads in
+  their own list so we wouldn't have to iterate through all the threads to
+  figure out which ones are asleep to decrement.
+
+  This design reuses a lot of the functions already implemented like block
+  and unblock
 
 			 PRIORITY SCHEDULING
 			 ===================
