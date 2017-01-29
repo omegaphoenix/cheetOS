@@ -70,9 +70,11 @@ static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
 static tid_t allocate_tid(void);
 
+/*! Checks if thread is blocked and sleeping (sleep_counter > 0).
+    If it is, wakes the thread if there is one second left to sleep;
+    otherwise, decrements the sleep counter.*/
 static void decrement_sleep_counter(struct thread *t, void *aux UNUSED) {
     if (t->status == THREAD_BLOCKED) {
-        // printf("thread %s is blocked \n", t->name);
         if (t->sleep_counter == 1) {
             t->sleep_counter = 0; /* reset sleep_counter */
             thread_unblock(t);
@@ -80,7 +82,8 @@ static void decrement_sleep_counter(struct thread *t, void *aux UNUSED) {
         else if (t->sleep_counter > 1) {
             t->sleep_counter--;
         }
-        /* else, sleep_counter == 0 => ignore */
+        /* else, sleep_counter == 0 
+           which means thread is blocked but not sleeping */
     }
 }
 
@@ -140,7 +143,7 @@ void thread_tick(void) {
     else
         kernel_ticks++;
 
-    /* Decrement sleep counter for all threads */
+    /* Decrement sleep counter for all threads. */
     thread_foreach(decrement_sleep_counter, 0);
 
     /* Enforce preemption. */
