@@ -12,7 +12,7 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-  
+
 #if TIMER_FREQ < 19
 #error 8254 timer requires TIMER_FREQ >= 19
 #endif
@@ -81,11 +81,24 @@ int64_t timer_elapsed(int64_t then) {
 /*! Sleeps for approximately TICKS timer ticks.  Interrupts must
     be turned on. */
 void timer_sleep(int64_t ticks) {
-    int64_t start = timer_ticks();
+    struct thread *t = thread_current();
+    enum intr_level old_level;
 
     ASSERT(intr_get_level() == INTR_ON);
-    while (timer_elapsed(start) < ticks) 
-        thread_yield();
+
+    if (ticks > 0) { /* don't sleep if ticks is 0 or negative */
+        /* turn interrupts off in order to block thread*/
+        old_level = intr_disable();
+
+        /* set sleep_counter on thread */
+        t->sleep_counter = ticks;
+
+        /* block thread until sleep_counter is 0 */
+        thread_block();
+
+        /* turn interrupts back on */
+        intr_set_level(old_level);
+    }
 }
 
 /*! Sleeps for approximately MS milliseconds.  Interrupts must be turned on. */
@@ -136,7 +149,7 @@ void timer_ndelay(int64_t ns) {
 void timer_print_stats(void) {
     printf("Timer: %"PRId64" ticks\n", timer_ticks());
 }
-
+
 /*! Timer interrupt handler. */
 static void timer_interrupt(struct intr_frame *args UNUSED) {
     ticks++;
@@ -173,9 +186,9 @@ static void NO_INLINE busy_wait(int64_t loops) {
 /*! Sleep for approximately NUM/DENOM seconds. */
 static void real_time_sleep(int64_t num, int32_t denom) {
     /* Convert NUM/DENOM seconds into timer ticks, rounding down.
-          
-          (NUM / DENOM) s          
-       ---------------------- = NUM * TIMER_FREQ / DENOM ticks. 
+
+          (NUM / DENOM) s
+       ---------------------- = NUM * TIMER_FREQ / DENOM ticks.
        1 s / TIMER_FREQ ticks
     */
     int64_t ticks = num * TIMER_FREQ / denom;
@@ -183,12 +196,12 @@ static void real_time_sleep(int64_t num, int32_t denom) {
     ASSERT(intr_get_level() == INTR_ON);
     if (ticks > 0) {
         /* We're waiting for at least one full timer tick.  Use timer_sleep()
-           because it will yield the CPU to other processes. */                
-        timer_sleep(ticks); 
+           because it will yield the CPU to other processes. */
+        timer_sleep(ticks);
     }
     else {
         /* Otherwise, use a busy-wait loop for more accurate sub-tick timing. */
-        real_time_delay(num, denom); 
+        real_time_delay(num, denom);
     }
 }
 
