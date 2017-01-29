@@ -81,11 +81,30 @@ int64_t timer_elapsed(int64_t then) {
 /*! Sleeps for approximately TICKS timer ticks.  Interrupts must
     be turned on. */
 void timer_sleep(int64_t ticks) {
-    int64_t start = timer_ticks();
+    // int64_t start = timer_ticks();
+    struct thread *t = thread_current();
+    enum intr_level old_level;
 
     ASSERT(intr_get_level() == INTR_ON);
-    while (timer_elapsed(start) < ticks) 
+
+    if (ticks > 0) { /* don't sleep if ticks is 0 or negative */
+        /* turn interrupts off? in order to block thread*/
+        old_level = intr_disable();
+
+        /* set sleep_counter on thread */
+        t->sleep_counter = ticks;
+
+        /* block thread until sleep_counter is 0 */
+        thread_block();
+
+        /* turn interrupts back on */
+        intr_set_level(old_level);
+    }
+
+    /*
+    while (timer_elapsed(start) < ticks)
         thread_yield();
+    */
 }
 
 /*! Sleeps for approximately MS milliseconds.  Interrupts must be turned on. */

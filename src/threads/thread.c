@@ -70,6 +70,20 @@ static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
 static tid_t allocate_tid(void);
 
+static void decrement_sleep_counter(struct thread *t, void *aux UNUSED) {
+    if (t->status == THREAD_BLOCKED) {
+        // printf("thread %s is blocked \n", t->name);
+        if (t->sleep_counter == 1) {
+            t->sleep_counter = 0; /* reset sleep_counter */
+            thread_unblock(t);
+        }
+        else if (t->sleep_counter > 1) {
+            t->sleep_counter--;
+        }
+        /* else, sleep_counter == 0 => ignore */
+    }
+}
+
 /*! Initializes the threading system by transforming the code
     that's currently running into a thread.  This can't work in
     general and it is possible in this case only because loader.S
@@ -94,6 +108,7 @@ void thread_init(void) {
     initial_thread->status = THREAD_RUNNING;
     initial_thread->tid = allocate_tid();
 }
+
 
 /*! Starts preemptive thread scheduling by enabling interrupts.
     Also creates the idle thread. */
@@ -125,10 +140,15 @@ void thread_tick(void) {
     else
         kernel_ticks++;
 
+    /* Decrement sleep counter for all threads */
+    thread_foreach(decrement_sleep_counter, 0);
+
     /* Enforce preemption. */
     if (++thread_ticks >= TIME_SLICE)
         intr_yield_on_return();
 }
+
+
 
 /*! Prints thread statistics. */
 void thread_print_stats(void) {
@@ -403,6 +423,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->stack = (uint8_t *) t + PGSIZE;
     t->priority = priority;
     t->magic = THREAD_MAGIC;
+    t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);
