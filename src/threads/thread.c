@@ -82,7 +82,7 @@ static void decrement_sleep_counter(struct thread *t, void *aux UNUSED) {
         else if (t->sleep_counter > 1) {
             t->sleep_counter--;
         }
-        /* else, sleep_counter == 0 
+        /* else, sleep_counter == 0
            which means thread is blocked but not sleeping */
     }
 }
@@ -297,7 +297,7 @@ void thread_yield(void) {
     ASSERT(!intr_context());
 
     old_level = intr_disable();
-    if (cur != idle_thread) 
+    if (cur != idle_thread)
         list_push_back(&ready_list, &cur->elem);
     cur->status = THREAD_READY;
     schedule();
@@ -350,7 +350,7 @@ int thread_get_recent_cpu(void) {
     /* Not yet implemented. */
     return 0;
 }
-
+
 /*! Idle thread.  Executes when no other thread is ready to run.
 
     The idle thread is initially put on the ready list by thread_start().
@@ -391,7 +391,7 @@ static void kernel_thread(thread_func *function, void *aux) {
     function(aux);       /* Execute the thread function. */
     thread_exit();       /* If function() returns, kill the thread. */
 }
-
+
 /*! Returns the running thread. */
 struct thread * running_thread(void) {
     uint32_t *esp;
@@ -468,7 +468,7 @@ static struct thread * next_thread_to_run(void) {
    After this function and its caller returns, the thread switch is complete. */
 void thread_schedule_tail(struct thread *prev) {
     struct thread *cur = running_thread();
-  
+
     ASSERT(intr_get_level() == INTR_OFF);
 
     /* Mark us as running. */
@@ -524,7 +524,7 @@ static tid_t allocate_tid(void) {
 
     return tid;
 }
-
+
 /*! Offset of `stack' member within `struct thread'.
     Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof(struct thread, stack);
