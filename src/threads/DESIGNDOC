@@ -54,8 +54,11 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-  struct thread *t = thread_current();
-  This thread was to get the current thread to set the sleep counter.
+  int64_t sleep_counter; 
+  A sleep_counter member variable was added to the thread struct to keep track
+  of how many more ticks a thread must sleep.
+
+  TODO: if we have a list of sleeping threads, paste it here
 
 ---- ALGORITHMS ----
 
@@ -79,7 +82,7 @@ which parts.
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
-
+  
   The problem is that one could disable interrupts and then the other
   thread also tries to disable interrupts.
   TODO: Not sure how we avoid this.
