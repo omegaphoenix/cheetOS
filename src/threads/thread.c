@@ -479,9 +479,12 @@ static struct thread * next_thread_to_run(void) {
     if (list_empty(&ready_list)) {
         return idle_thread;
     }
+    else if (!thread_mlfqs) {
+        return list_entry(list_pop_front(&ready_list), struct thread, elem);
+    }
     else {
         struct list_elem *next = list_begin(&ready_list);
-        struct thread *t = list_entry(next, struct thread, allelem);
+        struct thread *t = list_entry(next, struct thread, elem);
         int highest_priority_val = t->priority;
         if (highest_priority_val < t->donated_priority) {
             highest_priority_val = t->donated_priority;
@@ -491,7 +494,7 @@ static struct thread * next_thread_to_run(void) {
         struct list_elem *e;
         for (e = list_next(next); e != list_end(&ready_list);
                 e = list_next(e)) {
-            t = list_entry(e, struct thread, allelem);
+            t = list_entry(e, struct thread, elem);
             int curr_priority = t->priority;
             if (curr_priority < t->donated_priority) {
                 curr_priority = t->donated_priority;
@@ -516,11 +519,12 @@ static struct thread * next_thread_to_run(void) {
     before returning, but the first time a thread is scheduled it is called by
     switch_entry() (see switch.S).
 
-   It's not safe to call printf() until the thread switch is complete.  In
-   practice that means that printf()s should be added at the end of the
-   function.
+    It's not safe to call printf() until the thread switch is complete.  In
+    practice that means that printf()s should be added at the end of the
+    function.
 
-   After this function and its caller returns, the thread switch is complete. */
+    After this function and its caller returns, the thread switch is
+    complete. */
 void thread_schedule_tail(struct thread *prev) {
     struct thread *cur = running_thread();
 
