@@ -301,6 +301,9 @@ void thread_foreach(thread_action_func *func, void *aux) {
 /*! Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority) {
     thread_current()->priority = new_priority;
+    if (!is_highest_priority(new_priority)) {
+        thread_yield();
+    }
 }
 
 /*! Returns the current thread's priority. */
@@ -338,6 +341,35 @@ int thread_get_load_avg(void) {
 int thread_get_recent_cpu(void) {
     /* Not yet implemented. */
     return 0;
+}
+
+/*! Returns priority of highest priority thread. */
+int highest_priority(void) {
+    // Return minimum if no threads
+    int highest_priority_val = PRI_MIN;
+
+    // Find max priority of threads
+    struct list_elem *e;
+    for (e = list_begin(&all_list); e != list_end(&all_list);
+         e = list_next(e)) {
+        struct thread *t = list_entry(e, struct thread, allelem);
+        int curr_priority = t->priority;
+        if (curr_priority < t->donated_priority) {
+            curr_priority = t->donated_priority;
+        }
+
+        if (curr_priority > highest_priority_val) {
+            highest_priority_val = curr_priority;
+        }
+    }
+
+    return highest_priority_val;
+}
+
+/*! Returns true if test_priority is the highest priority. */
+bool is_highest_priority(int test_priority) {
+    int highest = highest_priority();
+    return test_priority >= highest;
 }
 
 /*! Idle thread.  Executes when no other thread is ready to run.

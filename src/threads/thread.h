@@ -156,5 +156,8 @@ void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
 
+int highest_priority(void);
+bool is_highest_priority(int test_priority);
+
 #endif /* threads/thread.h */
 
