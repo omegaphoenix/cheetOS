@@ -222,7 +222,7 @@ void thread_unblock(struct thread *t) {
     intr_set_level(old_level);
 
     /* Yield current thread if higher priority thread is ready */
-    if (thread_mlfqs && highest_priority() < t->priority) {
+    if (highest_priority() < t->priority) {
         thread_yield();
     }
 }
@@ -306,10 +306,6 @@ void thread_foreach(thread_action_func *func, void *aux) {
 /*! Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority) {
     thread_current()->priority = new_priority;
-    // Done if round robin
-    if (!thread_mlfqs) {
-        return;
-    }
     if (!is_highest_priority(new_priority)) {
         thread_yield();
     }
@@ -478,9 +474,6 @@ static void * alloc_frame(struct thread *t, size_t size) {
 static struct thread * next_thread_to_run(void) {
     if (list_empty(&ready_list)) {
         return idle_thread;
-    }
-    else if (!thread_mlfqs) {
-        return list_entry(list_pop_front(&ready_list), struct thread, elem);
     }
     else {
         struct list_elem *next = list_begin(&ready_list);
