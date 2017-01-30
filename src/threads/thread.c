@@ -187,6 +187,11 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     /* Add to run queue. */
     thread_unblock(t);
 
+    /* Yield current thread if higher priority */
+    if (thread_mlfqs && highest_priority() < t->priority) {
+        thread_yield();
+    }
+
     return tid;
 }
 
@@ -301,6 +306,10 @@ void thread_foreach(thread_action_func *func, void *aux) {
 /*! Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority) {
     thread_current()->priority = new_priority;
+    // Done if round robin
+    if (!thread_mlfqs) {
+        return;
+    }
     if (!is_highest_priority(new_priority)) {
         thread_yield();
     }
@@ -443,7 +452,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     strlcpy(t->name, name, sizeof t->name);
     t->stack = (uint8_t *) t + PGSIZE;
     t->priority = priority;
-    t->donated_priority = priority;
+    t->donated_priority = PRI_MIN;
     t->magic = THREAD_MAGIC;
 
     old_level = intr_disable();
