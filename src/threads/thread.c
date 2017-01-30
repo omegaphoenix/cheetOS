@@ -476,10 +476,35 @@ static void * alloc_frame(struct thread *t, size_t size) {
     thread can continue running, then it will be in the run queue.)  If the
     run queue is empty, return idle_thread. */
 static struct thread * next_thread_to_run(void) {
-    if (list_empty(&ready_list))
-      return idle_thread;
-    else
-      return list_entry(list_pop_front(&ready_list), struct thread, elem);
+    if (list_empty(&ready_list)) {
+        return idle_thread;
+    }
+    else {
+        struct list_elem *next = list_begin(&ready_list);
+        struct thread *t = list_entry(next, struct thread, allelem);
+        int highest_priority_val = t->priority;
+        if (highest_priority_val < t->donated_priority) {
+            highest_priority_val = t->donated_priority;
+        }
+
+        // Find max priority of threads
+        struct list_elem *e;
+        for (e = list_next(next); e != list_end(&ready_list);
+                e = list_next(e)) {
+            t = list_entry(e, struct thread, allelem);
+            int curr_priority = t->priority;
+            if (curr_priority < t->donated_priority) {
+                curr_priority = t->donated_priority;
+            }
+
+            if (curr_priority > highest_priority_val) {
+                highest_priority_val = curr_priority;
+                next = e;
+            }
+        }
+        list_remove(next);
+        return list_entry(next, struct thread, elem);
+    }
 }
 
 /*! Completes a thread switch by activating the new thread's page tables, and,
