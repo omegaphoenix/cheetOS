@@ -90,8 +90,11 @@ void timer_sleep(int64_t ticks) {
         /* turn interrupts off in order to block thread*/
         old_level = intr_disable();
 
-        /* set sleep_counter on thread */
+	/* set sleep_counter on thread */
         t->sleep_counter = ticks;
+
+	/* put thread on sleep_list */
+	add_sleep_thread(t);
 
         /* block thread until sleep_counter is 0 */
         thread_block();
