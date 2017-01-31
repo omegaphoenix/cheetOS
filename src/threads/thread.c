@@ -388,7 +388,7 @@ int thread_get_recent_cpu(void) {
 /*! Returns priority of highest priority thread. */
 int highest_priority(void) {
     // Return minimum if no threads
-    int highest_priority_val = PRI_MIN;
+    int highest_priority_val = thread_current()->priority;
 
     // Find max priority of threads
     struct list_elem *e;
