@@ -222,11 +222,11 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     sf->ebp = 0;
 
     /* Add to run queue. */
-    int curr_priority = highest_priority();
+    int prev_highest_priority = highest_priority();
     thread_unblock(t);
 
     /* Yield current thread if higher priority thread was added */
-    if (curr_priority < t->priority) {
+    if (prev_highest_priority < t->priority) {
         thread_yield();
     }
     return tid;
