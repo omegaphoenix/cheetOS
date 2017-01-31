@@ -99,6 +99,7 @@ struct thread {
     int priority;                       /*!< Priority. */
     int donated_priority;               /*!< Donated priority. */
     struct list_elem allelem;           /*!< List element for all threads list. */
+    int64_t sleep_counter;              /*!< Number of ticks left to sleep. */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
@@ -155,6 +156,9 @@ int thread_get_nice(void);
 void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
+
+void add_sleep_thread(struct thread *);
+void sleep_threads(void);
 
 int highest_priority(void);
 bool is_highest_priority(int test_priority);
