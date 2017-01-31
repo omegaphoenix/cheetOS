@@ -28,6 +28,10 @@ static struct list ready_list;
     when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
+/*! List of sleeping processes. Processes are added to this list
+    when timer_sleep() is called and removed when they are woken. */
+static struct list sleep_list;
+
 /*! Idle thread. */
 static struct thread *idle_thread;
 
@@ -70,6 +74,35 @@ static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
 static tid_t allocate_tid(void);
 
+/*! Iterate through sleep_list and decrement sleep_counters. 
+    If a counter has reached 0, wake the thread 
+    and remove from sleep_list. */
+void sleep_threads() {
+    ASSERT(intr_get_level() == INTR_OFF);
+    
+    struct list_elem *e = list_begin(&sleep_list);
+
+    while (e != list_end(&sleep_list)) {
+        struct thread *t = list_entry(e, struct thread, elem);
+		
+        /* Decrement sleep counter and wake thread */
+        if (t->sleep_counter <= 1) {
+            t->sleep_counter = 0; /* reset sleep_counter */
+            e = list_remove(e); /* remove thread from list */
+            thread_unblock(t);
+        }
+        else {
+            t->sleep_counter--;
+            e = list_next(e);
+        }
+    }
+}
+
+/* Add thread to sleep_list */
+void add_sleep_thread(struct thread *t) {
+	list_push_back(&sleep_list, &t->elem);
+}
+
 /*! Initializes the threading system by transforming the code
     that's currently running into a thread.  This can't work in
     general and it is possible in this case only because loader.S
@@ -87,6 +120,7 @@ void thread_init(void) {
     lock_init(&tid_lock);
     list_init(&ready_list);
     list_init(&all_list);
+    list_init(&sleep_list);
 
     /* Set up a thread structure for the running thread. */
     initial_thread = running_thread();
@@ -124,6 +158,9 @@ void thread_tick(void) {
 #endif
     else
         kernel_ticks++;
+
+    /* Decrement sleep counter for all threads. */
+	sleep_threads();
 
     /* Enforce preemption. */
     if (++thread_ticks >= TIME_SLICE)
@@ -403,6 +440,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->stack = (uint8_t *) t + PGSIZE;
     t->priority = priority;
     t->magic = THREAD_MAGIC;
+    t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);
