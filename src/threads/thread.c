@@ -222,8 +222,13 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     sf->ebp = 0;
 
     /* Add to run queue. */
+    int prev_highest_priority = highest_priority();
     thread_unblock(t);
 
+    /* Yield current thread if higher priority thread was added */
+    if (prev_highest_priority < t->priority) {
+        thread_yield();
+    }
     return tid;
 }
 
@@ -257,11 +262,6 @@ void thread_unblock(struct thread *t) {
     list_push_back(&ready_list, &t->elem);
     t->status = THREAD_READY;
     intr_set_level(old_level);
-
-    /* Yield current thread if higher priority thread is ready */
-    if (highest_priority() < t->priority) {
-        thread_yield();
-    }
 }
 
 /*! Returns the name of the running thread. */
@@ -388,7 +388,7 @@ int thread_get_recent_cpu(void) {
 /*! Returns priority of highest priority thread. */
 int highest_priority(void) {
     // Return minimum if no threads
-    int highest_priority_val = PRI_MIN;
+    int highest_priority_val = thread_current()->priority;
 
     // Find max priority of threads
     struct list_elem *e;
