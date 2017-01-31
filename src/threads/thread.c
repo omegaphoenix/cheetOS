@@ -257,6 +257,11 @@ void thread_unblock(struct thread *t) {
     list_push_back(&ready_list, &t->elem);
     t->status = THREAD_READY;
     intr_set_level(old_level);
+
+    /* Yield current thread if higher priority thread is ready */
+    if (highest_priority() < t->priority) {
+        thread_yield();
+    }
 }
 
 /*! Returns the name of the running thread. */
@@ -338,11 +343,23 @@ void thread_foreach(thread_action_func *func, void *aux) {
 /*! Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority) {
     thread_current()->priority = new_priority;
+    if (!is_highest_priority(new_priority)) {
+        thread_yield();
+    }
 }
 
 /*! Returns the current thread's priority. */
 int thread_get_priority(void) {
-    return thread_current()->priority;
+    struct thread *cur = thread_current();
+    int donated_priority = cur->donated_priority;
+    int own_priority = cur->priority;
+
+    if (donated_priority > own_priority) {
+        return donated_priority;
+    }
+    else {
+        return own_priority;
+    }
 }
 
 /*! Sets the current thread's nice value to NICE. */
@@ -366,6 +383,35 @@ int thread_get_load_avg(void) {
 int thread_get_recent_cpu(void) {
     /* Not yet implemented. */
     return 0;
+}
+
+/*! Returns priority of highest priority thread. */
+int highest_priority(void) {
+    // Return minimum if no threads
+    int highest_priority_val = PRI_MIN;
+
+    // Find max priority of threads
+    struct list_elem *e;
+    for (e = list_begin(&ready_list); e != list_end(&ready_list);
+         e = list_next(e)) {
+        struct thread *t = list_entry(e, struct thread, elem);
+        int curr_priority = t->priority;
+        if (curr_priority < t->donated_priority) {
+            curr_priority = t->donated_priority;
+        }
+
+        if (curr_priority > highest_priority_val) {
+            highest_priority_val = curr_priority;
+        }
+    }
+
+    return highest_priority_val;
+}
+
+/*! Returns true if test_priority is the highest priority. */
+bool is_highest_priority(int test_priority) {
+    int highest = highest_priority();
+    return test_priority >= highest;
 }
 
 /*! Idle thread.  Executes when no other thread is ready to run.
@@ -439,6 +485,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     strlcpy(t->name, name, sizeof t->name);
     t->stack = (uint8_t *) t + PGSIZE;
     t->priority = priority;
+    t->donated_priority = PRI_MIN;
     t->magic = THREAD_MAGIC;
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
 
@@ -463,10 +510,35 @@ static void * alloc_frame(struct thread *t, size_t size) {
     thread can continue running, then it will be in the run queue.)  If the
     run queue is empty, return idle_thread. */
 static struct thread * next_thread_to_run(void) {
-    if (list_empty(&ready_list))
-      return idle_thread;
-    else
-      return list_entry(list_pop_front(&ready_list), struct thread, elem);
+    if (list_empty(&ready_list)) {
+        return idle_thread;
+    }
+    else {
+        struct list_elem *next = list_begin(&ready_list);
+        struct thread *t = list_entry(next, struct thread, elem);
+        int highest_priority_val = t->priority;
+        if (highest_priority_val < t->donated_priority) {
+            highest_priority_val = t->donated_priority;
+        }
+
+        // Find max priority of threads
+        struct list_elem *e;
+        for (e = list_next(next); e != list_end(&ready_list);
+                e = list_next(e)) {
+            t = list_entry(e, struct thread, elem);
+            int curr_priority = t->priority;
+            if (curr_priority < t->donated_priority) {
+                curr_priority = t->donated_priority;
+            }
+
+            if (curr_priority > highest_priority_val) {
+                highest_priority_val = curr_priority;
+                next = e;
+            }
+        }
+        list_remove(next);
+        return list_entry(next, struct thread, elem);
+    }
 }
 
 /*! Completes a thread switch by activating the new thread's page tables, and,
@@ -478,11 +550,12 @@ static struct thread * next_thread_to_run(void) {
     before returning, but the first time a thread is scheduled it is called by
     switch_entry() (see switch.S).
 
-   It's not safe to call printf() until the thread switch is complete.  In
-   practice that means that printf()s should be added at the end of the
-   function.
+    It's not safe to call printf() until the thread switch is complete.  In
+    practice that means that printf()s should be added at the end of the
+    function.
 
-   After this function and its caller returns, the thread switch is complete. */
+    After this function and its caller returns, the thread switch is
+    complete. */
 void thread_schedule_tail(struct thread *prev) {
     struct thread *cur = running_thread();
 

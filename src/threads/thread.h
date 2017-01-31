@@ -97,6 +97,7 @@ struct thread {
     char name[16];                      /*!< Name (for debugging purposes). */
     uint8_t *stack;                     /*!< Saved stack pointer. */
     int priority;                       /*!< Priority. */
+    int donated_priority;               /*!< Donated priority. */
     struct list_elem allelem;           /*!< List element for all threads list. */
     int64_t sleep_counter;              /*!< Number of ticks left to sleep. */
     /**@}*/
@@ -155,6 +156,9 @@ int thread_get_nice(void);
 void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
+
+int highest_priority(void);
+bool is_highest_priority(int test_priority);
 
 void add_sleep_thread(struct thread *);
 void sleep_threads(void);
