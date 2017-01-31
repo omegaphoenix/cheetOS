@@ -12,7 +12,7 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-  
+
 #if TIMER_FREQ < 19
 #error 8254 timer requires TIMER_FREQ >= 19
 #endif
@@ -152,7 +152,7 @@ void timer_ndelay(int64_t ns) {
 void timer_print_stats(void) {
     printf("Timer: %"PRId64" ticks\n", timer_ticks());
 }
-
+
 /*! Timer interrupt handler. */
 static void timer_interrupt(struct intr_frame *args UNUSED) {
     ticks++;
@@ -189,9 +189,9 @@ static void NO_INLINE busy_wait(int64_t loops) {
 /*! Sleep for approximately NUM/DENOM seconds. */
 static void real_time_sleep(int64_t num, int32_t denom) {
     /* Convert NUM/DENOM seconds into timer ticks, rounding down.
-          
-          (NUM / DENOM) s          
-       ---------------------- = NUM * TIMER_FREQ / DENOM ticks. 
+
+          (NUM / DENOM) s
+       ---------------------- = NUM * TIMER_FREQ / DENOM ticks.
        1 s / TIMER_FREQ ticks
     */
     int64_t ticks = num * TIMER_FREQ / denom;
@@ -199,12 +199,12 @@ static void real_time_sleep(int64_t num, int32_t denom) {
     ASSERT(intr_get_level() == INTR_ON);
     if (ticks > 0) {
         /* We're waiting for at least one full timer tick.  Use timer_sleep()
-           because it will yield the CPU to other processes. */                
-        timer_sleep(ticks); 
+           because it will yield the CPU to other processes. */
+        timer_sleep(ticks);
     }
     else {
         /* Otherwise, use a busy-wait loop for more accurate sub-tick timing. */
-        real_time_delay(num, denom); 
+        real_time_delay(num, denom);
     }
 }
 

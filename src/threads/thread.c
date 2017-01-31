@@ -74,17 +74,17 @@ static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
 static tid_t allocate_tid(void);
 
-/*! Iterate through sleep_list and decrement sleep_counters. 
-    If a counter has reached 0, wake the thread 
+/*! Iterate through sleep_list and decrement sleep_counters.
+    If a counter has reached 0, wake the thread
     and remove from sleep_list. */
 void sleep_threads() {
     ASSERT(intr_get_level() == INTR_OFF);
-    
+
     struct list_elem *e = list_begin(&sleep_list);
 
     while (e != list_end(&sleep_list)) {
         struct thread *t = list_entry(e, struct thread, elem);
-		
+
         /* Decrement sleep counter and wake thread */
         if (t->sleep_counter <= 1) {
             t->sleep_counter = 0; /* reset sleep_counter */
