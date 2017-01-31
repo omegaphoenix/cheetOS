@@ -74,44 +74,28 @@ static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
 static tid_t allocate_tid(void);
 
-/*! Checks if thread is blocked and sleeping (sleep_counter > 0).
-    If it is, wakes the thread if there is one second left to sleep;
-    otherwise, decrements the sleep counter.*/
-static void decrement_sleep_counter(struct thread *t, void *aux UNUSED) {
-    if (t->status == THREAD_BLOCKED) {
-        if (t->sleep_counter == 1) {
+/*! Iterate through sleep_list and decrement sleep_counters. 
+    If a counter has reached 0, wake the thread 
+    and remove from sleep_list. */
+void sleep_threads() {
+    ASSERT(intr_get_level() == INTR_OFF);
+    
+    struct list_elem *e = list_begin(&sleep_list);
+
+    while (e != list_end(&sleep_list)) {
+        struct thread *t = list_entry(e, struct thread, elem);
+		
+        /* Decrement sleep counter and wake thread */
+        if (t->sleep_counter <= 1) {
             t->sleep_counter = 0; /* reset sleep_counter */
+            e = list_remove(e); /* remove thread from list */
             thread_unblock(t);
         }
-        else if (t->sleep_counter > 1) {
+        else {
             t->sleep_counter--;
+            e = list_next(e);
         }
-        /* else, sleep_counter == 0 
-           which means thread is blocked but not sleeping */
     }
-}
-
-/*! Iterate through sleep_list and decrement counters */
-void sleep_threads() {
-	ASSERT(intr_get_level() == INTR_OFF);
-    
-	struct list_elem *e = list_begin(&sleep_list);
-
-	while (e != list_end(&sleep_list)) {
-	    struct thread *t = list_entry(e, struct thread, elem);
-		
-		/* Decrement sleep counter and wake thread */
-		if (t->sleep_counter <= 1) {
-		    t->sleep_counter = 0; /* reset sleep_counter */
-			e = list_remove(e); /* remove thread from list */
-			thread_unblock(t);
-		}
-		else {
-		    t->sleep_counter--;
-			e = list_next(e);
-		}
-	}
-	
 }
 
 /* Add thread to sleep_list */
@@ -176,7 +160,6 @@ void thread_tick(void) {
         kernel_ticks++;
 
     /* Decrement sleep counter for all threads. */
-    // thread_foreach(decrement_sleep_counter, 0);
 	sleep_threads();
 
     /* Enforce preemption. */
