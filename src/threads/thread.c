@@ -225,8 +225,8 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     int curr_priority = highest_priority();
     thread_unblock(t);
 
-    /* Yield current thread if higher priority thread is ready */
-    if (curr_priority < highest_priority()) {
+    /* Yield current thread if higher priority thread was added */
+    if (curr_priority < t->priority) {
         thread_yield();
     }
     return tid;
