@@ -52,4 +52,40 @@ int calculate_priority(int recent_cpu, int nice){
     return int_priority;
 }
 
+/*
+ * Input: Fixed Point and Fixed Point
+ * Output: Fixed Point
+ */
+int calculate_cpu_usage(int recent_cpu, int load_average, int niceness) {
+    int fixed_one = convert_to_fixed_point(1, 14);
+    int fixed_fraction = divide_x_by_y(2 * load_average,
+                                       2 * load_average + fixed_one,
+                                       14);
+    int fraction_multiplication = multiply_x_by_y(fixed_fraction,
+                                                  recent_cpu,
+                                                  14);
+    int fixed_niceness = convert_to_fixed_point(niceness, 14);
+    int fixed_new_cpu = fraction_multiplication + fixed_niceness;
+
+    return fixed_new_cpu;
+}
+
+/*
+ * Input: Fixed Point and Fixed Point
+ * Output: Fixed Point
+ */
+int calculate_load_avg(int load_average, int ready_threads) {
+    int fixed_numerator = convert_to_fixed_point(59, 14);
+    int fixed_one = convert_to_fixed_point(1, 14);
+    int fixed_denominator = convert_to_fixed_point(60, 14);
+    int fixed_threads = convert_to_fixed_point(ready_threads, 14);
+
+    int fixed_fraction = divide_x_by_y(fixed_numerator, fixed_denominator, 14);
+    int fixed_second_fraction = divide_x_by_y(fixed_one, fixed_denominator, 14);
+
+    int fraction_multiplication = multiply_x_by_y(fixed_fraction, load_average, 14);
+    int second_fraction_multiplication = multiply_x_by_y(fixed_second_fraction,
+                                                         fixed_threads);
+    return fraction_multiplication + second_fraction_multiplication;
+}
 

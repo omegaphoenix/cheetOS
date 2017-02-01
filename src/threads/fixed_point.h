@@ -48,5 +48,28 @@ int divide_x_by_n(int x, int n);
 */
 int calculate_priority(int recent_cpu, int nice);
 
+/* Calculates the new cpu_usage of the thread given cpu usage
+   and a load_average.
+
+   Input:
+   recent_cpu:    Fixed Point
+   load_average:  Fixed Point
+
+   Return:
+   recent_cpu:    Fixed Point
+*/
+int calculate_cpu_usage(int recent_cpu, int load_average, int niceness);
+
+/* Calculates the new load_average of the thread given previous
+   load_average and number of ready threads.
+
+   Input:
+   load_avg:       Fixed Point
+   ready_threads:  Integer
+
+   Return:
+   load_average:    Fixed Point
+*/
+int calculate_load_avg(int load_average, int ready_threads);
 
 #endif /* FIXED_POINT_H_ */
