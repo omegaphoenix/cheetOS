@@ -4,6 +4,8 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
+#include "devices/timer.h"
+#include "threads/fixed_point.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
@@ -52,6 +54,8 @@ struct kernel_thread_frame {
 static long long idle_ticks;    /*!< # of timer ticks spent idle. */
 static long long kernel_ticks;  /*!< # of timer ticks in kernel threads. */
 static long long user_ticks;    /*!< # of timer ticks in user programs. */
+static int load_avg;            /*!< System load average, estimating average
+                                     number of threads run in next minute */
 
 /* Scheduling. */
 #define TIME_SLICE 4            /*!< # of timer ticks to give each thread. */
@@ -122,6 +126,9 @@ void thread_init(void) {
     list_init(&all_list);
     list_init(&sleep_list);
 
+    /* System boot, load_avg starts at 0 */
+    load_avg = 0;
+
     /* Set up a thread structure for the running thread. */
     initial_thread = running_thread();
     init_thread(initial_thread, "main", PRI_DEFAULT);
@@ -148,7 +155,16 @@ void thread_start(void) {
     Thus, this function runs in an external interrupt context. */
 void thread_tick(void) {
     struct thread *t = thread_current();
+    int num_ready_threads = list_size(&ready_list);
 
+    /* Update cpu_usage */
+    t->recent_cpu++;
+
+    /* Update load balance and cpu_usage every second */
+    if (timer_ticks() % TIMER_FREQ == 0) {
+        // TODO: For each thread, update cpu_time.
+        load_avg = calculate_load_avg(load_avg, num_ready_threads);
+    }
     /* Update statistics. */
     if (t == idle_thread)
         idle_ticks++;
@@ -364,7 +380,11 @@ int thread_get_priority(void) {
 
 /*! Sets the current thread's nice value to NICE. */
 void thread_set_nice(int nice) {
-    thread_current()->niceness = nice;
+    struct thread *t = thread_current();
+
+    int new_priority;
+
+    t->niceness = nice;
 }
 
 /*! Returns the current thread's nice value. */
@@ -374,14 +394,15 @@ int thread_get_nice(void) {
 
 /*! Returns 100 times the system load average. */
 int thread_get_load_avg(void) {
-    /* Not yet implemented. */
-    return 0;
+    int fixed_load_avg = 100 * thread_current()->load_avg;
+    return convert_to_integer_round_nearest(fixed_load_avg, FIXED_POINT_Q);
 }
 
 /*! Returns 100 times the current thread's recent_cpu value. */
 int thread_get_recent_cpu(void) {
     /* Not yet implemented. */
-    return 0;
+    int fixed_cpu_usage = 100 * thread_current()->recent_cpu;
+    return convert_to_integer_round_nearest(fixed_cpu_usage, FIXED_POINT_Q);
 }
 
 /*! Returns priority of highest priority thread. */
@@ -487,6 +508,16 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->donated_priority = PRI_MIN;
     t->magic = THREAD_MAGIC;
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
+
+    if (list_empty(&all_list)) {
+        t->niceness = 0;  /* Set niceness to 0 on initial thread */
+        t->cpu_usage = 0; /* Set cpu_usage to 0 on initial thread */
+    }
+    else {
+        /* Inherit niceness and cpu_usage from parent */
+        t->niceness = thread_current()->niceness;
+        t->cpu_usage = thread_current()->cpu_usage; 
+    }
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);
