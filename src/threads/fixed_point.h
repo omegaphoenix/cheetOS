@@ -7,6 +7,8 @@
 #ifndef FIXED_POINT_H_
 #define FIXED_POINT_H_
 
+#define FIXED_POINT_Q 14
+ 
 /* Converts a number into p.q format */
 int convert_to_fixed_point(int n, int q);
 
