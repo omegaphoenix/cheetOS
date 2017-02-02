@@ -172,7 +172,7 @@ static void sema_test_helper(void *sema_) {
         sema_up(&sema[1]);
     }
 }
-
+
 /*! Initializes LOCK.  A lock can be held by at most a single
     thread at any given time.  Our locks are not "recursive", that
     is, it is an error for the thread currently holding a lock to
@@ -319,6 +319,7 @@ void cond_signal(struct condition *cond, struct lock *lock UNUSED) {
     ASSERT(lock_held_by_current_thread (lock));
 
     if (!list_empty(&cond->waiters)) {
+        /* Initialize values to first thread in waiting list */
         struct semaphore_elem *waiting_sema = list_entry(
                 list_begin(&cond->waiters), struct semaphore_elem, elem);
         struct thread *cur_thread = waiting_sema->thread;
@@ -332,15 +333,13 @@ void cond_signal(struct condition *cond, struct lock *lock UNUSED) {
                                          struct semaphore_elem, elem);
             cur_thread = cur->thread;
             int cur_priority = highest_priority(cur_thread->priority);
-            if (cur_thread->priority > cur_priority) {
-                cur_priority = cur_thread->priority;
-            }
             if (cur_priority > max_priority) {
                 max_priority = cur_priority;
                 waiting_sema = cur;
             }
         }
 
+        /* Signal thread to wake up */
         list_remove(&waiting_sema->elem);
         sema_up(&waiting_sema->semaphore);
     }
