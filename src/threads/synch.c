@@ -115,20 +115,14 @@ void sema_up(struct semaphore *sema) {
         /* Thread to wake up */
         struct thread *waiting_thread = list_entry(list_begin(&sema->waiters),
                     struct thread, elem);
-        int max_priority = get_highest_priority();
-        if (waiting_thread->priority > max_priority) {
-            max_priority = waiting_thread->priority;
-        }
+        int max_priority = highest_priority(waiting_thread->priority);
 
         /* Find max priority thread to wake up */
         struct list_elem *e;
         for (e = list_begin(&sema->waiters); e != list_end(&sema->waiters);
              e = list_next(e)) {
             struct thread *cur_thread = list_entry(e, struct thread, elem);
-            int cur_priority = get_highest_priority();
-            if (cur_thread->priority > cur_priority) {
-                cur_priority = cur_thread->priority;
-            }
+            int cur_priority = highest_priority(cur_thread->priority);
             if (cur_priority > max_priority) {
                 max_priority = cur_priority;
                 waiting_thread = cur_thread;
@@ -325,13 +319,10 @@ void cond_signal(struct condition *cond, struct lock *lock UNUSED) {
     ASSERT(lock_held_by_current_thread (lock));
 
     if (!list_empty(&cond->waiters)) {
-        struct semaphore_elem *waiting_sema = list_entry(list_begin(&cond->waiters),
-                                           struct semaphore_elem, elem);
+        struct semaphore_elem *waiting_sema = list_entry(
+                list_begin(&cond->waiters), struct semaphore_elem, elem);
         struct thread *cur_thread = waiting_sema->thread;
-        int max_priority = get_highest_priority();
-        if (cur_thread->priority > max_priority) {
-            max_priority = waiting_sema->thread->priority;
-        }
+        int max_priority = highest_priority(cur_thread->priority);
 
         /* Find max priority semaphore that is waiting */
         struct list_elem *e;
@@ -340,7 +331,7 @@ void cond_signal(struct condition *cond, struct lock *lock UNUSED) {
             struct semaphore_elem *cur = list_entry(e,
                                          struct semaphore_elem, elem);
             cur_thread = cur->thread;
-            int cur_priority = get_highest_priority();
+            int cur_priority = highest_priority(cur_thread->priority);
             if (cur_thread->priority > cur_priority) {
                 cur_priority = cur_thread->priority;
             }
