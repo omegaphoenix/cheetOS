@@ -222,7 +222,7 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     sf->ebp = 0;
 
     /* Add to run queue. */
-    int prev_highest_priority = highest_priority();
+    int prev_highest_priority = get_highest_priority();
     thread_unblock(t);
 
     /* Yield current thread if higher priority thread was added */
@@ -385,8 +385,18 @@ int thread_get_recent_cpu(void) {
     return 0;
 }
 
-/*! Returns priority of highest priority thread. */
-int highest_priority(void) {
+/*! Returns priority of highest priority thread including argument. */
+int highest_priority(int priority) {
+    if (is_highest_priority(priority)) {
+        return priority;
+    }
+    else {
+        return get_highest_priority();
+    }
+}
+
+/*! Returns priority of highest priority thread in ready_list. */
+int get_highest_priority(void) {
     // Return minimum if no threads
     int highest_priority_val = thread_current()->priority;
 
@@ -410,7 +420,7 @@ int highest_priority(void) {
 
 /*! Returns true if test_priority is the highest priority. */
 bool is_highest_priority(int test_priority) {
-    int highest = highest_priority();
+    int highest = get_highest_priority();
     return test_priority >= highest;
 }
 

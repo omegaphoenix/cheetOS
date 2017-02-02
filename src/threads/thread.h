@@ -157,7 +157,8 @@ void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
 
-int highest_priority(void);
+int highest_priority(int priority);
+int get_highest_priority(void);
 bool is_highest_priority(int test_priority);
 
 void add_sleep_thread(struct thread *);
