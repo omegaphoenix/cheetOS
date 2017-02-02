@@ -348,11 +348,10 @@ void thread_set_priority(int new_priority) {
     }
 }
 
-/*! Returns the current thread's priority. */
-int thread_get_priority(void) {
-    struct thread *cur = thread_current();
-    int donated_priority = cur->donated_priority;
-    int own_priority = cur->priority;
+/*! Returns the priority of the given thread */
+int get_priority(struct thread *thread_to_check) {
+    int donated_priority = thread_to_check->donated_priority;
+    int own_priority = thread_to_check->priority;
 
     if (donated_priority > own_priority) {
         return donated_priority;
@@ -360,6 +359,12 @@ int thread_get_priority(void) {
     else {
         return own_priority;
     }
+}
+
+/*! Returns the current thread's priority. */
+int thread_get_priority(void) {
+    struct thread *cur = thread_current();
+    return get_priority(cur);
 }
 
 /*! Sets the current thread's nice value to NICE. */
@@ -404,10 +409,7 @@ int get_highest_priority(void) {
     for (e = list_begin(&ready_list); e != list_end(&ready_list);
          e = list_next(e)) {
         struct thread *t = list_entry(e, struct thread, elem);
-        int curr_priority = t->priority;
-        if (curr_priority < t->donated_priority) {
-            curr_priority = t->donated_priority;
-        }
+        int curr_priority = get_priority(t);
 
         if (curr_priority > highest_priority_val) {
             highest_priority_val = curr_priority;
@@ -525,20 +527,14 @@ static struct thread * next_thread_to_run(void) {
     else {
         struct list_elem *next = list_begin(&ready_list);
         struct thread *t = list_entry(next, struct thread, elem);
-        int highest_priority_val = t->priority;
-        if (highest_priority_val < t->donated_priority) {
-            highest_priority_val = t->donated_priority;
-        }
+        int highest_priority_val = get_priority(t);
 
         // Find max priority of threads
         struct list_elem *e;
         for (e = list_next(next); e != list_end(&ready_list);
                 e = list_next(e)) {
             t = list_entry(e, struct thread, elem);
-            int curr_priority = t->priority;
-            if (curr_priority < t->donated_priority) {
-                curr_priority = t->donated_priority;
-            }
+            int curr_priority = get_priority(t);
 
             if (curr_priority > highest_priority_val) {
                 highest_priority_val = curr_priority;
