@@ -1,5 +1,6 @@
 #include "threads/fixed_point.h"
 #include "threads/thread.h"
+#include <stdio.h>
 
 int convert_to_fixed_point(int n, int q) {
     int f = 1 << q;
@@ -46,8 +47,7 @@ int divide_x_by_n(int x, int n) {
 int calculate_priority(int recent_cpu, int nice){
     int fixed_PRI_MAX = convert_to_fixed_point(PRI_MAX, FIXED_POINT_Q);
     int fixed_nice_factor = convert_to_fixed_point(nice * 2, FIXED_POINT_Q);
-    int fixed_priority = fixed_PRI_MAX - (recent_cpu / 4) + fixed_nice_factor;
-
+    int fixed_priority = fixed_PRI_MAX - (recent_cpu / 4) - fixed_nice_factor;
     int int_priority = convert_to_integer_round_nearest(fixed_priority, FIXED_POINT_Q);
     return int_priority;
 }
@@ -66,7 +66,6 @@ int calculate_cpu_usage(int recent_cpu, int load_average, int niceness) {
                                                   FIXED_POINT_Q);
     int fixed_niceness = convert_to_fixed_point(niceness, FIXED_POINT_Q);
     int fixed_new_cpu = fraction_multiplication + fixed_niceness;
-
     return fixed_new_cpu;
 }
 

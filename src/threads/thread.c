@@ -126,7 +126,7 @@ void thread_init(void) {
     list_init(&all_list);
     list_init(&sleep_list);
 
-    /* System boot, load_avg starts at 0 */
+    //  System boot, load_avg starts at 0 
     load_avg = 0;
 
     /* Set up a thread structure for the running thread. */
@@ -156,35 +156,6 @@ void thread_start(void) {
 void thread_tick(void) {
     struct thread *t = thread_current();
     int num_ready_threads = list_size(&ready_list);
-
-    /* Update cpu_usage */
-    t->recent_cpu++;
-
-    /* Update load balance and cpu_usage every second */
-    if (thread_mlfqs && timer_ticks() % TIMER_FREQ == 0) {
-        struct list_elem *e;
-        load_avg = calculate_load_avg(load_avg, num_ready_threads);
-        for (e = list_begin(&all_list); e != list_end(&all_list);
-             e = list_next(e)) {
-
-            struct thread *t = list_entry(e, struct thread, elem);
-
-            t->recent_cpu =
-                calculate_cpu_usage(t->recent_cpu, load_avg, t->niceness);
-
-        }
-    }
-
-    /* Every fourth tick, update priorities */
-    if (thread_mlfqs && timer_ticks() % 4 == 0) {
-        struct list_elem *e;
-        for (e = list_begin(&all_list); e != list_end(&all_list);
-             e = list_next(e)) {
-            struct thread *t = list_entry(e, struct thread, elem);
-            t->priority = calculate_priority(t->recent_cpu, t->niceness);
-        }
-    }
-
     /* Update statistics. */
     if (t == idle_thread)
         idle_ticks++;
@@ -192,8 +163,38 @@ void thread_tick(void) {
     else if (t->pagedir != NULL)
         user_ticks++;
 #endif
-    else
+    else {
         kernel_ticks++;
+        num_ready_threads = list_size(&ready_list) + 1;
+    }
+
+    /* Update cpu_usage */
+    t->recent_cpu += 1; /* This should be fixed... */
+
+    /* Update load balance and cpu_usage every second */
+    if (thread_mlfqs && timer_ticks() % TIMER_FREQ == 0) {
+        struct list_elem *e;
+
+        load_avg = calculate_load_avg(load_avg, num_ready_threads);
+        for (e = list_begin(&all_list); e != list_end(&all_list);
+             e = list_next(e)) {
+
+            struct thread *new_t = list_entry(e, struct thread, elem);
+            new_t->recent_cpu =
+                calculate_cpu_usage(new_t->recent_cpu, load_avg, new_t->niceness);
+        }
+    }
+
+    /* Every fourth tick, update priorities */
+    if (thread_mlfqs && timer_ticks() % 4 == 0 && !list_empty(&all_list)) {
+        struct list_elem *e;
+        for (e = list_begin(&all_list); e != list_end(&all_list);
+             e = list_next(e)) {
+            struct thread *new_t = list_entry(e, struct thread, elem);
+
+            // new_t->priority = calculate_priority(new_t->recent_cpu, new_t->niceness);
+        }
+    }
 
     /* Decrement sleep counter for all threads. */
 	sleep_threads();
@@ -257,17 +258,13 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     sf->eip = switch_entry;
     sf->ebp = 0;
 
-    printf("About to check highest_priority...\n");
     /* Add to run queue. */
     int prev_highest_priority = highest_priority();
-    printf("Found highest priority.\n\n");
     thread_unblock(t);
 
     /* Yield current thread if higher priority thread was added */
     if (prev_highest_priority < t->priority) {
-        printf("About to yield...\n");
         thread_yield();
-        printf("Yielded...\n");
     }
     return tid;
 }
@@ -394,7 +391,7 @@ int thread_get_priority(void) {
     int donated_priority = cur->donated_priority;
     int own_priority = cur->priority;
 
-    if (!thread_mlfqs && donated_priority > own_priority) {
+    if (donated_priority > own_priority) {
         return donated_priority;
     }
     else {
@@ -404,21 +401,18 @@ int thread_get_priority(void) {
 
 /*! Sets the current thread's nice value to NICE. */
 void thread_set_nice(int nice) {
-    printf("SET NICE!!!\n\n\n");
 
     struct thread *t = thread_current();
 
     t->niceness = nice;
     t->priority = calculate_priority(t->recent_cpu, t->niceness);
     if (!is_highest_priority(t->priority)) {
-        printf("oh boy...\n");
         thread_yield();
     }
 }
 
 /*! Returns the current thread's nice value. */
 int thread_get_nice(void) {
-    printf("GET NICE!!!");
     return thread_current()->niceness;
 }
 
@@ -438,9 +432,7 @@ int thread_get_recent_cpu(void) {
 /*! Returns priority of highest priority thread. */
 int highest_priority(void) {
     // Return minimum if no threads
-    printf("In highest priority right now.\n");
     int highest_priority_val = thread_current()->priority;
-    printf("Did I get a current thread? \n");
     // Find max priority of threads
     struct list_elem *e;
     for (e = list_begin(&ready_list); e != list_end(&ready_list);
@@ -551,10 +543,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
 
     /* Priority setting */
     if (thread_mlfqs) {
-        printf("About to calculate priority...\n\n");
-
         t->priority = calculate_priority(t->recent_cpu, t->niceness);
-        printf("Priority calculated...\n\n");
     }
     else {
         t->priority = priority;
