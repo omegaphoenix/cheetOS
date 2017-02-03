@@ -156,6 +156,7 @@ void thread_start(void) {
 void thread_tick(void) {
     struct thread *t = thread_current();
     int num_ready_threads = list_size(&ready_list);
+
     /* Update statistics. */
     if (t == idle_thread)
         idle_ticks++;
@@ -169,17 +170,16 @@ void thread_tick(void) {
     }
 
     /* Update cpu_usage */
-    t->recent_cpu += 1; /* This should be fixed... */
+    t->recent_cpu += FIXED_ONE;
 
     /* Update load balance and cpu_usage every second */
-    if (thread_mlfqs && timer_ticks() % TIMER_FREQ == 0) {
-        struct list_elem *e;
-
+    if (thread_mlfqs && timer_ticks() % TIMER_FREQ == 0 && !list_empty(&all_list)) {
+        struct list_elem *cpu_e;
         load_avg = calculate_load_avg(load_avg, num_ready_threads);
-        for (e = list_begin(&all_list); e != list_end(&all_list);
-             e = list_next(e)) {
+        for (cpu_e = list_begin(&all_list); cpu_e != list_end(&all_list);
+             cpu_e = list_next(cpu_e)) {
 
-            struct thread *new_t = list_entry(e, struct thread, allelem);
+            struct thread *new_t = list_entry(cpu_e, struct thread, allelem);
             new_t->recent_cpu =
                 calculate_cpu_usage(new_t->recent_cpu, load_avg, new_t->niceness);
         }
@@ -187,13 +187,13 @@ void thread_tick(void) {
 
     /* Every fourth tick, update priorities */
     if (thread_mlfqs && timer_ticks() % 4 == 0 && !list_empty(&all_list)) {
-        struct list_elem *e;
-        for (e = list_begin(&all_list); e != list_end(&all_list);
-             e = list_next(e)) {
-            struct thread *new_t = list_entry(e, struct thread, allelem);
+        struct list_elem *prio_e;
+        for (prio_e = list_begin(&all_list); prio_e != list_end(&all_list);
+             prio_e = list_next(prio_e)) {
+            struct thread *new_t = list_entry(prio_e, struct thread, allelem);
 
+            /* This line below this comment is the culprit again... */
             new_t->priority = calculate_priority(new_t->recent_cpu, new_t->niceness);
-
         }
     }
 
