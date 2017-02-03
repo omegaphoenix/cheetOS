@@ -222,13 +222,11 @@ void lock_acquire(struct lock *lock) {
         thread_current()->blocking_lock = NULL;
 
         /* Update priority based on waiting threads */
-        /*
         int lock_priority = calc_lock_priority(lock);
         thread_donate_priority(thread_current(), lock_priority);
-        */
     }
     lock->holder = thread_current();
-    // list_push_back(&thread_current()->locks_acquired, &lock->elem);
+    list_push_back(&thread_current()->locks_acquired, &lock->elem);
 }
 
 /*! Tries to acquires LOCK and returns true if successful or false
@@ -261,6 +259,7 @@ void lock_release(struct lock *lock) {
 
     lock->holder = NULL;
     /* TODO Update donated priority */
+    list_remove(&lock->elem);
     thread_reset_priority(thread_current());
     sema_up(&lock->semaphore);
 }

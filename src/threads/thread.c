@@ -360,9 +360,22 @@ void thread_donate_priority(struct thread *recipient, int new_priority) {
     }
 }
 
-/*! Resets the RECIPIENT thread's donated priority to PRI_MIN. */
+/*! Resets the RECIPIENT thread's donated priority based on locks_acquired. */
 void thread_reset_priority(struct thread *recipient) {
     recipient->donated_priority = PRI_MIN;
+    /* Iterate through locks to set donated_priority */
+    if (!list_empty(&recipient->locks_acquired)) {
+        struct list_elem *e;
+        for (e = list_begin(&recipient->locks_acquired);
+                e != list_end(&recipient->locks_acquired);
+                e = list_next(e)) {
+            struct lock *cur_lock = list_entry(e, struct lock, elem);
+            int donated_lock_priority = calc_lock_priority(cur_lock);
+            if (donated_lock_priority > recipient->donated_priority) {
+                recipient->donated_priority = donated_lock_priority;
+            }
+        }
+    }
     /* Yield current thread if it is no longer the highest priority */
     if (!is_highest_priority(thread_get_priority())) {
         thread_yield();
