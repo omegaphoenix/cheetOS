@@ -115,14 +115,14 @@ void sema_up(struct semaphore *sema) {
         /* Thread to wake up */
         struct thread *waiting_thread = list_entry(list_begin(&sema->waiters),
                     struct thread, elem);
-        int max_priority = highest_priority(waiting_thread->priority);
+        int max_priority = get_priority(waiting_thread);
 
         /* Find max priority thread to wake up */
         struct list_elem *e;
         for (e = list_begin(&sema->waiters); e != list_end(&sema->waiters);
              e = list_next(e)) {
             struct thread *cur_thread = list_entry(e, struct thread, elem);
-            int cur_priority = highest_priority(cur_thread->priority);
+            int cur_priority = get_priority(cur_thread);
             if (cur_priority > max_priority) {
                 max_priority = cur_priority;
                 waiting_thread = cur_thread;
