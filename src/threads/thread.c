@@ -395,7 +395,8 @@ void thread_donate_priority(struct thread *recipient, int new_priority) {
 
         /* Chain the donate if it changes*/
         if (recipient->blocking_lock != NULL) {
-            thread_donate_priority(recipient->blocking_lock->holder, new_priority);
+            struct thread *blocker = recipient->blocking_lock->holder;
+            thread_donate_priority(blocker, new_priority);
         }
     }
     /* Yield current thread if it is no longer the highest priority */
@@ -585,6 +586,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->magic = THREAD_MAGIC;
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
     list_init(&t->locks_acquired);
+    list_init(&t->threads_blocking);
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */

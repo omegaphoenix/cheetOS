@@ -213,20 +213,22 @@ void lock_acquire(struct lock *lock) {
     /* TODO Donate priority if lock unavailable. */
     if (!success) {
         thread_current()->blocking_lock = lock;
-        thread_donate_priority(lock->holder, thread_get_priority());
+        struct thread *blocker = lock->holder;
+        thread_donate_priority(blocker, thread_get_priority());
         list_push_back(&lock->blocked_threads, &thread_current()->lock_elem);
+        list_push_back(&blocker->threads_blocking,
+                       &thread_current()->thread_elem);
 
         /* Wait for semaphore */
         sema_down(&lock->semaphore);
         list_remove(&thread_current()->lock_elem);
         thread_current()->blocking_lock = NULL;
 
-        /* Update priority based on waiting threads */
-        int lock_priority = calc_lock_priority(lock);
-        thread_donate_priority(thread_current(), lock_priority);
     }
     lock->holder = thread_current();
     list_push_back(&thread_current()->locks_acquired, &lock->elem);
+    /* Update priority based on waiting threads */
+    thread_reset_priority(thread_current());
 }
 
 /*! Tries to acquires LOCK and returns true if successful or false
@@ -260,6 +262,25 @@ void lock_release(struct lock *lock) {
     lock->holder = NULL;
     /* Remove from thread's locks_acquired list */
     list_remove(&lock->elem);
+
+    /* Update threads_blocking */
+    /*
+    if (!list_empty(&thread_current()->threads_blocking)) {
+        struct list_elem *e;
+        for (e = list_begin(&thread_current()->threads_blocking);
+             e != list_end(&thread_current()->threads_blocking);) {
+            struct thread *t = list_entry(e, struct thread, thread_elem);
+            e = list_next(e);
+            */
+
+            /* Only remove the ones associated with current lock */
+    /*
+            if (t->blocking_lock == lock) {
+                list_remove(&t->thread_elem);
+            }
+        }
+    }
+    */
 
     /* Update donated priority */
     thread_reset_priority(thread_current());
