@@ -386,11 +386,12 @@ int thread_get_recent_cpu(void) {
 
 /*! Returns priority of highest priority thread including argument. */
 int highest_priority(int priority) {
-    if (is_highest_priority(priority)) {
+    int highest_priority = get_highest_priority();
+    if (highest_priority < priority) {
         return priority;
     }
     else {
-        return get_highest_priority();
+        return highest_priority;
     }
 }
 
