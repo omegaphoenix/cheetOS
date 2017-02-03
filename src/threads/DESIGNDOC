@@ -52,7 +52,7 @@ which parts.
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
-  Justin Leong:
+  Justin Leong: priority scheduling and donation
   John Li: Worked on the advanced BSD scheduler.
   Christina Lin:
 
@@ -65,7 +65,7 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-  int64_t sleep_counter; 
+  int64_t sleep_counter;
   A sleep_counter member variable was added to the thread struct to keep track
   of how many more ticks a thread must sleep.
 
@@ -79,16 +79,16 @@ which parts.
 >> A2: Briefly describe what happens in a call to timer_sleep(),
 >> including the effects of the timer interrupt handler.
 
-  It turns off interrupts before setting the sleep_counter on the thread, 
+  It turns off interrupts before setting the sleep_counter on the thread,
   blocking the thread, and adding it to sleep_list. Then it turns the interrupts
   back on. During the timer interrupt handler, we iterate through sleep_list.
-  For each thread in sleep_list, we decrement sleep_counter and the thread is 
+  For each thread in sleep_list, we decrement sleep_counter and the thread is
   unblocked when its sleep_counter reaches 0.
 
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
 
-  By using a list of sleeping threads, we iterate through only the sleeping 
+  By using a list of sleeping threads, we iterate through only the sleeping
   threads at each timer interrupt, which minimizes the time spent in the
   timer interrupt handler.
 
@@ -96,7 +96,7 @@ which parts.
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
-  
+
   The problem is that one could disable interrupts and then the other
   thread also tries to disable interrupts.
   TODO: Not sure how we avoid this.
@@ -255,7 +255,7 @@ Due to my unfamiliarity with the thread_foreach function, I wasn't able
 to take advantage of function pointers and functional programming
 concepts; this would have greatly lessened the amount of code
 in the thread_tick function. Had I had more time, I would make myself
-more comfortable with the kernel library so that I would optimize the 
+more comfortable with the kernel library so that I would optimize the
 code.
 
 Furthermore, I noticed that a some of the advanced scheduling calculations
