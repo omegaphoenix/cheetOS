@@ -104,7 +104,6 @@ struct thread {
     int recent_cpu;                     /*!< Most recent CPU time usage. Fixed point */
     struct lock *blocking_lock;         /*!< Lock that is blocking this thread */
     struct list locks_acquired;         /*!< Locks this thread is blocking */
-    struct list threads_blocking;       /*!< Threads this thread is blocking */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
