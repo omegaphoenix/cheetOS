@@ -65,17 +65,18 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+struct thread{}:
   int64_t sleep_counter;
-  A sleep_counter member variable was added to the thread struct to keep track
-  of how many more ticks a thread must sleep.
-
-  static struct list sleep_list;
-  We keep track of all sleeping threads in a list. At each timer tick, we
-  update the sleep_counters of each sleeping thread and wake the ones that
-  are done sleeping.
+  Keeps track of how many more ticks a thread must sleep.
 
   struct list_elem sleep_elem;
-  A list_elem for sleep_list.
+  Allows threads to be kept in sleep_list when they are sleeping.
+
+thread.c:
+  static struct list sleep_list;
+  Keep all sleeping threads in a list. At each timer tick, we update the
+  sleep_counters of each thread in this list.
+
 
 ---- ALGORITHMS ----
 
@@ -137,6 +138,28 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+ struct lock {}:
+  struct list_elem elem;
+  Allows this lock to be kept in a thread's locks_acquired list.
+
+  struct list blocked_threads;
+  Keeps track of threads that this lock is blocking.
+
+struct thread {}:
+  int donated_priority;
+  Stores the donated priority from blocked, higher-priority thread.
+
+  struct lock *blocking_lock;
+  Pointer to the lock that is blocking this thread.
+
+  struct list locks_acquired;
+  List of locks that this thread has acquired and is blocking.
+
+  struct list_elem lock_elem;
+  Allows this thread to be kept in a lock's blocked_threads list.
+
+
+
 >> B2: Explain the data structure used to track priority donation.
 >> Use ASCII art to diagram a nested donation.  (Alternately, submit a
 >> .png file.)
@@ -177,16 +200,16 @@ which parts.
   struct thread {
     /*! Owned by thread.c. */
     /**@{*/
-    tid_t tid;                          /*!< Thread identifier. */
-    enum thread_status status;          /*!< Thread state. */
-    char name[16];                      /*!< Name (for debugging purposes). */
-    uint8_t *stack;                     /*!< Saved stack pointer. */
-    int priority;                       /*!< Priority. */
-    int donated_priority;               /*!< Donated priority. */
-    struct list_elem allelem;           /*!< List element for all threads list. */
-    int64_t sleep_counter;              /*!< Number of ticks left to sleep. */
-    int niceness;                       /*!< Niceness value for BSD CPU priority */
-    int recent_cpu;                     /*!< Most recent CPU time usage. Fixed point */
+    tid_t tid;                       /*!< Thread identifier. */
+    enum thread_status status;       /*!< Thread state. */
+    char name[16];                   /*!< Name (for debugging purposes). */
+    uint8_t *stack;                  /*!< Saved stack pointer. */
+    int priority;                    /*!< Priority. */
+    int donated_priority;            /*!< Donated priority. */
+    struct list_elem allelem;        /*!< List element for all threads list. */
+    int64_t sleep_counter;           /*!< Number of ticks left to sleep. */
++    int niceness;                  /*!< Niceness value for BSD CPU priority */
++    int recent_cpu;                /*!< Most recent CPU time usage. Fixed point */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
@@ -197,8 +220,8 @@ which parts.
   The niceness and recent_cpu attributes are added in order to keep
   track of thread-specific values for BSD priority calculation.
 
-  We also created a global variable load_avg in thread.c that would initialize to 0
-  before the call of thread_init.
+  We also created a global variable load_avg in thread.c that would initialize 
+  to 0 before the call of thread_init.
 
 ---- ALGORITHMS ----
 
