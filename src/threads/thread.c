@@ -392,15 +392,10 @@ void thread_set_priority(int new_priority) {
 void thread_donate_priority(struct thread *recipient, int new_priority) {
     if (recipient->donated_priority < new_priority) {
         recipient->donated_priority = new_priority;
+
         /* Chain the donate if it changes*/
-        if (!list_empty(&recipient->locks_acquired)) {
-            struct list_elem *e;
-            for (e = list_begin(&recipient->locks_acquired);
-                    e != list_end(&recipient->locks_acquired);
-                    e = list_next(e)) {
-                struct lock *cur_lock = list_entry(e, struct lock, elem);
-                thread_donate_priority(cur_lock->holder, new_priority);
-            }
+        if (recipient->blocking_lock != NULL) {
+            thread_donate_priority(recipient->blocking_lock->holder, new_priority);
         }
     }
     /* Yield current thread if it is no longer the highest priority */
