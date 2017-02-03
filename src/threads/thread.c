@@ -191,10 +191,11 @@ void thread_tick(void) {
         for (prio_e = list_begin(&all_list); prio_e != list_end(&all_list);
              prio_e = list_next(prio_e)) {
             struct thread *new_t = list_entry(prio_e, struct thread, allelem);
-
+            ASSERT(is_thread(new_t));
             /* This line below this comment is the culprit again... */
             new_t->priority = calculate_priority(new_t->recent_cpu, new_t->niceness);
         }
+
     }
 
     /* Decrement sleep counter for all threads. */
