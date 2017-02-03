@@ -99,14 +99,22 @@ struct thread {
     int priority;                       /*!< Priority. */
     int donated_priority;               /*!< Donated priority. */
     struct list_elem allelem;           /*!< List element for all threads list. */
+    struct list_elem sleep_elem;        /*!< List element for sleeping list. */
     int64_t sleep_counter;              /*!< Number of ticks left to sleep. */
     int niceness;                       /*!< Niceness value for BSD CPU priority */
     int recent_cpu;                     /*!< Most recent CPU time usage. Fixed point */
+    struct lock *blocking_lock;         /*!< Lock that is blocking this thread */
+    struct list locks_acquired;         /*!< Locks this thread is blocking */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     struct list_elem elem;              /*!< List element. */
+    /**@}*/
+
+    /*! Shared between thread.c and synch.c. */
+    /**@{*/
+    struct list_elem lock_elem;         /*!< List element. */
     /**@}*/
 
 #ifdef USERPROG
@@ -122,7 +130,7 @@ struct thread {
     /**@}*/
 };
 
-/*! If false (default), use round-robin scheduler.
+/*! If false (default), use priority scheduler.
     If true, use multi-level feedback queue scheduler.
     Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
@@ -151,8 +159,11 @@ typedef void thread_action_func(struct thread *t, void *aux);
 
 void thread_foreach(thread_action_func *, void *);
 
+int get_priority(struct thread *thread_to_check);
 int thread_get_priority(void);
 void thread_set_priority(int);
+void thread_donate_priority(struct thread *recipient, int new_priority);
+void thread_reset_priority(struct thread *recipient);
 
 int thread_get_nice(void);
 void thread_set_nice(int);

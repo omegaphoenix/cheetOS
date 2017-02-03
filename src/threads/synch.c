@@ -115,14 +115,14 @@ void sema_up(struct semaphore *sema) {
         /* Thread to wake up */
         struct thread *waiting_thread = list_entry(list_begin(&sema->waiters),
                     struct thread, elem);
-        int max_priority = highest_priority(waiting_thread->priority);
+        int max_priority = get_priority(waiting_thread);
 
         /* Find max priority thread to wake up */
         struct list_elem *e;
         for (e = list_begin(&sema->waiters); e != list_end(&sema->waiters);
              e = list_next(e)) {
             struct thread *cur_thread = list_entry(e, struct thread, elem);
-            int cur_priority = highest_priority(cur_thread->priority);
+            int cur_priority = get_priority(cur_thread);
             if (cur_priority > max_priority) {
                 max_priority = cur_priority;
                 waiting_thread = cur_thread;
@@ -134,7 +134,8 @@ void sema_up(struct semaphore *sema) {
         thread_unblock(waiting_thread);
 
         /* Yield current thread if lower priority. */
-        if (max_priority >= thread_get_priority()) {
+        if (max_priority >= thread_get_priority()
+            || !is_highest_priority(thread_get_priority())) {
             thread_yield();
         }
 
@@ -192,6 +193,7 @@ void lock_init(struct lock *lock) {
     ASSERT(lock != NULL);
 
     lock->holder = NULL;
+    list_init(&lock->blocked_threads);
     sema_init(&lock->semaphore, 1);
 }
 
@@ -208,8 +210,24 @@ void lock_acquire(struct lock *lock) {
     ASSERT(!intr_context());
     ASSERT(!lock_held_by_current_thread(lock));
 
-    sema_down(&lock->semaphore);
+    bool success = sema_try_down(&lock->semaphore);
+    /* Donate priority if lock unavailable. */
+    if (!success) {
+        thread_current()->blocking_lock = lock;
+        struct thread *blocker = lock->holder;
+        thread_donate_priority(blocker, thread_get_priority());
+        list_push_back(&lock->blocked_threads, &thread_current()->lock_elem);
+
+        /* Wait for semaphore */
+        sema_down(&lock->semaphore);
+        list_remove(&thread_current()->lock_elem);
+        thread_current()->blocking_lock = NULL;
+
+    }
     lock->holder = thread_current();
+    list_push_back(&thread_current()->locks_acquired, &lock->elem);
+    /* Update priority based on waiting threads */
+    thread_reset_priority(thread_current());
 }
 
 /*! Tries to acquires LOCK and returns true if successful or false
@@ -226,7 +244,7 @@ bool lock_try_acquire(struct lock *lock) {
 
     success = sema_try_down(&lock->semaphore);
     if (success)
-      lock->holder = thread_current();
+        lock->holder = thread_current();
 
     return success;
 }
@@ -241,7 +259,16 @@ void lock_release(struct lock *lock) {
     ASSERT(lock_held_by_current_thread(lock));
 
     lock->holder = NULL;
+    /* Remove from thread's locks_acquired list */
+    list_remove(&lock->elem);
+
+    /* Update donated priority */
+    thread_reset_priority(thread_current());
     sema_up(&lock->semaphore);
+    /* Yield current thread if it is no longer the highest priority */
+    if (!is_highest_priority(thread_get_priority())) {
+        thread_yield();
+    }
 }
 
 /*! Returns true if the current thread holds LOCK, false
@@ -251,6 +278,27 @@ bool lock_held_by_current_thread(const struct lock *lock) {
     ASSERT(lock != NULL);
 
     return lock->holder == thread_current();
+}
+
+/*! Returns the maximum priority donated to this lock */
+int calc_lock_priority(struct lock *lock) {
+    struct list_elem *e;
+    int max_priority = PRI_MIN;
+
+    /* Iterate through threads waiting ont this lock for max priority */
+    if (!list_empty(&lock->blocked_threads)) {
+        for (e = list_begin(&lock->blocked_threads);
+             e != list_end(&lock->blocked_threads);
+             e = list_next(e)) {
+            struct thread *cur_thread = list_entry(e, struct thread, lock_elem);
+            int cur_priority = get_priority(cur_thread);
+            if (cur_priority > max_priority) {
+                max_priority = cur_priority;
+            }
+        }
+    }
+
+    return max_priority;
 }
 
 /*! One semaphore in a list. */

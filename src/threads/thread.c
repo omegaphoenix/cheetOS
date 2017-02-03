@@ -87,7 +87,7 @@ void sleep_threads() {
     struct list_elem *e = list_begin(&sleep_list);
 
     while (e != list_end(&sleep_list)) {
-        struct thread *t = list_entry(e, struct thread, elem);
+        struct thread *t = list_entry(e, struct thread, sleep_elem);
 
         /* Decrement sleep counter and wake thread */
         if (t->sleep_counter <= 1) {
@@ -104,7 +104,7 @@ void sleep_threads() {
 
 /* Add thread to sleep_list */
 void add_sleep_thread(struct thread *t) {
-	list_push_back(&sleep_list, &t->elem);
+	list_push_back(&sleep_list, &t->sleep_elem);
 }
 
 /*! Initializes the threading system by transforming the code
@@ -381,17 +381,54 @@ void thread_foreach(thread_action_func *func, void *aux) {
 void thread_set_priority(int new_priority) {
     if (!thread_mlfqs) {
         thread_current()->priority = new_priority;
+        /* Yield current thread if it is no longer the highest priority */
         if (!is_highest_priority(new_priority)) {
             thread_yield();
         }
     }
 }
 
-/*! Returns the current thread's priority. */
-int thread_get_priority(void) {
-    struct thread *cur = thread_current();
-    int donated_priority = cur->donated_priority;
-    int own_priority = cur->priority;
+/*! Sets the RECIPIENT thread's donated priority to NEW_PRIORITY. */
+void thread_donate_priority(struct thread *recipient, int new_priority) {
+    if (recipient->donated_priority < new_priority) {
+        recipient->donated_priority = new_priority;
+
+        /* Chain the donate if it changes*/
+        if (recipient->blocking_lock != NULL) {
+            struct thread *blocker = recipient->blocking_lock->holder;
+            if (blocker != NULL) {
+                thread_donate_priority(blocker, new_priority);
+            }
+        }
+    }
+    /* Yield current thread if it is no longer the highest priority */
+    if (!is_highest_priority(thread_get_priority())) {
+        thread_yield();
+    }
+}
+
+/*! Resets the RECIPIENT thread's donated priority based on locks_acquired. */
+void thread_reset_priority(struct thread *recipient) {
+    recipient->donated_priority = PRI_MIN;
+    /* Iterate through locks to set donated_priority */
+    if (!list_empty(&recipient->locks_acquired)) {
+        struct list_elem *e;
+        for (e = list_begin(&recipient->locks_acquired);
+                e != list_end(&recipient->locks_acquired);
+                e = list_next(e)) {
+            struct lock *cur_lock = list_entry(e, struct lock, elem);
+            int donated_lock_priority = calc_lock_priority(cur_lock);
+            if (donated_lock_priority > recipient->donated_priority) {
+                recipient->donated_priority = donated_lock_priority;
+            }
+        }
+    }
+}
+
+/*! Returns the priority of the given thread */
+int get_priority(struct thread *thread_to_check) {
+    int donated_priority = thread_to_check->donated_priority;
+    int own_priority = thread_to_check->priority;
 
     if (donated_priority > own_priority) {
         return donated_priority;
@@ -399,6 +436,12 @@ int thread_get_priority(void) {
     else {
         return own_priority;
     }
+}
+
+/*! Returns the current thread's priority. */
+int thread_get_priority(void) {
+    struct thread *cur = thread_current();
+    return get_priority(cur);
 }
 
 /*! Sets the current thread's nice value to NICE. */
@@ -451,10 +494,7 @@ int get_highest_priority(void) {
     for (e = list_begin(&ready_list); e != list_end(&ready_list);
          e = list_next(e)) {
         struct thread *t = list_entry(e, struct thread, elem);
-        int curr_priority = t->priority;
-        if (curr_priority < t->donated_priority) {
-            curr_priority = t->donated_priority;
-        }
+        int curr_priority = get_priority(t);
 
         if (curr_priority > highest_priority_val) {
             highest_priority_val = curr_priority;
@@ -543,6 +583,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->donated_priority = PRI_MIN;
     t->magic = THREAD_MAGIC;
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
+    list_init(&t->locks_acquired);
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */
@@ -589,20 +630,14 @@ static struct thread * next_thread_to_run(void) {
     else {
         struct list_elem *next = list_begin(&ready_list);
         struct thread *t = list_entry(next, struct thread, elem);
-        int highest_priority_val = t->priority;
-        if (highest_priority_val < t->donated_priority) {
-            highest_priority_val = t->donated_priority;
-        }
+        int highest_priority_val = get_priority(t);
 
         // Find max priority of threads
         struct list_elem *e;
         for (e = list_next(next); e != list_end(&ready_list);
                 e = list_next(e)) {
             t = list_entry(e, struct thread, elem);
-            int curr_priority = t->priority;
-            if (curr_priority < t->donated_priority) {
-                curr_priority = t->donated_priority;
-            }
+            int curr_priority = get_priority(t);
 
             if (curr_priority > highest_priority_val) {
                 highest_priority_val = curr_priority;
