@@ -343,7 +343,26 @@ void thread_foreach(thread_action_func *func, void *aux) {
 /*! Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority) {
     thread_current()->priority = new_priority;
+    /* Yield current thread if it is no longer the highest priority */
     if (!is_highest_priority(new_priority)) {
+        thread_yield();
+    }
+}
+
+/*! Sets the RECIPIENT thread's donated priority to NEW_PRIORITY. */
+void thread_donate_priority(struct thread *recepient, int new_priority) {
+    recepient->donated_priority = new_priority;
+    /* Yield current thread if it is no longer the highest priority */
+    if (!is_highest_priority(thread_get_priority())) {
+        thread_yield();
+    }
+}
+
+/*! Resets the RECIPIENT thread's donated priority to PRI_MIN. */
+void thread_reset_priority(struct thread *recepient) {
+    recepient->donated_priority = PRI_MIN;
+    /* Yield current thread if it is no longer the highest priority */
+    if (!is_highest_priority(thread_get_priority())) {
         thread_yield();
     }
 }

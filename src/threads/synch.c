@@ -208,7 +208,14 @@ void lock_acquire(struct lock *lock) {
     ASSERT(!intr_context());
     ASSERT(!lock_held_by_current_thread(lock));
 
-    sema_down(&lock->semaphore);
+    bool success = sema_try_down(&lock->semaphore);
+    /* TODO Donate priority if lock unavailable. */
+    if (!success) {
+        int cur_priority = thread_get_priority();
+        thread_donate_priority(lock->holder, cur_priority);
+        /* Wait for semaphore */
+        sema_down(&lock->semaphore);
+    }
     lock->holder = thread_current();
 }
 
@@ -226,7 +233,7 @@ bool lock_try_acquire(struct lock *lock) {
 
     success = sema_try_down(&lock->semaphore);
     if (success)
-      lock->holder = thread_current();
+        lock->holder = thread_current();
 
     return success;
 }
@@ -241,6 +248,8 @@ void lock_release(struct lock *lock) {
     ASSERT(lock_held_by_current_thread(lock));
 
     lock->holder = NULL;
+    /* TODO Update donated priority */
+    thread_reset_priority(thread_current());
     sema_up(&lock->semaphore);
 }
 
