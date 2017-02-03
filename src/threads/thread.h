@@ -116,11 +116,6 @@ struct thread {
     struct list_elem lock_elem;         /*!< List element. */
     /**@}*/
 
-    /*! Shared between thread.c and synch.c. */
-    /**@{*/
-    struct list_elem thread_elem;       /*!< List element. */
-    /**@}*/
-
 #ifdef USERPROG
     /*! Owned by userprog/process.c. */
     /**@{*/
