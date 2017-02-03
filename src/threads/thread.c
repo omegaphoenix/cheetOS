@@ -179,7 +179,7 @@ void thread_tick(void) {
         for (e = list_begin(&all_list); e != list_end(&all_list);
              e = list_next(e)) {
 
-            struct thread *new_t = list_entry(e, struct thread, elem);
+            struct thread *new_t = list_entry(e, struct thread, allelem);
             new_t->recent_cpu =
                 calculate_cpu_usage(new_t->recent_cpu, load_avg, new_t->niceness);
         }
@@ -190,9 +190,10 @@ void thread_tick(void) {
         struct list_elem *e;
         for (e = list_begin(&all_list); e != list_end(&all_list);
              e = list_next(e)) {
-            struct thread *new_t = list_entry(e, struct thread, elem);
+            struct thread *new_t = list_entry(e, struct thread, allelem);
 
-            // new_t->priority = calculate_priority(new_t->recent_cpu, new_t->niceness);
+            new_t->priority = calculate_priority(new_t->recent_cpu, new_t->niceness);
+
         }
     }
 
