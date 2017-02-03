@@ -220,7 +220,7 @@ blocked_threads      | B     | C      |
 
   Wait for lock to become available, and then:
   4) Remove Thread B from L1's list of blocked threads and acquire L1.
-  5) Reset Thread B's priority
+  5) Reset Thread B's donated_priority
 
   Based on the example in B2, a nested donation is handled as follows:
 
@@ -236,6 +236,15 @@ blocked_threads      | B     | C      |
 >> B5: Describe the sequence of events when lock_release() is called
 >> on a lock that a higher-priority thread is waiting for.
 
+  Again, consider the case where Thread B is waiting for lock L1, which is 
+  held by lower-priority Thread A. When L1 is released by Thread A, here's
+  what happens:
+  1) Set L1's holder to Null and remove L1 from Thread A's locks_acquired list
+  3) Reset Thread A's donated_priority
+  --> If Thread A is blocking any other locks, set donated_priority to the
+      highest donated_priority offered by any blocked thread
+  --> Otherwise, set A's donated_priority to the minimum
+  4) Yield Thread A to higher-priority threads
 
 ---- SYNCHRONIZATION ----
 
