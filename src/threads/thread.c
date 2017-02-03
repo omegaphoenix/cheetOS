@@ -161,10 +161,30 @@ void thread_tick(void) {
     t->recent_cpu++;
 
     /* Update load balance and cpu_usage every second */
-    if (timer_ticks() % TIMER_FREQ == 0) {
-        // TODO: For each thread, update cpu_time.
+    if (mlfqs && timer_ticks() % TIMER_FREQ == 0) {
+        struct list_elem *e;
         load_avg = calculate_load_avg(load_avg, num_ready_threads);
+        for (e = list_begin(&all_list); e != list_end(&all_list);
+             e = list_next(e)) {
+
+            struct thread *t = list_entry(e, struct thread, elem);
+
+            t->recent_cpu =
+                calculate_cpu_usage(t->recent_cpu, load_avg, t->niceness);
+
+        }
     }
+
+    /* Every fourth tick, update priorities */
+    if (mlfqs && timer_ticks() % 4 == 0) {
+        struct list_elem *e;
+        for (e = list_begin(&all_list); e != list_end(&all_list);
+             e = list_next(e)) {
+            struct thread *t = list_entry(e, struct thread, elem);
+            t->priority = calculate_priority(t->recent_cpu, t->niceness);
+        }
+    }
+
     /* Update statistics. */
     if (t == idle_thread)
         idle_ticks++;
@@ -382,9 +402,11 @@ int thread_get_priority(void) {
 void thread_set_nice(int nice) {
     struct thread *t = thread_current();
 
-    int new_priority;
-
     t->niceness = nice;
+    t->priority = calculate_priority(t->recent_cpu, t->niceness);
+    if (!is_highest_priority(t->priority)) {
+        thread_yield();
+    }
 }
 
 /*! Returns the current thread's nice value. */
