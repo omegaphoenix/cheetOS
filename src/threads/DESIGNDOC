@@ -211,7 +211,7 @@ blocked_threads      | B     | C      |
 
   When sema_try_down() fails in a call to lock_acquire(), a priority donation is
   triggered. Consider the example in B2, where Thread B attempts to acquire
-  lock L1 but L1 is held by a lower-priority Thread C:
+  lock L1 but L1 is held by a lower-priority Thread A:
   1) Set B's blocking_lock to L1
   2) Donate B's priority to L1's holder, which is A
   --> Since B's priority (2) is higher than A's priority (1), set A's
@@ -235,6 +235,7 @@ blocked_threads      | B     | C      |
 
 >> B5: Describe the sequence of events when lock_release() is called
 >> on a lock that a higher-priority thread is waiting for.
+
 
 ---- SYNCHRONIZATION ----
 
