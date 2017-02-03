@@ -396,7 +396,9 @@ void thread_donate_priority(struct thread *recipient, int new_priority) {
         /* Chain the donate if it changes*/
         if (recipient->blocking_lock != NULL) {
             struct thread *blocker = recipient->blocking_lock->holder;
-            thread_donate_priority(blocker, new_priority);
+            if (blocker != NULL) {
+                thread_donate_priority(blocker, new_priority);
+            }
         }
     }
     /* Yield current thread if it is no longer the highest priority */
@@ -420,10 +422,6 @@ void thread_reset_priority(struct thread *recipient) {
                 recipient->donated_priority = donated_lock_priority;
             }
         }
-    }
-    /* Yield current thread if it is no longer the highest priority */
-    if (!is_highest_priority(thread_get_priority())) {
-        thread_yield();
     }
 }
 

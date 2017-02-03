@@ -134,7 +134,8 @@ void sema_up(struct semaphore *sema) {
         thread_unblock(waiting_thread);
 
         /* Yield current thread if lower priority. */
-        if (max_priority >= thread_get_priority()) {
+        if (max_priority >= thread_get_priority()
+            || !is_highest_priority(thread_get_priority())) {
             thread_yield();
         }
 
@@ -210,7 +211,7 @@ void lock_acquire(struct lock *lock) {
     ASSERT(!lock_held_by_current_thread(lock));
 
     bool success = sema_try_down(&lock->semaphore);
-    /* TODO Donate priority if lock unavailable. */
+    /* Donate priority if lock unavailable. */
     if (!success) {
         thread_current()->blocking_lock = lock;
         struct thread *blocker = lock->holder;
@@ -264,6 +265,10 @@ void lock_release(struct lock *lock) {
     /* Update donated priority */
     thread_reset_priority(thread_current());
     sema_up(&lock->semaphore);
+    /* Yield current thread if it is no longer the highest priority */
+    if (!is_highest_priority(thread_get_priority())) {
+        thread_yield();
+    }
 }
 
 /*! Returns true if the current thread holds LOCK, false
