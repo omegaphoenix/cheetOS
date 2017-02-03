@@ -30,6 +30,9 @@ Christina Lin <cylin@caltech.edu>
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
 
+    typedef functions:
+    http://stackoverflow.com/questions/4574985/typedef-a-functions-prototype
+
 			      THREADS
 			      =======
 
@@ -42,8 +45,16 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
+  Justin Leong:
+  John Li:
+  Christina Lin:
+
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+
+  Justin Leong:
+  John Li:
+  Christina Lin:
 
 			     ALARM CLOCK
 			     ===========
@@ -102,12 +113,18 @@ which parts.
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
 
-  TODO: An alternate design might have been to keep the blocked threads in
-  their own list so we wouldn't have to iterate through all the threads to
-  figure out which ones are asleep to decrement.
+  We chose this design because it minimizes the time spent in timer interrupts.
+  Although having a sleep_list means we have to add and remove threads each
+  time timer_sleep() is called and when threads are woken, it makes 
+  thread_tick() more efficient since we iterate through just the sleeping
+  threads. We expect a minority of threads to be sleeping at any given time.
 
-  This design reuses a lot of the functions already implemented like block
-  and unblock
+  Another design that we considered omitted the sleep_list. In this design,
+  we would iterate through all threads at each timer interrupt, check whether
+  the thread was blocked, and decrement sleep_counters accordingly. However,
+  iterating through all threads to update the few sleeping threads is not
+  as efficient.
+
 
 			 PRIORITY SCHEDULING
 			 ===================
