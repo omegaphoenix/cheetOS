@@ -126,7 +126,7 @@ void thread_init(void) {
     list_init(&all_list);
     list_init(&sleep_list);
 
-    //  System boot, load_avg starts at 0 
+    /* System boot, load_avg starts at 0 */
     load_avg = 0;
 
     /* Set up a thread structure for the running thread. */
@@ -192,7 +192,7 @@ void thread_tick(void) {
              prio_e = list_next(prio_e)) {
             struct thread *new_t = list_entry(prio_e, struct thread, allelem);
             ASSERT(is_thread(new_t));
-            /* This line below this comment is the culprit again... */
+
             new_t->priority = calculate_priority(new_t->recent_cpu, new_t->niceness);
         }
 
@@ -310,7 +310,7 @@ const char * thread_name(void) {
 /*! Returns the running thread.
     This is running_thread() plus a couple of sanity checks.
     See the big comment at the top of thread.h for details. */
-struct thread * thread_current(void) {    
+struct thread * thread_current(void) {
     struct thread *t = running_thread();
     /* Make sure T is really a thread.
        If either of these assertions fire, then your thread may
