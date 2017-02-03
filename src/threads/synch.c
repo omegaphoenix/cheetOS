@@ -213,7 +213,7 @@ void lock_acquire(struct lock *lock) {
     /* TODO Donate priority if lock unavailable. */
     if (!success) {
         thread_current()->blocking_lock = lock;
-        thread_donate_priority(lock->holder, thread_current()->priority);
+        thread_donate_priority(lock->holder, thread_get_priority());
         list_push_back(&lock->blocked_threads, &thread_current()->lock_elem);
 
         /* Wait for semaphore */
@@ -258,8 +258,10 @@ void lock_release(struct lock *lock) {
     ASSERT(lock_held_by_current_thread(lock));
 
     lock->holder = NULL;
-    /* TODO Update donated priority */
+    /* Remove from thread's locks_acquired list */
     list_remove(&lock->elem);
+
+    /* Update donated priority */
     thread_reset_priority(thread_current());
     sema_up(&lock->semaphore);
 }
@@ -273,9 +275,12 @@ bool lock_held_by_current_thread(const struct lock *lock) {
     return lock->holder == thread_current();
 }
 
+/*! Returns the maximum priority donated to this lock */
 int calc_lock_priority(struct lock *lock) {
     struct list_elem *e;
     int max_priority = PRI_MIN;
+
+    /* Iterate through threads waiting ont this lock for max priority */
     if (!list_empty(&lock->blocked_threads)) {
         for (e = list_begin(&lock->blocked_threads);
              e != list_end(&lock->blocked_threads);
@@ -287,6 +292,7 @@ int calc_lock_priority(struct lock *lock) {
             }
         }
     }
+
     return max_priority;
 }
 
