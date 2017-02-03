@@ -45,15 +45,15 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-  Justin Leong:
-  John Li:
+  Justin Leong: 
+  John Li: Approximately 9-10 hours.
   Christina Lin:
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
   Justin Leong:
-  John Li:
+  John Li: Worked on the advanced BSD scheduler.
   Christina Lin:
 
 			     ALARM CLOCK
@@ -170,7 +170,33 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-  TODO: I didn't see any?
+  The thread struct has been altered:
+
+  struct thread {
+    /*! Owned by thread.c. */
+    /**@{*/
+    tid_t tid;                          /*!< Thread identifier. */
+    enum thread_status status;          /*!< Thread state. */
+    char name[16];                      /*!< Name (for debugging purposes). */
+    uint8_t *stack;                     /*!< Saved stack pointer. */
+    int priority;                       /*!< Priority. */
+    int donated_priority;               /*!< Donated priority. */
+    struct list_elem allelem;           /*!< List element for all threads list. */
+    int64_t sleep_counter;              /*!< Number of ticks left to sleep. */
+    int niceness;                       /*!< Niceness value for BSD CPU priority */
+    int recent_cpu;                     /*!< Most recent CPU time usage. Fixed point */
+    /**@}*/
+
+    /*! Shared between thread.c and synch.c. */
+    /**@{*/
+    struct list_elem elem;              /*!< List element. */
+    /**@}*/
+
+  The niceness and recent_cpu attributes are added in order to keep
+  track of thread-specific values for BSD priority calculation.
+
+  We also created a global variable load_avg in thread.c that would initialize to 0
+  before the call of thread_init.
 
 ---- ALGORITHMS ----
 
@@ -205,6 +231,12 @@ ticks   A   B   C   A   B   C   to run
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
 
+Since advanced scheduler relies on constant updates based on timer
+ticks, we decided to place it inside thread_tick, because thread_tick
+would occur at every timer_tick. We believed it would be easier for
+readability for all of the timer updates to all take place in the
+same function.
+
 ---- RATIONALE ----
 
 >> C5: Briefly critique your design, pointing out advantages and
@@ -212,12 +244,38 @@ ticks   A   B   C   A   B   C   to run
 >> time to work on this part of the project, how might you choose to
 >> refine or improve your design?
 
+The fixed point arithmetic functions were placed in their own .c and
+header files. We didn't want fixed point arithmetic to be meddling with
+the thread functions, because that would just lead to messy
+compartmentalization. We also placed all of our scheduling timing events
+to take place in the thread_ticks() function for ease of implementation
+and updating for the group.
+
+Due to my unfamiliarity with the thread_foreach function, I wasn't able
+to take advantage of function pointers and functional programming
+concepts; this would have greatly lessened the amount of code
+in the thread_tick function. Had I had more time, I would make myself
+more comfortable with the kernel library so that I would optimize the 
+code.
+
+Furthermore, I noticed that a some of the advanced scheduling calculations
+are unnecessary. For consistency purpose, I often converted most constants
+to fixed_point style; This is unnecessary as fixed_point/integer arithmetic
+is not very difficult either.
+
 >> C6: The assignment explains arithmetic for fixed-point math in
 >> detail, but it leaves it open to you to implement it.  Why did you
 >> decide to implement it the way you did?  If you created an
 >> abstraction layer for fixed-point math, that is, an abstract data
 >> type and/or a set of functions or macros to manipulate fixed-point
 >> numbers, why did you do so?  If not, why not?
+
+Each of these functions were explicitly defined in the assignment, so we
+felt that it would make the most sense to implement these functions and
+use them as an abstraction layer for fixed_point math. Having a fixed
+set of functions that did this would prevent confusion in manipulations.
+Each of these functions were also heavily commented so we knew what kind
+of inputs and outputs we were expecting for each fixed-arithmetic operation.
 
 			  SURVEY QUESTIONS
 			  ================
