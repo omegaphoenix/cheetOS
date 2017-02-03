@@ -252,6 +252,13 @@ blocked_threads      | B     | C      |
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
 
+  A potential race condition could be the highest priority among threads
+  changing while thread_set_priority() is called. The current thread may yield
+  when in fact it has the highest priority and should not yield; or, the
+  current thread may not yield when it actually should because another thread
+  has set a higher priority. This could be avoided by placing a lock around the
+  critical lines of code.
+
 ---- RATIONALE ----
 
 >> B7: Why did you choose this design?  In what ways is it superior to
