@@ -192,6 +192,7 @@ void lock_init(struct lock *lock) {
     ASSERT(lock != NULL);
 
     lock->holder = NULL;
+    list_init(&lock->blocked_threads);
     sema_init(&lock->semaphore, 1);
 }
 
@@ -211,12 +212,23 @@ void lock_acquire(struct lock *lock) {
     bool success = sema_try_down(&lock->semaphore);
     /* TODO Donate priority if lock unavailable. */
     if (!success) {
-        int cur_priority = thread_get_priority();
-        thread_donate_priority(lock->holder, cur_priority);
+        thread_current()->blocking_lock = lock;
+        thread_donate_priority(lock->holder, thread_current()->priority);
+        list_push_back(&lock->blocked_threads, &thread_current()->lock_elem);
+
         /* Wait for semaphore */
         sema_down(&lock->semaphore);
+        list_remove(&thread_current()->lock_elem);
+        thread_current()->blocking_lock = NULL;
+
+        /* Update priority based on waiting threads */
+        /*
+        int lock_priority = calc_lock_priority(lock);
+        thread_donate_priority(thread_current(), lock_priority);
+        */
     }
     lock->holder = thread_current();
+    // list_push_back(&thread_current()->locks_acquired, &lock->elem);
 }
 
 /*! Tries to acquires LOCK and returns true if successful or false
@@ -260,6 +272,23 @@ bool lock_held_by_current_thread(const struct lock *lock) {
     ASSERT(lock != NULL);
 
     return lock->holder == thread_current();
+}
+
+int calc_lock_priority(struct lock *lock) {
+    struct list_elem *e;
+    int max_priority = PRI_MIN;
+    if (!list_empty(&lock->blocked_threads)) {
+        for (e = list_begin(&lock->blocked_threads);
+             e != list_end(&lock->blocked_threads);
+             e = list_next(e)) {
+            struct thread *cur_thread = list_entry(e, struct thread, lock_elem);
+            int cur_priority = get_priority(cur_thread);
+            if (cur_priority > max_priority) {
+                max_priority = cur_priority;
+            }
+        }
+    }
+    return max_priority;
 }
 
 /*! One semaphore in a list. */

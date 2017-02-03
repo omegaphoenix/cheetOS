@@ -350,8 +350,10 @@ void thread_set_priority(int new_priority) {
 }
 
 /*! Sets the RECIPIENT thread's donated priority to NEW_PRIORITY. */
-void thread_donate_priority(struct thread *recepient, int new_priority) {
-    recepient->donated_priority = new_priority;
+void thread_donate_priority(struct thread *recipient, int new_priority) {
+    if (recipient->donated_priority < new_priority) {
+        recipient->donated_priority = new_priority;
+    }
     /* Yield current thread if it is no longer the highest priority */
     if (!is_highest_priority(thread_get_priority())) {
         thread_yield();
@@ -359,8 +361,8 @@ void thread_donate_priority(struct thread *recepient, int new_priority) {
 }
 
 /*! Resets the RECIPIENT thread's donated priority to PRI_MIN. */
-void thread_reset_priority(struct thread *recepient) {
-    recepient->donated_priority = PRI_MIN;
+void thread_reset_priority(struct thread *recipient) {
+    recipient->donated_priority = PRI_MIN;
     /* Yield current thread if it is no longer the highest priority */
     if (!is_highest_priority(thread_get_priority())) {
         thread_yield();
@@ -518,6 +520,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->donated_priority = PRI_MIN;
     t->magic = THREAD_MAGIC;
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
+    list_init(&t->locks_acquired);
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);

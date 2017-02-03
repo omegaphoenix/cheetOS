@@ -103,12 +103,17 @@ struct thread {
     int niceness;                       /*!< Niceness value for BSD CPU priority */
     int recent_cpu;                     /*!< Most recent CPU time usage. Fixed point */
     struct lock *blocking_lock;         /*!< Lock that is blocking this thread */
-    struct list blocked_threads;        /*!< Threads this thread is blocking */
+    struct list locks_acquired;         /*!< Locks this thread is blocking */
     /**@}*/
 
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     struct list_elem elem;              /*!< List element. */
+    /**@}*/
+
+    /*! Shared between thread.c and synch.c. */
+    /**@{*/
+    struct list_elem lock_elem;         /*!< List element. */
     /**@}*/
 
 #ifdef USERPROG
@@ -156,8 +161,8 @@ void thread_foreach(thread_action_func *, void *);
 int get_priority(struct thread *thread_to_check);
 int thread_get_priority(void);
 void thread_set_priority(int);
-void thread_donate_priority(struct thread *recepient, int new_priority);
-void thread_reset_priority(struct thread *recepient);
+void thread_donate_priority(struct thread *recipient, int new_priority);
+void thread_reset_priority(struct thread *recipient);
 
 int thread_get_nice(void);
 void thread_set_nice(int);
