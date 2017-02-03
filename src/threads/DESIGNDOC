@@ -47,14 +47,14 @@ which parts.
 
   Justin Leong: 
   John Li: Approximately 9-10 hours.
-  Christina Lin:
+  Christina Lin: Approximately 10-11 hours.
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
   Justin Leong: priority scheduling and donation
   John Li: Worked on the advanced BSD scheduler.
-  Christina Lin:
+  Christina Lin: Alarm clock.
 
 			     ALARM CLOCK
 			     ===========
@@ -73,6 +73,9 @@ which parts.
   We keep track of all sleeping threads in a list. At each timer tick, we
   update the sleep_counters of each sleeping thread and wake the ones that
   are done sleeping.
+
+  struct list_elem sleep_elem;
+  A list_elem for sleep_list.
 
 ---- ALGORITHMS ----
 
@@ -97,9 +100,8 @@ which parts.
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
 
-  The problem is that one could disable interrupts and then the other
-  thread also tries to disable interrupts.
-  TODO: Not sure how we avoid this.
+  Interrupts are disabled in timer_sleep() so that modifications to sleep_list
+  do not conflict with one another.
 
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
@@ -226,16 +228,16 @@ ticks   A   B   C   A   B   C   to run
   There is potential ambiguity in choosing a thread to run when two or more 
   threads all have the highest priority. In this case, we we choose the thread 
   that is closest to the front of the ready queue, since this is the thread 
-  that was least recently run.
+  that was least recently run. This matches the behavior of our scheduler.
 
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
 
-Since advanced scheduler relies on constant updates based on timer
-ticks, we decided to place it inside thread_tick, because thread_tick
-would occur at every timer_tick. We believed it would be easier for
-readability for all of the timer updates to all take place in the
-same function.
+  Since advanced scheduler relies on constant updates based on timer
+  ticks, we decided to place it inside thread_tick, because thread_tick
+  would occur at every timer_tick. We believed it would be easier for
+  readability for all of the timer updates to all take place in the
+  same function.
 
 ---- RATIONALE ----
 
@@ -244,24 +246,24 @@ same function.
 >> time to work on this part of the project, how might you choose to
 >> refine or improve your design?
 
-The fixed point arithmetic functions were placed in their own .c and
-header files. We didn't want fixed point arithmetic to be meddling with
-the thread functions, because that would just lead to messy
-compartmentalization. We also placed all of our scheduling timing events
-to take place in the thread_ticks() function for ease of implementation
-and updating for the group.
+  The fixed point arithmetic functions were placed in their own .c and
+  header files. We didn't want fixed point arithmetic to be meddling with
+  the thread functions, because that would just lead to messy
+  compartmentalization. We also placed all of our scheduling timing events
+  to take place in the thread_ticks() function for ease of implementation
+  and updating for the group.
 
-Due to my unfamiliarity with the thread_foreach function, I wasn't able
-to take advantage of function pointers and functional programming
-concepts; this would have greatly lessened the amount of code
-in the thread_tick function. Had I had more time, I would make myself
-more comfortable with the kernel library so that I would optimize the
-code.
+  Due to my unfamiliarity with the thread_foreach function, I wasn't able
+  to take advantage of function pointers and functional programming
+  concepts; this would have greatly lessened the amount of code
+  in the thread_tick function. Had I had more time, I would make myself
+  more comfortable with the kernel library so that I would optimize the
+  code.
 
-Furthermore, I noticed that a some of the advanced scheduling calculations
-are unnecessary. For consistency purpose, I often converted most constants
-to fixed_point style; This is unnecessary as fixed_point/integer arithmetic
-is not very difficult either.
+  Furthermore, I noticed that a some of the advanced scheduling calculations
+  are unnecessary. For consistency purpose, I often converted most constants
+  to fixed_point style; This is unnecessary as fixed_point/integer arithmetic
+  is not very difficult either.
 
 >> C6: The assignment explains arithmetic for fixed-point math in
 >> detail, but it leaves it open to you to implement it.  Why did you
@@ -270,12 +272,12 @@ is not very difficult either.
 >> type and/or a set of functions or macros to manipulate fixed-point
 >> numbers, why did you do so?  If not, why not?
 
-Each of these functions were explicitly defined in the assignment, so we
-felt that it would make the most sense to implement these functions and
-use them as an abstraction layer for fixed_point math. Having a fixed
-set of functions that did this would prevent confusion in manipulations.
-Each of these functions were also heavily commented so we knew what kind
-of inputs and outputs we were expecting for each fixed-arithmetic operation.
+  Each of these functions were explicitly defined in the assignment, so we
+  felt that it would make the most sense to implement these functions and
+  use them as an abstraction layer for fixed_point math. Having a fixed
+  set of functions that did this would prevent confusion in manipulations.
+  Each of these functions were also heavily commented so we knew what kind
+  of inputs and outputs we were expecting for each fixed-arithmetic operation.
 
 			  SURVEY QUESTIONS
 			  ================
