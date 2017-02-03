@@ -99,6 +99,7 @@ struct thread {
     int priority;                       /*!< Priority. */
     int donated_priority;               /*!< Donated priority. */
     struct list_elem allelem;           /*!< List element for all threads list. */
+    struct list_elem sleep_elem;        /*!< List element for sleeping list. */
     int64_t sleep_counter;              /*!< Number of ticks left to sleep. */
     int niceness;                       /*!< Niceness value for BSD CPU priority */
     int recent_cpu;                     /*!< Most recent CPU time usage. Fixed point */

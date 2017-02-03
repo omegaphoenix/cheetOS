@@ -87,7 +87,7 @@ void sleep_threads() {
     struct list_elem *e = list_begin(&sleep_list);
 
     while (e != list_end(&sleep_list)) {
-        struct thread *t = list_entry(e, struct thread, elem);
+        struct thread *t = list_entry(e, struct thread, sleep_elem);
 
         /* Decrement sleep counter and wake thread */
         if (t->sleep_counter <= 1) {
@@ -104,7 +104,7 @@ void sleep_threads() {
 
 /* Add thread to sleep_list */
 void add_sleep_thread(struct thread *t) {
-	list_push_back(&sleep_list, &t->elem);
+	list_push_back(&sleep_list, &t->sleep_elem);
 }
 
 /*! Initializes the threading system by transforming the code
