@@ -88,7 +88,8 @@ int calculate_load_avg(int load_average, int ready_threads) {
     int fraction_multiplication = 
             multiply_x_by_y(fixed_fraction, load_average, FIXED_POINT_Q);
     int second_fraction_multiplication = multiply_x_by_y(fixed_second_fraction,
-                                                         fixed_threads);
+                                                         fixed_threads,
+                                                         FIXED_POINT_Q);
     return fraction_multiplication + second_fraction_multiplication;
 }
 

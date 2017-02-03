@@ -161,7 +161,7 @@ void thread_tick(void) {
     t->recent_cpu++;
 
     /* Update load balance and cpu_usage every second */
-    if (mlfqs && timer_ticks() % TIMER_FREQ == 0) {
+    if (thread_mlfqs && timer_ticks() % TIMER_FREQ == 0) {
         struct list_elem *e;
         load_avg = calculate_load_avg(load_avg, num_ready_threads);
         for (e = list_begin(&all_list); e != list_end(&all_list);
@@ -176,7 +176,7 @@ void thread_tick(void) {
     }
 
     /* Every fourth tick, update priorities */
-    if (mlfqs && timer_ticks() % 4 == 0) {
+    if (thread_mlfqs && timer_ticks() % 4 == 0) {
         struct list_elem *e;
         for (e = list_begin(&all_list); e != list_end(&all_list);
              e = list_next(e)) {
@@ -257,13 +257,17 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     sf->eip = switch_entry;
     sf->ebp = 0;
 
+    printf("About to check highest_priority...\n");
     /* Add to run queue. */
     int prev_highest_priority = highest_priority();
+    printf("Found highest priority.\n\n");
     thread_unblock(t);
 
     /* Yield current thread if higher priority thread was added */
     if (prev_highest_priority < t->priority) {
+        printf("About to yield...\n");
         thread_yield();
+        printf("Yielded...\n");
     }
     return tid;
 }
@@ -290,7 +294,6 @@ void thread_block(void) {
     atomically unblock a thread and update other data. */
 void thread_unblock(struct thread *t) {
     enum intr_level old_level;
-
     ASSERT(is_thread(t));
 
     old_level = intr_disable();
@@ -308,9 +311,8 @@ const char * thread_name(void) {
 /*! Returns the running thread.
     This is running_thread() plus a couple of sanity checks.
     See the big comment at the top of thread.h for details. */
-struct thread * thread_current(void) {
+struct thread * thread_current(void) {    
     struct thread *t = running_thread();
-
     /* Make sure T is really a thread.
        If either of these assertions fire, then your thread may
        have overflowed its stack.  Each thread has less than 4 kB
@@ -378,9 +380,11 @@ void thread_foreach(thread_action_func *func, void *aux) {
 
 /*! Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority) {
-    thread_current()->priority = new_priority;
-    if (!is_highest_priority(new_priority)) {
-        thread_yield();
+    if (!thread_mlfqs) {
+        thread_current()->priority = new_priority;
+        if (!is_highest_priority(new_priority)) {
+            thread_yield();
+        }
     }
 }
 
@@ -390,7 +394,7 @@ int thread_get_priority(void) {
     int donated_priority = cur->donated_priority;
     int own_priority = cur->priority;
 
-    if (donated_priority > own_priority) {
+    if (!thread_mlfqs && donated_priority > own_priority) {
         return donated_priority;
     }
     else {
@@ -400,23 +404,27 @@ int thread_get_priority(void) {
 
 /*! Sets the current thread's nice value to NICE. */
 void thread_set_nice(int nice) {
+    printf("SET NICE!!!\n\n\n");
+
     struct thread *t = thread_current();
 
     t->niceness = nice;
     t->priority = calculate_priority(t->recent_cpu, t->niceness);
     if (!is_highest_priority(t->priority)) {
+        printf("oh boy...\n");
         thread_yield();
     }
 }
 
 /*! Returns the current thread's nice value. */
 int thread_get_nice(void) {
+    printf("GET NICE!!!");
     return thread_current()->niceness;
 }
 
 /*! Returns 100 times the system load average. */
 int thread_get_load_avg(void) {
-    int fixed_load_avg = 100 * thread_current()->load_avg;
+    int fixed_load_avg = 100 * load_avg;
     return convert_to_integer_round_nearest(fixed_load_avg, FIXED_POINT_Q);
 }
 
@@ -430,8 +438,9 @@ int thread_get_recent_cpu(void) {
 /*! Returns priority of highest priority thread. */
 int highest_priority(void) {
     // Return minimum if no threads
+    printf("In highest priority right now.\n");
     int highest_priority_val = thread_current()->priority;
-
+    printf("Did I get a current thread? \n");
     // Find max priority of threads
     struct list_elem *e;
     for (e = list_begin(&ready_list); e != list_end(&ready_list);
@@ -526,19 +535,29 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->status = THREAD_BLOCKED;
     strlcpy(t->name, name, sizeof t->name);
     t->stack = (uint8_t *) t + PGSIZE;
-    t->priority = priority;
     t->donated_priority = PRI_MIN;
     t->magic = THREAD_MAGIC;
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */
-        t->cpu_usage = 0; /* Set cpu_usage to 0 on initial thread */
+        t->recent_cpu = 0; /* Set cpu_usage to 0 on initial thread */
     }
     else {
         /* Inherit niceness and cpu_usage from parent */
         t->niceness = thread_current()->niceness;
-        t->cpu_usage = thread_current()->cpu_usage; 
+        t->recent_cpu = thread_current()->recent_cpu;
+    }
+
+    /* Priority setting */
+    if (thread_mlfqs) {
+        printf("About to calculate priority...\n\n");
+
+        t->priority = calculate_priority(t->recent_cpu, t->niceness);
+        printf("Priority calculated...\n\n");
+    }
+    else {
+        t->priority = priority;
     }
 
     old_level = intr_disable();
