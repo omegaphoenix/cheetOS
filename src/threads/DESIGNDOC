@@ -33,6 +33,9 @@ Christina Lin <cylin@caltech.edu>
     typedef functions:
     http://stackoverflow.com/questions/4574985/typedef-a-functions-prototype
 
+    priority inversion:
+    https://en.wikipedia.org/wiki/Priority_inversion
+
 			      THREADS
 			      =======
 
@@ -45,15 +48,15 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-  Justin Leong: Approximately 12:12:24
+  Justin Leong: Approximately 12:12:24 (hh/mm/ss).
   John Li: Approximately 9-10 hours.
   Christina Lin: Approximately 10-11 hours.
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
-  Justin Leong: priority scheduling and donation
-  John Li: Worked on the advanced BSD scheduler.
+  Justin Leong: Priority scheduling and donation.
+  John Li: Advanced BSD scheduler.
   Christina Lin: Alarm clock.
 
 			     ALARM CLOCK
