@@ -265,10 +265,6 @@ void lock_release(struct lock *lock) {
     /* Update donated priority */
     thread_reset_priority(thread_current());
     sema_up(&lock->semaphore);
-    /* Yield current thread if it is no longer the highest priority */
-    if (!is_highest_priority(thread_get_priority())) {
-        thread_yield();
-    }
 }
 
 /*! Returns true if the current thread holds LOCK, false
