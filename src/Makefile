@@ -1,7 +1,7 @@
 BUILD_SUBDIRS = threads userprog vm filesys
 CLEAN_SUBDIRS = $(BUILD_SUBDIRS) examples utils
 
-all:: clean
+all::
 	for d in $(CLEAN_SUBDIRS); do $(MAKE) -C $$d $@; done
 
 clean::
