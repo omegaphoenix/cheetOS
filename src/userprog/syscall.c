@@ -15,3 +15,6 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     thread_exit();
 }
 
+void sys_exit(int status) {
+    thread_exit();
+}
