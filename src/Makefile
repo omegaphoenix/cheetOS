@@ -1,11 +1,7 @@
 BUILD_SUBDIRS = threads userprog vm filesys
-
-all::
-	@echo "To build specific assignments, run 'make' in the following"
-	@echo "subdirectories:  $(BUILD_SUBDIRS)."
-	@echo "This top-level make has only 'clean', 'docs' and 'tags' targets."
-
 CLEAN_SUBDIRS = $(BUILD_SUBDIRS) examples utils
+
+all:: clean $(CLEAN_SUBDIRS)
 
 clean::
 	for d in $(CLEAN_SUBDIRS); do $(MAKE) -C $$d $@; done
@@ -31,3 +27,21 @@ cscope.files::
 
 cscope:: cscope.files
 	cscope -b -q -k
+
+utils::
+	cd utils; make; cd ..
+
+examples::
+	cd examples; make; cd ..
+
+filesys::
+	cd filesys; make; cd ..
+
+threads::
+	cd threads; make; cd ..
+
+userprog::
+	cd userprog; make; cd ..
+
+vm::
+	cd vm; make; cd ..
