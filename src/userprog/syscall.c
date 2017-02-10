@@ -1,10 +1,12 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include "devices/shutdown.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
 static void syscall_handler(struct intr_frame *);
+void sys_halt(void);
 void sys_exit(int status);
 
 void syscall_init(void) {
@@ -14,6 +16,10 @@ void syscall_init(void) {
 static void syscall_handler(struct intr_frame *f UNUSED) {
     printf("system call!\n");
     thread_exit();
+}
+
+void sys_halt(void) {
+    shutdown_power_off();
 }
 
 void sys_exit(int status) {
