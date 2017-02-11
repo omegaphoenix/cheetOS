@@ -16,6 +16,21 @@ void syscall_init(void) {
 
 static void syscall_handler(struct intr_frame *f UNUSED) {
     printf("system call!\n");
+    /* TODO: Get the system call number */
+    int syscall_no = 0;
+    switch (syscall_no) {
+        case SYS_HALT:
+            sys_halt();
+            break;
+        case SYS_EXIT:
+            sys_exit(0);
+            break;
+        case SYS_WRITE:
+            break;
+        default:
+            printf("Unimplemented system call number\n");
+            break;
+    }
     thread_exit();
 }
 
