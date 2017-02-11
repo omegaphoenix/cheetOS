@@ -32,17 +32,17 @@ void sys_exit(int status) {
 }
 
 /*! Writes size bytes from buffer to the open file fd. Returns the number of
-		bytes actually written.
-		Writing past end-of-file would normally extend the file, but file growth
-		is not implemented by the basic file system. The expected behavior is to
-		write as many bytes as possible up to end-of-file and return the actual
-		number written, or 0 if no bytes could be written at all.
-		Fd 1 writes to the console. */
+    bytes actually written.
+    Writing past end-of-file would normally extend the file, but file growth
+    is not implemented by the basic file system. The expected behavior is to
+    write as many bytes as possible up to end-of-file and return the actual
+    number written, or 0 if no bytes could be written at all.
+    Fd 1 writes to the console. */
 int sys_write(int fd, const void *buffer, unsigned size) {
     int bytes_written = 0;
 
     /* Write to console */
-		if (fd == STDIN_FILENO) {
+    if (fd == STDIN_FILENO) {
         size_t block_size = MAX_BUF_WRI;
 
         /* If size greater than several hundred bytes, break up */
@@ -54,6 +54,6 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         /* Write remaining bytes */
         putbuf((char *)(buffer + bytes_written), size - bytes_written);
         bytes_written = size;
-		}
+    }
     return bytes_written;
 }
