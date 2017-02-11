@@ -10,6 +10,7 @@
 static void syscall_handler(struct intr_frame *);
 void sys_halt(void);
 void sys_exit(int status);
+int sys_write(int fd, const void *buffer, unsigned size);
 
 static int get_user(const uint8_t *uaddr) UNUSED;
 static bool put_user (uint8_t *udst, uint8_t byte) UNUSED;
@@ -36,8 +37,35 @@ void sys_exit(int status) {
     thread_exit();
 }
 
+/*! Writes size bytes from buffer to the open file fd. Returns the number of
+    bytes actually written.
+    Writing past end-of-file would normally extend the file, but file growth
+    is not implemented by the basic file system. The expected behavior is to
+    write as many bytes as possible up to end-of-file and return the actual
+    number written, or 0 if no bytes could be written at all.
+    Fd 1 writes to the console. */
+int sys_write(int fd, const void *buffer, unsigned size) {
+    int bytes_written = 0;
+
+    /* Write to console */
+    if (fd == STDIN_FILENO) {
+        size_t block_size = MAX_BUF_WRI;
+
+        /* If size greater than several hundred bytes, break up */
+        while (size > bytes_written + block_size) {
+            putbuf((char *)(buffer + bytes_written), block_size);
+            bytes_written += block_size;
+        }
+
+        /* Write remaining bytes */
+        putbuf((char *)(buffer + bytes_written), size - bytes_written);
+        bytes_written = size;
+    }
+    return bytes_written;
+}
+
 static bool is_valid_addr(const void *addr) {
-    return addr != NULL && is_user_vaddr(addr); 
+    return addr != NULL && is_user_vaddr(addr);
     // lookup_page(active_pd(), addr, false);
 }
 
