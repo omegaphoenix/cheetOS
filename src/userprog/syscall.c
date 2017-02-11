@@ -13,7 +13,7 @@ void sys_exit(int status);
 
 static int get_user(const uint8_t *uaddr) UNUSED;
 static bool put_user (uint8_t *udst, uint8_t byte) UNUSED;
-static bool is_valid_addr(const void *vaddr) UNUSED;
+static bool is_valid_addr(const void *addr) UNUSED;
 
 void syscall_init(void) {
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
