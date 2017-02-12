@@ -21,6 +21,9 @@ void syscall_init(void) {
 }
 
 static void syscall_handler(struct intr_frame *f UNUSED) {
+    const void *test_addr = (const void *) 0xbfffffff;
+    bool valid = is_valid_addr(test_addr);
+    printf("valid = %d\n", valid);
     printf("system call!\n");
     thread_exit();
 }
@@ -65,7 +68,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 }
 
 static bool is_valid_addr(const void *addr) {
-    return addr != NULL && is_user_vaddr(addr);
+    return addr != NULL && is_user_vaddr(addr) && get_user(addr);
     // lookup_page(active_pd(), addr, false);
 }
 

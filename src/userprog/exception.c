@@ -142,6 +142,15 @@ static void page_fault(struct intr_frame *f) {
            not_present ? "not present" : "rights violation",
            write ? "writing" : "reading",
            user ? "user" : "kernel");
-    kill(f);
+
+    /* Kill process if user program faults */
+    if (user) {
+        kill(f);
+    }
+    else {
+        /* Copy eax into eip and set eax to -1. */
+        f->eip = (void *) f->eax;
+        f->eax = -1;
+    }
 }
 
