@@ -1,5 +1,5 @@
 #include "userprog/syscall.h"
-#include <stdbool.h>
+
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "devices/shutdown.h"
@@ -22,9 +22,6 @@ void syscall_init(void) {
 }
 
 static void syscall_handler(struct intr_frame *f UNUSED) {
-    void *addr = f->esp;
-    bool valid = valid_write_addr(addr);
-    printf("valid = %d\n", valid);
     printf("system call!\n");
     thread_exit();
 }

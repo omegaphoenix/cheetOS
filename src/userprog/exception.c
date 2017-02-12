@@ -150,7 +150,7 @@ static void page_fault(struct intr_frame *f) {
     /* Handle if page fault is caused by kernel instruction */
     else {
         /* Copy eax into eip and set eax to -1. */
-        f->eip = (void (*) (void)) f->eax;
+        f->eip = (void *) f->eax;
         f->eax = -1;
     }
 }
