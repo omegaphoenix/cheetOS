@@ -149,7 +149,7 @@ static void page_fault(struct intr_frame *f) {
     }
     else {
         /* Copy eax into eip and set eax to -1. */
-        f->eip = (void *) f->eax;
+        f->eip = (void (*) (void)) f->eax;
         f->eax = -1;
     }
 }

@@ -12,17 +12,18 @@ void sys_halt(void);
 void sys_exit(int status);
 int sys_write(int fd, const void *buffer, unsigned size);
 
-static int get_user(const uint8_t *uaddr) UNUSED;
-static bool put_user (uint8_t *udst, uint8_t byte) UNUSED;
-static bool is_valid_addr(const void *addr) UNUSED;
+static int get_user(const uint8_t *uaddr);
+static bool put_user (uint8_t *udst, uint8_t byteput);
+static bool valid_read_addr(const void *addr) UNUSED;
+static bool valid_write_addr(void *addr) UNUSED;
 
 void syscall_init(void) {
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
 static void syscall_handler(struct intr_frame *f UNUSED) {
-    const void *test_addr = (const void *) 0xbfffffff;
-    bool valid = is_valid_addr(test_addr);
+    void *addr = f->esp;
+    bool valid = valid_write_addr(addr);
     printf("valid = %d\n", valid);
     printf("system call!\n");
     thread_exit();
@@ -67,9 +68,18 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     return bytes_written;
 }
 
-static bool is_valid_addr(const void *addr) {
+/* Returns true if addr is valid for reading */
+static bool valid_read_addr(const void *addr) {
+    /* Check that address is below PHYS_BASE
+       and then attempt to read a byte at the address */
     return addr != NULL && is_user_vaddr(addr) && get_user(addr);
-    // lookup_page(active_pd(), addr, false);
+}
+
+/* Returns true if addr is valid for writing */
+static bool valid_write_addr(void *addr) {
+    /* Check that address is below PHYS_BASE
+       and then attempt to write a byte '1' to the address */
+    return addr != NULL && is_user_vaddr(addr) && put_user(addr, 1);
 }
 
 /*! Reads a byte at user virtual address UADDR.
