@@ -27,6 +27,7 @@ static bool load(const char *cmdline, void (**eip)(void), void **esp);
     returns.  Returns the new process's thread id, or TID_ERROR if the thread
     cannot be created. */
 tid_t process_execute(const char *args) {
+    printf("NOW PARSE ARGUMENTS\n");
     char *args_copy;
     tid_t tid;
     char *token, *save_ptr;
@@ -40,15 +41,15 @@ tid_t process_execute(const char *args) {
     strlcpy(args_copy, args, PGSIZE);
 
     /* Parse argument string */
-    for (token = strtok_r(*args_copy, " ", &save_ptr); token != NULL;
+    for (token = strtok_r(args_copy, " ", &save_ptr); token != NULL;
          token = strtok_r(NULL, " ", &save_ptr)) {
-        // printf("'%s'\n", token);
+        printf("'%s'\n", token);
         // save first token as file name
         // all others are arguments - push them onto the stack
     }
 
     /* Create a new thread to execute FILE_NAME. */
-    tid = thread_create(token, PRI_DEFAULT, start_process, args_copy);
+    tid = thread_create(args, PRI_DEFAULT, start_process, args_copy);
     if (tid == TID_ERROR)
         palloc_free_page(args_copy); 
     return tid;
