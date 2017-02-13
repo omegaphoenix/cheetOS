@@ -22,8 +22,9 @@ void *get_third_arg(struct intr_frame *f);
 /* System calls */
 void sys_halt(void);
 void sys_exit(int status);
-int sys_write(int fd, const void *buffer, unsigned size);
 pid_t sys_exec(const char *cmd_line);
+int sys_wait(pid_t pid);
+int sys_write(int fd, const void *buffer, unsigned size);
 
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
@@ -33,11 +34,13 @@ static bool valid_write_addr(void *addr) UNUSED;
 
 void syscall_init(void) {
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
+    struct semaphore execute_lock;
+    exec_lock = &execute_lock;
     sema_init(exec_lock, 1);
 }
 
 static void syscall_handler(struct intr_frame *f UNUSED) {
-    int *fd, *status;
+    int *fd, *status, *child_pid;
     void *buffer;
     unsigned int *size;
     char *cmd_line;
@@ -64,6 +67,9 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             f->eax = sys_exec(cmd_line);
             break;
         case SYS_WAIT:
+            child_pid = (pid_t *) get_first_arg(f);
+            f->eax = sys_wait(*child_pid);
+            break;
         case SYS_CREATE:
         case SYS_REMOVE:
         case SYS_OPEN:
@@ -122,8 +128,8 @@ void sys_exit(int status) {
     thread_exit();
 }
 
-/* Run executable and return new pid. Return -1 if program cannot load or run
-   for any reason. */
+/*! Run executable and return new pid. Return -1 if program cannot load or run
+    for any reason. */
 pid_t sys_exec(const char *cmd_line) {
     if (cmd_line == NULL) {
         return -1;
@@ -132,6 +138,11 @@ pid_t sys_exec(const char *cmd_line) {
     pid_t new_process_pid = process_execute(cmd_line);
     sema_up(exec_lock);
     return new_process_pid;
+}
+
+/*! Wait for a child process pid and retrive the child's exit status. */
+int sys_wait(pid_t pid) {
+    return process_wait(pid);
 }
 
 /*! Writes size bytes from buffer to the open file fd. Returns the number of
