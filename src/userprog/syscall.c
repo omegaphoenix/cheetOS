@@ -25,9 +25,10 @@ void syscall_init(void) {
 }
 
 static void syscall_handler(struct intr_frame *f UNUSED) {
-    int *fd;
+    int *fd, *status;
     void *buffer;
     unsigned int *size;
+
     printf("system call!\n");
     /* Get the system call number */
     if (f == NULL || !valid_read_addr(f->esp)) {
@@ -41,7 +42,12 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             sys_halt();
             break;
         case SYS_EXIT:
-            sys_exit(0);
+            status = ((int *) (f->esp + ARG_SIZE));
+            if (!valid_read_addr(status)) {
+                sys_exit(-1);
+                return;
+            }
+            sys_exit(*status);
             break;
         case SYS_WRITE:
             fd = ((int *) (f->esp + ARG_SIZE));
