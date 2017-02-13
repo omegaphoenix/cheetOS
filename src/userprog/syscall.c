@@ -4,9 +4,12 @@
 #include <user/syscall.h>
 #include "devices/shutdown.h"
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
+
+struct semaphore *exec_lock;
 
 static void syscall_handler(struct intr_frame *);
 
@@ -30,6 +33,7 @@ static bool valid_write_addr(void *addr) UNUSED;
 
 void syscall_init(void) {
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
+    sema_init(exec_lock, 1);
 }
 
 static void syscall_handler(struct intr_frame *f UNUSED) {
@@ -118,9 +122,16 @@ void sys_exit(int status) {
     thread_exit();
 }
 
-/* Run executable and return new pid */
+/* Run executable and return new pid. Return -1 if program cannot load or run
+   for any reason. */
 pid_t sys_exec(const char *cmd_line) {
-    return process_execute(cmd_line);
+    if (cmd_line == NULL) {
+        return -1;
+    }
+    sema_down(exec_lock);
+    pid_t new_process_pid = process_execute(cmd_line);
+    sema_up(exec_lock);
+    return new_process_pid;
 }
 
 /*! Writes size bytes from buffer to the open file fd. Returns the number of
