@@ -1,10 +1,12 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include <user/syscall.h>
 #include "devices/shutdown.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/process.h"
 
 static void syscall_handler(struct intr_frame *);
 
@@ -18,6 +20,7 @@ void *get_third_arg(struct intr_frame *f);
 void sys_halt(void);
 void sys_exit(int status);
 int sys_write(int fd, const void *buffer, unsigned size);
+pid_t sys_exec(const char *cmd_line);
 
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
@@ -33,6 +36,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     int *fd, *status;
     void *buffer;
     unsigned int *size;
+    char *cmd_line;
 
     printf("system call!\n");
     /* Get the system call number */
@@ -47,9 +51,22 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             sys_halt();
             break;
         case SYS_EXIT:
-            status = ((int *) get_first_arg(f));
+            status = (int *) get_first_arg(f);
             sys_exit(*status);
             f->eax = *status;
+            break;
+        case SYS_EXEC:
+            cmd_line = (char *) get_first_arg(f);
+            f->eax = sys_exec(cmd_line);
+            break;
+        case SYS_WAIT:
+        case SYS_CREATE:
+        case SYS_REMOVE:
+        case SYS_OPEN:
+        case SYS_FILESIZE:
+        case SYS_READ:
+            printf("Unimplemented system call number\n");
+            sys_exit(-1);
             break;
         case SYS_WRITE:
             fd = (int *) get_first_arg(f);
@@ -57,6 +74,9 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             size = (unsigned int *) get_third_arg(f);
             f->eax = sys_write(*fd, buffer, *size);
             break;
+        case SYS_SEEK:
+        case SYS_TELL:
+        case SYS_CLOSE:
         default:
             printf("Unimplemented system call number\n");
             sys_exit(-1);
@@ -64,6 +84,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     }
 }
 
+/*! Returns *num*th argument. Verifies before returning. */
 void *get_arg(struct intr_frame *f, int num) {
     void *arg = f->esp + ARG_SIZE * num;
     if (!valid_read_addr(arg)) {
@@ -95,6 +116,11 @@ void sys_halt(void) {
 void sys_exit(int status) {
     printf("%s:exit(%d)\n", thread_current()->name, status);
     thread_exit();
+}
+
+/* Run executable and return new pid */
+pid_t sys_exec(const char *cmd_line) {
+    return process_execute(cmd_line);
 }
 
 /*! Writes size bytes from buffer to the open file fd. Returns the number of
