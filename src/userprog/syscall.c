@@ -25,13 +25,17 @@ void syscall_init(void) {
 }
 
 static void syscall_handler(struct intr_frame *f UNUSED) {
+    int *fd;
+    void *buffer;
+    unsigned int *size;
     printf("system call!\n");
-    /* TODO: Get the system call number */
+    /* Get the system call number */
     if (f == NULL || !valid_read_addr(f->esp)) {
         sys_exit(-1);
+        return;
     }
-
     int syscall_no = *((int *) f->esp);
+
     switch (syscall_no) {
         case SYS_HALT:
             sys_halt();
@@ -40,6 +44,16 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             sys_exit(0);
             break;
         case SYS_WRITE:
+            fd = ((int *) (f->esp + ARG_SIZE));
+            buffer = f->esp + ARG_SIZE * 2;
+            size = (unsigned int *) (f->esp + ARG_SIZE * 3);
+            if (!valid_read_addr(fd)
+                    || !valid_read_addr(buffer)
+                    || !valid_read_addr(size)) {
+                sys_exit(-1);
+                return;
+            }
+            f->eax = sys_write(*fd, buffer, *size);
             break;
         default:
             printf("Unimplemented system call number\n");
