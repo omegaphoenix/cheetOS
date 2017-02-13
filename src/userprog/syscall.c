@@ -8,10 +8,13 @@
 #include "threads/vaddr.h"
 
 static void syscall_handler(struct intr_frame *);
+
+/* System calls */
 void sys_halt(void);
 void sys_exit(int status);
 int sys_write(int fd, const void *buffer, unsigned size);
 
+/* User memory access */
 static int get_user(const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byteput);
 static bool valid_read_addr(const void *addr) UNUSED;
@@ -24,7 +27,11 @@ void syscall_init(void) {
 static void syscall_handler(struct intr_frame *f UNUSED) {
     printf("system call!\n");
     /* TODO: Get the system call number */
-    int syscall_no = 0;
+    if (f == NULL || !valid_read_addr(f->esp)) {
+        sys_exit(-1);
+    }
+
+    int syscall_no = *((int *) f->esp);
     switch (syscall_no) {
         case SYS_HALT:
             sys_halt();
@@ -36,9 +43,9 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             break;
         default:
             printf("Unimplemented system call number\n");
+            sys_exit(-1);
             break;
     }
-    thread_exit();
 }
 
 /*! Terminates Pintos. Should be seldom used due to loss of information on
