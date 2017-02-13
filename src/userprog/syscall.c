@@ -70,9 +70,7 @@ void *get_arg(struct intr_frame *f, int num) {
         sys_exit(-1);
         return NULL;
     }
-    else {
-        return arg;
-    }
+    return arg;
 }
 
 void *get_first_arg(struct intr_frame *f) {
