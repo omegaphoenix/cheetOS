@@ -1,5 +1,4 @@
 #include "userprog/syscall.h"
-
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "devices/shutdown.h"
@@ -8,6 +7,12 @@
 #include "threads/vaddr.h"
 
 static void syscall_handler(struct intr_frame *);
+
+/* Helper functions */
+void *get_arg(struct intr_frame *f, int num);
+void *get_first_arg(struct intr_frame *f);
+void *get_second_arg(struct intr_frame *f);
+void *get_third_arg(struct intr_frame *f);
 
 /* System calls */
 void sys_halt(void);
@@ -42,23 +47,14 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             sys_halt();
             break;
         case SYS_EXIT:
-            status = ((int *) (f->esp + ARG_SIZE));
-            if (!valid_read_addr(status)) {
-                sys_exit(-1);
-                return;
-            }
+            status = ((int *) get_first_arg(f));
             sys_exit(*status);
+            f->eax = *status;
             break;
         case SYS_WRITE:
-            fd = ((int *) (f->esp + ARG_SIZE));
-            buffer = f->esp + ARG_SIZE * 2;
-            size = (unsigned int *) (f->esp + ARG_SIZE * 3);
-            if (!valid_read_addr(fd)
-                    || !valid_read_addr(buffer)
-                    || !valid_read_addr(size)) {
-                sys_exit(-1);
-                return;
-            }
+            fd = (int *) get_first_arg(f);
+            buffer = get_second_arg(f);
+            size = (unsigned int *) get_third_arg(f);
             f->eax = sys_write(*fd, buffer, *size);
             break;
         default:
@@ -66,6 +62,29 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             sys_exit(-1);
             break;
     }
+}
+
+void *get_arg(struct intr_frame *f, int num) {
+    void *arg = f->esp + ARG_SIZE * num;
+    if (!valid_read_addr(arg)) {
+        sys_exit(-1);
+        return NULL;
+    }
+    else {
+        return arg;
+    }
+}
+
+void *get_first_arg(struct intr_frame *f) {
+    return get_arg(f, 1);
+}
+
+void *get_second_arg(struct intr_frame *f) {
+    return get_arg(f, 2);
+}
+
+void *get_third_arg(struct intr_frame *f) {
+    return get_arg(f, 3);
 }
 
 /*! Terminates Pintos. Should be seldom used due to loss of information on
