@@ -186,6 +186,7 @@ bool is_highest_priority(int test_priority);
 
 int next_fd(struct thread *cur);
 int add_open_file(struct thread *cur, struct file *file, int fd);
+struct file *get_fd(struct thread *cur, int fd);
 
 void add_sleep_thread(struct thread *);
 void sleep_threads(void);

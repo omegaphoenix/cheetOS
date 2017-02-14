@@ -3,6 +3,7 @@
 #include <syscall-nr.h>
 #include <user/syscall.h>
 #include "devices/shutdown.h"
+#include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/interrupt.h"
 #include "threads/synch.h"
@@ -30,6 +31,7 @@ bool sys_create(const char *file, unsigned initital_size);
 bool sys_remove(const char *file);
 bool sys_open(const char *file);
 int sys_write(int fd, const void *buffer, unsigned size);
+int sys_filesize(int fd);
 
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
@@ -89,6 +91,9 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             f->eax = sys_open(file);
             break;
         case SYS_FILESIZE:
+            fd = (int *) get_first_arg(f);
+            f->eax = sys_filesize(*fd);
+            break;
         case SYS_READ:
             printf("Unimplemented system call number\n");
             sys_exit(ERR);
@@ -181,6 +186,14 @@ bool sys_open(const char *file) {
     int fd = next_fd(cur);
     fd = add_open_file(cur, open_file, fd);
     return fd;
+}
+
+/*! Returns the size, in bytes, of the file open as fd. */
+int sys_filesize(int fd) {
+    struct thread *cur = thread_current();
+    struct file *open_file = get_fd(cur, fd);
+    int size = file_length(open_file);
+    return size;
 }
 
 /*! Writes size bytes from buffer to the open file fd. Returns the number of

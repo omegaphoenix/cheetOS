@@ -527,6 +527,13 @@ int add_open_file(struct thread *cur, struct file *file, int fd) {
     return -1;
 }
 
+/*! Get file with file descriptor *fd*. */
+struct file *get_fd(struct thread *cur, int fd) {
+    int index = fd - CONSOLE_FD;
+    struct file *open_file = cur->open_files[index];
+    return open_file;
+}
+
 /*! Idle thread.  Executes when no other thread is ready to run.
 
     The idle thread is initially put on the ready list by thread_start().
