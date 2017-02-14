@@ -128,11 +128,11 @@ void sys_exit(int status) {
     thread_exit();
 }
 
-/*! Run executable and return new pid. Return -1 if program cannot load or run
-    for any reason. */
+/*! Run executable and return new pid. Return TID_ERROR if program cannot
+    load or run for any reason. */
 pid_t sys_exec(const char *cmd_line) {
     if (cmd_line == NULL) {
-        return -1;
+        return TID_ERROR;
     }
     sema_down(exec_lock);
     pid_t new_process_pid = process_execute(cmd_line);
