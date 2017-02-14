@@ -34,6 +34,7 @@ bool sys_open(const char *file);
 int sys_filesize(int fd);
 int sys_read(int fd, void *buffer, unsigned size);
 int sys_write(int fd, const void *buffer, unsigned size);
+void sys_seek(int fd, unsigned position);
 
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
@@ -51,7 +52,7 @@ void syscall_init(void) {
 static void syscall_handler(struct intr_frame *f UNUSED) {
     int *fd, *status, *child_pid;
     void *buffer;
-    unsigned int *size, *initial_size;
+    unsigned int *size, *initial_size, *position;
     char *cmd_line, *file;
 
     printf("system call!\n");
@@ -110,6 +111,10 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             f->eax = sys_write(*fd, buffer, *size);
             break;
         case SYS_SEEK:
+            fd = (int *) get_first_arg(f);
+            position = (unsigned int *) get_second_arg(f);
+            sys_seek(*fd, *position);
+            break;
         case SYS_TELL:
         case SYS_CLOSE:
         default:
@@ -256,6 +261,13 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     return bytes_written;
 }
 
+/*! Changes next byte to be read or written in open file *fd* to *position*,
+    expressed in bytes from beginning of file. */
+void sys_seek(int fd, unsigned position) {
+    struct thread *cur = thread_current();
+    struct file *open_file = get_fd(cur, fd);
+    file_seek(open_file, position);
+}
 /* Returns true if addr is valid for reading */
 static bool valid_read_addr(const void *addr) {
     /* Check that address is below PHYS_BASE
