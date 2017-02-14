@@ -35,6 +35,7 @@ int sys_filesize(int fd);
 int sys_read(int fd, void *buffer, unsigned size);
 int sys_write(int fd, const void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
+unsigned sys_tell(int fd);
 
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
@@ -116,6 +117,9 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             sys_seek(*fd, *position);
             break;
         case SYS_TELL:
+            fd = (int *) get_first_arg(f);
+            f->eax = sys_tell(*fd);
+            break;
         case SYS_CLOSE:
         default:
             printf("Unimplemented system call number\n");
@@ -268,6 +272,17 @@ void sys_seek(int fd, unsigned position) {
     struct file *open_file = get_fd(cur, fd);
     file_seek(open_file, position);
 }
+
+
+/*! Return position of next byte to be read or written in open file fd,
+    expressed in bytes from beginning of file. */
+unsigned sys_tell(int fd) {
+    struct thread *cur = thread_current();
+    struct file *open_file = get_fd(cur, fd);
+    unsigned position = file_tell(open_file);
+    return position;
+}
+
 /* Returns true if addr is valid for reading */
 static bool valid_read_addr(const void *addr) {
     /* Check that address is below PHYS_BASE
