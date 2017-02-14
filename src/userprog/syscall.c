@@ -3,6 +3,7 @@
 #include <syscall-nr.h>
 #include <user/syscall.h>
 #include "devices/shutdown.h"
+#include "filesys/filesys.h"
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
@@ -24,6 +25,7 @@ void sys_halt(void);
 void sys_exit(int status);
 pid_t sys_exec(const char *cmd_line);
 int sys_wait(pid_t pid);
+bool sys_create(const char *file, unsigned initital_size);
 int sys_write(int fd, const void *buffer, unsigned size);
 
 /* User memory access */
@@ -42,8 +44,8 @@ void syscall_init(void) {
 static void syscall_handler(struct intr_frame *f UNUSED) {
     int *fd, *status, *child_pid;
     void *buffer;
-    unsigned int *size;
-    char *cmd_line;
+    unsigned int *size, *initial_size;
+    char *cmd_line, *file;
 
     printf("system call!\n");
     /* Get the system call number */
@@ -71,6 +73,9 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             f->eax = sys_wait(*child_pid);
             break;
         case SYS_CREATE:
+            file = (char *) get_first_arg(f);
+            initial_size = (unsigned *) get_second_arg(f);
+            f->eax = sys_create(file, *initial_size);
         case SYS_REMOVE:
         case SYS_OPEN:
         case SYS_FILESIZE:
@@ -143,6 +148,13 @@ pid_t sys_exec(const char *cmd_line) {
 /*! Wait for a child process pid and retrive the child's exit status. */
 int sys_wait(pid_t pid) {
     return process_wait(pid);
+}
+
+/*! Create new file called *file* initially *initial_size* bytes in size.
+    Returns true if successful. */
+bool sys_create(const char *file, unsigned initial_size) {
+    bool success = filesys_create(file, initial_size);
+    return success;
 }
 
 /*! Writes size bytes from buffer to the open file fd. Returns the number of
