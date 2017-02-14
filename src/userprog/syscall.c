@@ -215,7 +215,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
             buff++;
             bytes_read++;
         }
-    } else if (fd >= CONSOLE_FD && fd < MAX_FD + CONSOLE_FD) {
+    } else if (is_valid_fd(fd)) {
         struct thread *cur = thread_current();
         struct file *open_file = get_fd(cur, fd);
         bytes_read = file_read(open_file, buffer, size);
@@ -248,6 +248,10 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         /* Write remaining bytes */
         putbuf((char *)(buffer + bytes_written), size - bytes_written);
         bytes_written = size;
+    } else if (is_valid_fd(fd)) {
+        struct thread *cur = thread_current();
+        struct file *open_file = get_fd(cur, fd);
+        bytes_written = file_write(open_file, buffer, size);
     }
     return bytes_written;
 }
