@@ -518,9 +518,15 @@ bool is_valid_fd(int fd) {
 
 /*! Get next fd. */
 int next_fd(struct thread *cur) {
-    int next_fd_to_open = cur->num_fd + CONSOLE_FD;
-    cur->num_fd++;
-    return next_fd_to_open;
+    int index = 0;
+    int fd;
+    while (index < MAX_FD) {
+        if (cur->open_files[index] == NULL) {
+            fd = index + CONSOLE_FD;
+            return fd;
+        }
+    }
+    return -1;
 }
 
 /*! Add file to open_files array. Return -1 if fails */
@@ -539,6 +545,13 @@ struct file *get_fd(struct thread *cur, int fd) {
     int index = fd - CONSOLE_FD;
     struct file *open_file = cur->open_files[index];
     return open_file;
+}
+
+/*! Close file with file descriptor *fd*. */
+void close_fd(struct thread *cur, int fd) {
+    ASSERT(is_valid_fd(fd));
+    int index = fd - CONSOLE_FD;
+    cur->open_files[index] = NULL;
 }
 
 /*! Idle thread.  Executes when no other thread is ready to run.

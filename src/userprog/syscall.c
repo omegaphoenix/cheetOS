@@ -36,6 +36,7 @@ int sys_read(int fd, void *buffer, unsigned size);
 int sys_write(int fd, const void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
+void sys_close(int fd);
 
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
@@ -121,6 +122,9 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             f->eax = sys_tell(*fd);
             break;
         case SYS_CLOSE:
+            fd = (int *) get_first_arg(f);
+            sys_close(*fd);
+            break;
         default:
             printf("Unimplemented system call number\n");
             sys_exit(ERR);
@@ -281,6 +285,14 @@ unsigned sys_tell(int fd) {
     struct file *open_file = get_fd(cur, fd);
     unsigned position = file_tell(open_file);
     return position;
+}
+
+/*! Close file descriptor fd. */
+void sys_close(int fd) {
+    struct thread *cur = thread_current();
+    struct file *open_file = get_fd(cur, fd);
+    file_close(open_file);
+    close_fd(cur, fd);
 }
 
 /* Returns true if addr is valid for reading */
