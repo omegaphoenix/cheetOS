@@ -26,38 +26,29 @@ static bool load(const char *cmdline, void (**eip)(void), void **esp);
     thread may be scheduled (and may even exit) before process_execute()
     returns.  Returns the new process's thread id, or TID_ERROR if the thread
     cannot be created. */
-tid_t process_execute(const char *args) {
-    printf("NOW PARSE ARGUMENTS\n");
-    char *args_copy;
+tid_t process_execute(const char *cmdline) {
+    // TODO: check length of args, limit to 4KB?
+    char *cmdline_copy;
     tid_t tid;
-    char *token, *save_ptr;
-    // char *file_name;
 
     /* Make a copy of FILE_NAME.
        Otherwise there's a race between the caller and load(). */
-    args_copy = palloc_get_page(0);
-    if (args_copy == NULL)
+    cmdline_copy = palloc_get_page(0);
+    if (cmdline_copy == NULL)
         return TID_ERROR;
-    strlcpy(args_copy, args, PGSIZE);
-
-    /* Parse argument string */
-    for (token = strtok_r(args_copy, " ", &save_ptr); token != NULL;
-         token = strtok_r(NULL, " ", &save_ptr)) {
-        printf("'%s'\n", token);
-        // save first token as file name
-        // all others are arguments - push them onto the stack
-    }
+    strlcpy(cmdline_copy, cmdline, PGSIZE);
 
     /* Create a new thread to execute FILE_NAME. */
-    tid = thread_create(args, PRI_DEFAULT, start_process, args_copy);
+    tid = thread_create(cmdline, PRI_DEFAULT, start_process, cmdline_copy);
     if (tid == TID_ERROR)
-        palloc_free_page(args_copy); 
+        palloc_free_page(cmdline_copy); 
     return tid;
 }
 
-/*! A thread function that loads a user process and starts it running. */
-static void start_process(void *file_name_) {
-    char *file_name = file_name_;
+/*! A thread function that loads a user process and starts it running. 
+    CMDLINE_ is the command to run, including arguments. */
+static void start_process(void *cmdline_) {
+    char *cmdline = cmdline_;
     struct intr_frame if_;
     bool success;
 
@@ -66,10 +57,10 @@ static void start_process(void *file_name_) {
     if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
     if_.cs = SEL_UCSEG;
     if_.eflags = FLAG_IF | FLAG_MBS;
-    success = load(file_name, &if_.eip, &if_.esp);
+    success = load(cmdline, &if_.eip, &if_.esp);
 
     /* If load failed, quit. */
-    palloc_free_page(file_name);
+    palloc_free_page(cmdline);
     if (!success) 
         thread_exit();
 
@@ -195,7 +186,8 @@ struct Elf32_Phdr {
 #define PF_R 4          /*!< Readable. */
 /*! @} */
 
-static bool setup_stack(void **esp);
+static bool setup_stack(void **esp, const char *cmdline);
+static bool setup_args(void **esp, const char *cmdline);
 static bool validate_segment(const struct Elf32_Phdr *, struct file *);
 static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
                          uint32_t read_bytes, uint32_t zero_bytes,
@@ -205,6 +197,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
     executable's entry point into *EIP and its initial stack pointer into *ESP.
     Returns true if successful, false otherwise. */
 bool load(const char *file_name, void (**eip) (void), void **esp) {
+    // TODO: pass in all of the arguments and parse
     struct thread *t = thread_current();
     struct Elf32_Ehdr ehdr;
     struct file *file = NULL;
@@ -294,7 +287,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
     }
 
     /* Set up stack. */
-    if (!setup_stack(esp))
+    if (!setup_stack(esp, file_name))
         goto done;
 
     /* Start address. */
@@ -410,19 +403,46 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
 /*! Create a minimal stack by mapping a zeroed page at the top of
     user virtual memory. */
-static bool setup_stack(void **esp) {
+static bool setup_stack(void **esp, const char *cmdline) {
     uint8_t *kpage;
     bool success = false;
 
     kpage = palloc_get_page(PAL_USER | PAL_ZERO);
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-        if (success)
-            *esp = PHYS_BASE - 12; // TEMPORARY FIX; IGNORE CMD LINE ARGS 
+        if (success) {
+            setup_args(esp, cmdline);
+            // *esp = PHYS_BASE - 12; // TEMPORARY FIX; IGNORE CMD LINE ARGS 
+        }
         else
             palloc_free_page(kpage);
     }
     return success;
+}
+
+static bool setup_args(void **esp, const char *cmdline) {
+    printf("NOW PARSE ARGUMENTS\n");
+    char *cmdline_copy;
+    char *token, *save_ptr;
+
+    /* Make a copy of FILE_NAME.
+       Otherwise there's a race between the caller and load(). ???*/
+    cmdline_copy = palloc_get_page(0);
+    if (cmdline_copy == NULL)
+        return TID_ERROR;
+    strlcpy(cmdline_copy, cmdline, PGSIZE);
+
+    *esp = PHYS_BASE - 12;
+
+    /* Parse argument string */
+    for (token = strtok_r(cmdline_copy, " ", &save_ptr); token != NULL;
+         token = strtok_r(NULL, " ", &save_ptr)) {
+        printf("'%s'\n", token);
+        // save first token as file name
+        // all others are arguments - push them onto the stack
+    }
+
+    return esp && cmdline;
 }
 
 /*! Adds a mapping from user virtual address UPAGE to kernel
