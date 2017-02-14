@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <syscall-nr.h>
 #include <user/syscall.h>
+#include "devices/input.h"
 #include "devices/shutdown.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -30,8 +31,9 @@ int sys_wait(pid_t pid);
 bool sys_create(const char *file, unsigned initital_size);
 bool sys_remove(const char *file);
 bool sys_open(const char *file);
-int sys_write(int fd, const void *buffer, unsigned size);
 int sys_filesize(int fd);
+int sys_read(int fd, void *buffer, unsigned size);
+int sys_write(int fd, const void *buffer, unsigned size);
 
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
@@ -60,6 +62,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     }
     int syscall_no = *((int *) f->esp);
 
+    /* Make the appropriate system call */
     switch (syscall_no) {
         case SYS_HALT:
             sys_halt();
@@ -95,8 +98,10 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             f->eax = sys_filesize(*fd);
             break;
         case SYS_READ:
-            printf("Unimplemented system call number\n");
-            sys_exit(ERR);
+            fd = (int *) get_first_arg(f);
+            buffer = get_second_arg(f);
+            size = (unsigned int *) get_third_arg(f);
+            f->eax = sys_read(*fd, buffer, *size);
             break;
         case SYS_WRITE:
             fd = (int *) get_first_arg(f);
@@ -194,6 +199,30 @@ int sys_filesize(int fd) {
     struct file *open_file = get_fd(cur, fd);
     int size = file_length(open_file);
     return size;
+}
+
+/*! Read *size* bytes from file open as fd into buffer. Return the number of
+    bytes actually read, 0 at end of file, or -1 if file could not be read. */
+int sys_read(int fd, void *buffer, unsigned size) {
+    int bytes_read = 0;
+    /* Pointer to point to current position in buffer */
+    char *buff = (char *) buffer;
+
+    /* Read from keyboard input */
+    if (fd == STDIN_FILENO) {
+        while ((unsigned) bytes_read < size) {
+            *buff = input_getc();
+            buff++;
+            bytes_read++;
+        }
+    } else if (fd >= CONSOLE_FD && fd < MAX_FD + CONSOLE_FD) {
+        struct thread *cur = thread_current();
+        struct file *open_file = get_fd(cur, fd);
+        bytes_read = file_read(open_file, buffer, size);
+    } else {
+        bytes_read = ERR;
+    }
+    return bytes_read;
 }
 
 /*! Writes size bytes from buffer to the open file fd. Returns the number of
