@@ -530,6 +530,7 @@ int add_open_file(struct thread *cur, struct file *file, int fd) {
 /*! Get file with file descriptor *fd*. */
 struct file *get_fd(struct thread *cur, int fd) {
     int index = fd - CONSOLE_FD;
+    ASSERT(index >= 0 && index < MAX_FD);
     struct file *open_file = cur->open_files[index];
     return open_file;
 }
