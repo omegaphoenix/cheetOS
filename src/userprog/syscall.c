@@ -28,6 +28,7 @@ int sys_wait(pid_t pid);
 /* File manipulation */
 bool sys_create(const char *file, unsigned initital_size);
 bool sys_remove(const char *file);
+bool sys_open(const char *file);
 int sys_write(int fd, const void *buffer, unsigned size);
 
 /* User memory access */
@@ -52,7 +53,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     printf("system call!\n");
     /* Get the system call number */
     if (f == NULL || !valid_read_addr(f->esp)) {
-        sys_exit(-1);
+        sys_exit(ERR);
         return;
     }
     int syscall_no = *((int *) f->esp);
@@ -87,7 +88,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
         case SYS_FILESIZE:
         case SYS_READ:
             printf("Unimplemented system call number\n");
-            sys_exit(-1);
+            sys_exit(ERR);
             break;
         case SYS_WRITE:
             fd = (int *) get_first_arg(f);
@@ -100,7 +101,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
         case SYS_CLOSE:
         default:
             printf("Unimplemented system call number\n");
-            sys_exit(-1);
+            sys_exit(ERR);
             break;
     }
 }
@@ -109,7 +110,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
 void *get_arg(struct intr_frame *f, int num) {
     void *arg = f->esp + ARG_SIZE * num;
     if (!valid_read_addr(arg)) {
-        sys_exit(-1);
+        sys_exit(ERR);
         return NULL;
     }
     return arg;
@@ -139,11 +140,11 @@ void sys_exit(int status) {
     thread_exit();
 }
 
-/*! Run executable and return new pid. Return TID_ERROR if program cannot
+/*! Run executable and return new pid. Return ERR if program cannot
     load or run for any reason. */
 pid_t sys_exec(const char *cmd_line) {
     if (cmd_line == NULL) {
-        return TID_ERROR;
+        return ERR;
     }
     sema_down(exec_lock);
     pid_t new_process_pid = process_execute(cmd_line);
@@ -167,6 +168,15 @@ bool sys_create(const char *file, unsigned initial_size) {
 bool sys_remove(const char *file) {
     bool success = filesys_remove(file);
     return success;
+}
+
+/*! Open the file called *file*. Returns ERR if file could not be opened. */
+bool sys_open(const char *file) {
+    struct file *open_file = filesys_open(file);
+    struct thread *cur = thread_current();
+    int fd = next_fd(cur);
+    fd = add_open_file(cur, open_file, fd);
+    return fd;
 }
 
 /*! Writes size bytes from buffer to the open file fd. Returns the number of
