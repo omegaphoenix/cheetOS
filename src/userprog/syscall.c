@@ -20,7 +20,7 @@ void *get_first_arg(struct intr_frame *f);
 void *get_second_arg(struct intr_frame *f);
 void *get_third_arg(struct intr_frame *f);
 
-/* System calls */
+/* SYSTEM CALLS */
 void sys_halt(void);
 void sys_exit(int status);
 pid_t sys_exec(const char *cmd_line);
@@ -85,6 +85,9 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             f->eax = sys_remove(file);
             break;
         case SYS_OPEN:
+            file = (char *) get_first_arg(f);
+            f->eax = sys_open(file);
+            break;
         case SYS_FILESIZE:
         case SYS_READ:
             printf("Unimplemented system call number\n");
@@ -172,6 +175,7 @@ bool sys_remove(const char *file) {
 
 /*! Open the file called *file*. Returns ERR if file could not be opened. */
 bool sys_open(const char *file) {
+    /* TODO: Fix next_fd */
     struct file *open_file = filesys_open(file);
     struct thread *cur = thread_current();
     int fd = next_fd(cur);
