@@ -30,7 +30,7 @@ typedef int tid_t;
 
 /* Open files' file descriptors. */
 #define CONSOLE_FD 2                    /*!< fd 0 and 1 reserved. */
-#define MAX_FD 32                       /*!< Max num of open files - 2. */
+#define MAX_FD 128                      /*!< Max num of open files. */
 
 /*! A kernel thread or user process.
 
