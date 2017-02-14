@@ -25,7 +25,9 @@ void sys_halt(void);
 void sys_exit(int status);
 pid_t sys_exec(const char *cmd_line);
 int sys_wait(pid_t pid);
+/* File manipulation */
 bool sys_create(const char *file, unsigned initital_size);
+bool sys_remove(const char *file);
 int sys_write(int fd, const void *buffer, unsigned size);
 
 /* User memory access */
@@ -76,7 +78,11 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             file = (char *) get_first_arg(f);
             initial_size = (unsigned *) get_second_arg(f);
             f->eax = sys_create(file, *initial_size);
+            break;
         case SYS_REMOVE:
+            file = (char *) get_first_arg(f);
+            f->eax = sys_remove(file);
+            break;
         case SYS_OPEN:
         case SYS_FILESIZE:
         case SYS_READ:
@@ -154,6 +160,12 @@ int sys_wait(pid_t pid) {
     Returns true if successful. */
 bool sys_create(const char *file, unsigned initial_size) {
     bool success = filesys_create(file, initial_size);
+    return success;
+}
+
+/*! Delete file called *file*. Return true if successful. */
+bool sys_remove(const char *file) {
+    bool success = filesys_remove(file);
     return success;
 }
 
