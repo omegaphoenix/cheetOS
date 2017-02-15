@@ -3,6 +3,7 @@
 
 #define MAX_BUF_WRI 300
 #define ARG_SIZE 4
+#define ERR -1
 
 void syscall_init(void);
 
