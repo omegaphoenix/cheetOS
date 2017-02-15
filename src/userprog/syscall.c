@@ -203,7 +203,6 @@ bool sys_remove(const char *file) {
 
 /*! Open the file called *file*. Returns ERR if file could not be opened. */
 bool sys_open(const char *file) {
-    /* TODO: Fix next_fd */
     sema_down(filesys_lock);
     struct file *open_file = filesys_open(file);
     sema_up(filesys_lock);
