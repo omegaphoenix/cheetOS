@@ -510,6 +510,50 @@ bool is_highest_priority(int test_priority) {
     return test_priority >= highest;
 }
 
+/*! Return true if fd is in range */
+bool is_valid_fd(int fd) {
+    int index = fd - CONSOLE_FD;
+    return index >= 0 && index < MAX_FD;
+}
+
+/*! Get next fd. */
+int next_fd(struct thread *cur) {
+    int index = 0;
+    int fd;
+    while (index < MAX_FD) {
+        if (cur->open_files[index] == NULL) {
+            fd = index + CONSOLE_FD;
+            return fd;
+        }
+    }
+    return -1;
+}
+
+/*! Add file to open_files array. Return -1 if fails */
+int add_open_file(struct thread *cur, struct file *file, int fd) {
+    int index = fd - CONSOLE_FD;
+    if (is_valid_fd(fd)) {
+        cur->open_files[index] = file;
+        return fd;
+    }
+    return -1;
+}
+
+/*! Get file with file descriptor *fd*. */
+struct file *get_fd(struct thread *cur, int fd) {
+    ASSERT(is_valid_fd(fd));
+    int index = fd - CONSOLE_FD;
+    struct file *open_file = cur->open_files[index];
+    return open_file;
+}
+
+/*! Close file with file descriptor *fd*. */
+void close_fd(struct thread *cur, int fd) {
+    ASSERT(is_valid_fd(fd));
+    int index = fd - CONSOLE_FD;
+    cur->open_files[index] = NULL;
+}
+
 /*! Idle thread.  Executes when no other thread is ready to run.
 
     The idle thread is initially put on the ready list by thread_start().
@@ -583,6 +627,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->donated_priority = PRI_MIN;
     t->magic = THREAD_MAGIC;
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
+    t->num_fd = 0;
     list_init(&t->locks_acquired);
 
     if (list_empty(&all_list)) {

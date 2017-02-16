@@ -28,6 +28,10 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /*!< Default priority. */
 #define PRI_MAX 63                      /*!< Highest priority. */
 
+/* Open files' file descriptors. */
+#define CONSOLE_FD 2                    /*!< fd 0 and 1 reserved. */
+#define MAX_FD 128                      /*!< Max num of open files. */
+
 /*! A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -117,11 +121,17 @@ struct thread {
     struct list_elem lock_elem;         /*!< List element for lock's blocked_threads. */
     /**@}*/
 
+    /*! Owned by userprog/syscall.c. */
+    /**@{*/
+    int num_fd;
+    struct file *open_files[MAX_FD];    /*!< Open files. */
+    /**@}*/
+
 #ifdef USERPROG
     /*! Owned by userprog/process.c. */
     /**@{*/
     uint32_t *pagedir;                  /*!< Page directory. */
-    /**@{*/
+    /**@}*/
 #endif
 
     /*! Owned by thread.c. */
@@ -173,6 +183,12 @@ int thread_get_load_avg(void);
 int highest_priority(int priority);
 int get_highest_priority(void);
 bool is_highest_priority(int test_priority);
+
+bool is_valid_fd(int fd);
+int next_fd(struct thread *cur);
+int add_open_file(struct thread *cur, struct file *file, int fd);
+struct file *get_fd(struct thread *cur, int fd);
+void close_fd(struct thread *cur, int fd);
 
 void add_sleep_thread(struct thread *);
 void sleep_threads(void);
