@@ -18,8 +18,6 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-
-
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
 static bool setup_args(void **esp, char **argv, int *argc) UNUSED;
@@ -61,7 +59,6 @@ static void start_process(void *cmdline_) {
     /* Parse argument string */
     for (token = strtok_r(cmdline, " ", &save_ptr); token != NULL;
          token = strtok_r(NULL, " ", &save_ptr)) {
-        printf("%s\n", token); // delete me
         if (argc == 0) {
             file_name = token;
         }
@@ -69,8 +66,6 @@ static void start_process(void *cmdline_) {
         argc++;
         printf("argc = %d\n", argc);
     }
-
-    printf("filename = %s\n", file_name);
 
     /* Initialize interrupt frame and load executable. */
     memset(&if_, 0, sizeof(if_));
@@ -448,67 +443,51 @@ static bool setup_args(void **esp, char **argv, int *argc) {
     char *esp_; /* stack pointer */
     void *ptr[MAX_ARGS + 1];
     char *argv_0;
+    char *null_term = "\0";
 
-    // cast esp to char to decrement by bits
-    printf("ESP = %x\n", *esp);
+    /* Cast esp to char * to decrement by bits */
     esp_ = (char *) (*esp);
-    printf("ESP_ = %x\n", esp_);
-
-    // before pushing data onto stack, decrement the stack pointer (by how much??)
-    esp_ -= 1;
-    printf("starting with esp = %x\n", esp_);
 
     printf("there are %d items in argv:\n", *argc);
     int i;
+    /* Place tokens at the top of the stack. */
     for (i = *argc - 1; i >= 0; i--){
-        // place tokens at the top of the stack.
-        // order doesn't matter because they will be referenced through pointers
+        /* null terminate each token*/
+        esp_ -= 1;
+        memcpy(esp_, null_term, 1);
+        /* put token on stack */
         esp_ -= strlen(argv[i]);
-        printf("esp = %x\n", esp_);
         memcpy(esp_, argv[i], strlen(argv[i]));
-        printf("pushed: %s of size %d bits\n", argv[i], strlen(argv[i]));
-        ptr[i] = esp_; /* store pointer to argument */
+        ptr[i] = esp_; /* store pointer to token/argument */
     }
 
-    // for best performance, round the stack pointer down to a multiple of 4
-    // before the first push
-    printf("ATTEMPTING TO ALIGN...%x\n", esp_);
-    if ((uintptr_t) esp_ % 4 != 0) {
-        esp_ = (char *) ((uintptr_t) esp_ - (uintptr_t) esp_ % 4);
-        printf("rounded esp to %x\n", esp_);
-    }
+    /* For best performance, round the stack pointer down to a multiple of 4
+       before the first push */
+    esp_ = (char *) ((uintptr_t) esp_ - (uintptr_t) esp_ % 4);
 
-    // then, push the address of each string plus a null pointer sentinel
-    // on the stack, in right-to-left order
+    /* Then, push the address of each string plus a null pointer sentinel
+       on the stack, in right-to-left order */
     argv[*argc] = NULL; /* null pointer sentinel */
     for (i = *argc; i >= 0; i--){
         esp_ -= ARG_SIZE;
-        printf("esp = %x\n", esp_);
         memcpy(esp_, &ptr[i], ARG_SIZE);
-        printf("pushed: argv[%d] = %x\n", i, ptr[i]);
     }
 
-    // push argv (the address of argv[0])
+    /* Push argv (the address of argv[0]) */
     argv_0 = esp_;
     esp_ -= ARG_SIZE;
     memcpy(esp_, argv_0, ARG_SIZE);
-    printf("esp = %x\n", esp_);
-    printf("push %x\n", argv_0);
     
-    // push argc
+    /* Push argc */
     esp_ -= ARG_SIZE;
     memcpy(esp_, argc, ARG_SIZE);
-    printf("esp = %x\n", esp_);
-    printf("push %x\n", argc);
     
-    // push a fake return address
+    /* Push a fake return address */
     esp_ -= ARG_SIZE;
-    //memcpy(esp_, 0, ARG_SIZE);
-    printf("esp = %x\n", esp_);
+    *esp_ = 0;
 
-    // set esp or nah?
+    /* Set esp to esp_ */
     esp = (void **) esp_;
-    printf("setting esp to %x\n", esp);
 
     hex_dump(esp_, esp_, 64, true);
 
