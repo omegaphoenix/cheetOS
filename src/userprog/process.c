@@ -478,8 +478,7 @@ static bool setup_args(void **esp, char **argv, int *argc) {
     char *argv_0;
     char *null_term = "\0";
 
-    /* Cast esp to char * to decrement by bits */
-    esp_ = (char *) (*esp);
+    esp_ = *esp;
 
     int i;
     /* Place tokens at the top of the stack. */
