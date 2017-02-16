@@ -484,7 +484,7 @@ static bool setup_args(void **esp, char **argv, int *argc) {
     /* Set stack pointer to esp_ */
     *esp = (void **) esp_;
 
-    hex_dump(esp, esp, 64, true);
+    hex_dump(*esp, *esp, 64, true);
 
     return true; /* success */
 }
