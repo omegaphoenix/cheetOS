@@ -56,7 +56,7 @@ void syscall_init(void) {
 
 static void syscall_handler(struct intr_frame *f UNUSED) {
     int *fd, *status, *child_pid;
-    void *buffer;
+    void **buffer;
     unsigned int *size, *initial_size, *position;
     char *cmd_line, *file;
 
@@ -110,9 +110,9 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             break;
         case SYS_WRITE:
             fd = (int *) get_first_arg(f);
-            buffer = get_second_arg(f);
+            buffer = (void **) get_second_arg(f);
             size = (unsigned int *) get_third_arg(f);
-            f->eax = sys_write(*fd, buffer, *size);
+            f->eax = sys_write(*fd, *buffer, *size);
             break;
         case SYS_SEEK:
             fd = (int *) get_first_arg(f);
@@ -271,7 +271,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         }
 
         /* Write remaining bytes */
-        putbuf((char *)(buffer + bytes_written), size - bytes_written);
+        putbuf(buffer + bytes_written, size - bytes_written);
         bytes_written = size;
     } else if (is_valid_fd(fd)) {
         struct thread *cur = thread_current();
