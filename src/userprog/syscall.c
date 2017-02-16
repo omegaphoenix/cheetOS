@@ -259,7 +259,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     int bytes_written = 0;
 
     /* Write to console */
-    if (fd == STDIN_FILENO) {
+    if (fd == STDOUT_FILENO) {
         size_t block_size = MAX_BUF_WRI;
 
         /* If size greater than several hundred bytes, break up */
