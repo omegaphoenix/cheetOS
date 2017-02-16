@@ -22,7 +22,7 @@ static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
 static bool setup_args(void **esp, char **argv, int *argc);
 
-/*! Starts a new thread running a user program loaded from file_name 
+/*! Starts a new thread running a user program loaded from file_name
     (the first token of CMDLINE). The new
     thread may be scheduled (and may even exit) before process_execute()
     returns.  Returns the new process's thread id, or TID_ERROR if the thread
@@ -46,7 +46,7 @@ tid_t process_execute(const char *cmdline) {
     return tid;
 }
 
-/*! A thread function that loads a user process and starts it running. 
+/*! A thread function that loads a user process and starts it running.
     CMDLINE_ is the command to run, including arguments. */
 static void start_process(void *cmdline_) {
     char *cmdline = cmdline_;
@@ -88,8 +88,9 @@ static void start_process(void *cmdline_) {
 
     /* If load failed, quit. */
     palloc_free_page(file_name);
-    if (!success) 
+    if (!success) {
         thread_exit();
+    }
 
     /* Start the user process by simulating a return from an
        interrupt, implemented by intr_exit (in
@@ -148,7 +149,7 @@ void process_activate(void) {
     /* Set thread's kernel stack for use in processing interrupts. */
     tss_update();
 }
-
+
 /*! We load ELF binaries.  The following definitions are taken
     from the ELF specification, [ELF1], more-or-less verbatim.  */
 

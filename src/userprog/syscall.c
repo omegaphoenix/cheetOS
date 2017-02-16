@@ -165,7 +165,9 @@ void sys_halt(void) {
 
 /*! Terminates current user program. */
 void sys_exit(int status) {
-    printf("%s:exit(%d)\n", thread_current()->name, status);
+    struct thread *cur = thread_current();
+    printf("%s:exit(%d)\n", cur->name, status);
+    cur->exit_status = status;
     thread_exit();
 }
 
@@ -183,7 +185,8 @@ pid_t sys_exec(const char *cmd_line) {
 
 /*! Wait for a child process pid and retrive the child's exit status. */
 int sys_wait(pid_t pid) {
-    return process_wait(pid);
+    int exit_status = process_wait(pid);
+    return exit_status;
 }
 
 /*! Create new file called *file* initially *initial_size* bytes in size.

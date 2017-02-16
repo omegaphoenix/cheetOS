@@ -123,8 +123,10 @@ struct thread {
 
     /*! Owned by userprog/syscall.c. */
     /**@{*/
-    int num_fd;
     struct file *open_files[MAX_FD];    /*!< Open files. */
+    int exit_status;                    /*!< Exit status to be retrieved by parent */
+    struct list kids;                   /*!< List of children processes */
+    struct list_elem kid_elem;          /*!< List element for parent's kids list */
     /**@}*/
 
 #ifdef USERPROG

@@ -260,6 +260,10 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     sf->eip = switch_entry;
     sf->ebp = 0;
 
+    /* Add new thread to parent's (current thread) list */
+    struct thread *parent = thread_current();
+    list_push_back(&parent->kids, &t->kid_elem);
+
     /* Add to run queue. */
     int prev_highest_priority = get_highest_priority();
     thread_unblock(t);
@@ -625,10 +629,11 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     strlcpy(t->name, name, sizeof t->name);
     t->stack = (uint8_t *) t + PGSIZE;
     t->donated_priority = PRI_MIN;
+    t->exit_status = 0;
     t->magic = THREAD_MAGIC;
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
-    t->num_fd = 0;
     list_init(&t->locks_acquired);
+    list_init(&t->kids);
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */
