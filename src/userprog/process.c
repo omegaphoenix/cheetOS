@@ -111,9 +111,30 @@ static void start_process(void *cmdline_) {
     This function will be implemented in problem 2-2.  For now, it does
     nothing. */
 int process_wait(tid_t child_tid UNUSED) {
-    while (1) {
+    struct thread *cur = thread_current();
+
+    /* Iterate through children to find child */
+    struct list_elem *e;
+    struct thread *kid = NULL;
+    for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
+         e = list_next(e)) {
+        kid = list_entry(e, struct thread, kid_elem);
+        if (kid->tid == child_tid) {
+            list_remove(&kid->kid_elem);
+            break;
+        }
     }
-    return -1;
+
+    /* Check if no kid with child_tid */
+    if (kid == NULL || kid->tid != child_tid) {
+        return -1;
+    }
+
+    /* Wait for child thread to die */
+    sema_down(&kid->wait_sema);
+    int status = kid->exit_status;
+
+    return status;
 }
 
 /*! Free the current process's resources. */

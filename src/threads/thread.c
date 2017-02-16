@@ -263,6 +263,7 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     /* Add new thread to parent's (current thread) list */
     struct thread *parent = thread_current();
     list_push_back(&parent->kids, &t->kid_elem);
+    t->parent = parent;
 
     /* Add to run queue. */
     int prev_highest_priority = get_highest_priority();
@@ -344,9 +345,13 @@ void thread_exit(void) {
     /* Remove thread from all threads list, set our status to dying,
        and schedule another process.  That process will destroy us
        when it calls thread_schedule_tail(). */
+    struct thread *cur = thread_current();
     intr_disable();
-    list_remove(&thread_current()->allelem);
-    thread_current()->status = THREAD_DYING;
+    list_remove(&cur->allelem);
+    cur->status = THREAD_DYING;
+
+    /* Let parent know kid is done */
+    sema_up(&cur->wait_sema);
     schedule();
     NOT_REACHED();
 }
@@ -634,6 +639,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
     list_init(&t->locks_acquired);
     list_init(&t->kids);
+    sema_init(&t->wait_sema, 1);
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */

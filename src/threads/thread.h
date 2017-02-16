@@ -9,6 +9,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "synch.h"
 
 /*! States in a thread's life cycle. */
 enum thread_status {
@@ -124,9 +125,15 @@ struct thread {
     /*! Owned by userprog/syscall.c. */
     /**@{*/
     struct file *open_files[MAX_FD];    /*!< Open files. */
+    /**@}*/
+
+    /*! Owned by userprog/process.c. */
+    /**@{*/
     int exit_status;                    /*!< Exit status to be retrieved by parent */
     struct list kids;                   /*!< List of children processes */
     struct list_elem kid_elem;          /*!< List element for parent's kids list */
+    struct semaphore wait_sema;         /*!< Sempahore for process_wait */
+    struct thread *parent;              /*!< Thread that created this one */
     /**@}*/
 
 #ifdef USERPROG
