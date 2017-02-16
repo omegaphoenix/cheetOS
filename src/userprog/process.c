@@ -64,7 +64,6 @@ static void start_process(void *cmdline_) {
         }
         argv[argc] = token;
         argc++;
-        printf("argc = %d\n", argc);
     }
 
     /* Initialize interrupt frame and load executable. */
@@ -75,14 +74,12 @@ static void start_process(void *cmdline_) {
     success = load(file_name, &if_.eip, &if_.esp);
 
     /* Set up args */
-    setup_args(&if_.esp, argv, &argc);
+    success = success & setup_args(&if_.esp, argv, &argc);
 
     /* If load failed, quit. */
-    palloc_free_page(cmdline); //or file_name?
+    palloc_free_page(file_name);
     if (!success) 
         thread_exit();
-
-
 
     /* Start the user process by simulating a return from an
        interrupt, implemented by intr_exit (in
@@ -439,7 +436,6 @@ static bool setup_stack(void **esp) {
 }
 
 static bool setup_args(void **esp, char **argv, int *argc) {
-    printf("NOW SETUP ARGUMENTS\n");
     char *esp_; /* stack pointer */
     void *ptr[MAX_ARGS + 1];
     char *argv_0;
@@ -448,7 +444,6 @@ static bool setup_args(void **esp, char **argv, int *argc) {
     /* Cast esp to char * to decrement by bits */
     esp_ = (char *) (*esp);
 
-    printf("there are %d items in argv:\n", *argc);
     int i;
     /* Place tokens at the top of the stack. */
     for (i = *argc - 1; i >= 0; i--){
@@ -486,10 +481,10 @@ static bool setup_args(void **esp, char **argv, int *argc) {
     esp_ -= ARG_SIZE;
     *esp_ = 0;
 
-    /* Set esp to esp_ */
-    esp = (void **) esp_;
+    /* Set stack pointer to esp_ */
+    *esp = (void **) esp_;
 
-    hex_dump(esp_, esp_, 64, true);
+    hex_dump(esp, esp, 64, true);
 
     return true; /* success */
 }
