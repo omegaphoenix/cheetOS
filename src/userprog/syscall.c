@@ -56,11 +56,10 @@ void syscall_init(void) {
 
 static void syscall_handler(struct intr_frame *f UNUSED) {
     int *fd, *status, *child_pid;
-    void *buffer;
+    void **buffer;
     unsigned int *size, *initial_size, *position;
     char *cmd_line, *file;
 
-    printf("system call!\n");
     /* Get the system call number */
     if (f == NULL || !valid_read_addr(f->esp)) {
         sys_exit(ERR);
@@ -111,9 +110,9 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             break;
         case SYS_WRITE:
             fd = (int *) get_first_arg(f);
-            buffer = get_second_arg(f);
+            buffer = (void **) get_second_arg(f);
             size = (unsigned int *) get_third_arg(f);
-            f->eax = sys_write(*fd, buffer, *size);
+            f->eax = sys_write(*fd, *buffer, *size);
             break;
         case SYS_SEEK:
             fd = (int *) get_first_arg(f);
