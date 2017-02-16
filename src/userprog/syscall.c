@@ -269,7 +269,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         }
 
         /* Write remaining bytes */
-        putbuf((char *)(buffer + bytes_written), size - bytes_written);
+        putbuf(buffer + bytes_written, size - bytes_written);
         bytes_written = size;
     } else if (is_valid_fd(fd)) {
         struct thread *cur = thread_current();
