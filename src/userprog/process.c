@@ -469,7 +469,7 @@ static bool setup_args(void **esp, char **argv, int *argc) {
     }
 
     /* Push argv (the address of argv[0]) */
-    argv_0 = esp_;
+    argv_0 = &esp_;
     esp_ -= ARG_SIZE;
     memcpy(esp_, argv_0, ARG_SIZE);
     
@@ -484,7 +484,7 @@ static bool setup_args(void **esp, char **argv, int *argc) {
     /* Set stack pointer to esp_ */
     *esp = (void **) esp_;
 
-    hex_dump(*esp, *esp, 64, true);
+    //hex_dump(*esp, *esp, 64, true);
 
     return true; /* success */
 }
