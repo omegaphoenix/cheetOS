@@ -60,7 +60,6 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     unsigned int *size, *initial_size, *position;
     char *cmd_line, *file;
 
-    printf("system call!\n");
     /* Get the system call number */
     if (f == NULL || !valid_read_addr(f->esp)) {
         sys_exit(ERR);

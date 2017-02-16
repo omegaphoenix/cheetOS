@@ -130,11 +130,17 @@ int process_wait(tid_t child_tid UNUSED) {
         return -1;
     }
 
-    /* Wait for child thread to die */
-    sema_down(&kid->wait_sema);
-    int status = kid->exit_status;
+    int child_exit_status;
+    if (kid->status == THREAD_DYING) {
+        child_exit_status = kid->exit_status;
+    }
+    else {
+        /* Wait for child thread to die */
+        sema_down(&kid->wait_sema);
+        child_exit_status = kid->exit_status;
+    }
 
-    return status;
+    return child_exit_status;
 }
 
 /*! Free the current process's resources. */
