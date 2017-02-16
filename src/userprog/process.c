@@ -20,7 +20,7 @@
 
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
-static bool setup_args(void **esp, char **argv, int *argc) UNUSED;
+static bool setup_args(void **esp, char **argv, int *argc);
 
 /*! Starts a new thread running a user program loaded from file_name 
     (the first token of CMDLINE). The new
@@ -232,7 +232,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
 
     /* Allocate and activate page directory. */
     t->pagedir = pagedir_create();
-    if (t->pagedir == NULL) 
+    if (t->pagedir == NULL)
         goto done;
     process_activate();
 
@@ -240,7 +240,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
     file = filesys_open(file_name);
     if (file == NULL) {
         printf("load: %s: open failed\n", file_name);
-        goto done; 
+        goto done;
     }
 
     /* Read and verify executable header. */
@@ -249,7 +249,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
         ehdr.e_machine != 3 || ehdr.e_version != 1 ||
         ehdr.e_phentsize != sizeof(struct Elf32_Phdr) || ehdr.e_phnum > 1024) {
         printf("load: %s: error loading executable\n", file_name);
-        goto done; 
+        goto done;
     }
 
     /* Read program headers. */
@@ -325,7 +325,7 @@ done:
     file_close(file);
     return success;
 }
-
+
 /* load() helpers. */
 
 static bool install_page(void *upage, void *kpage, bool writable);
@@ -334,8 +334,8 @@ static bool install_page(void *upage, void *kpage, bool writable);
     FILE and returns true if so, false otherwise. */
 static bool validate_segment(const struct Elf32_Phdr *phdr, struct file *file) {
     /* p_offset and p_vaddr must have the same page offset. */
-    if ((phdr->p_offset & PGMASK) != (phdr->p_vaddr & PGMASK)) 
-        return false; 
+    if ((phdr->p_offset & PGMASK) != (phdr->p_vaddr & PGMASK))
+        return false;
 
     /* p_offset must point within FILE. */
     if (phdr->p_offset > (Elf32_Off) file_length(file))
@@ -343,12 +343,12 @@ static bool validate_segment(const struct Elf32_Phdr *phdr, struct file *file) {
 
     /* p_memsz must be at least as big as p_filesz. */
     if (phdr->p_memsz < phdr->p_filesz)
-        return false; 
+        return false;
 
     /* The segment must not be empty. */
     if (phdr->p_memsz == 0)
         return false;
-  
+
     /* The virtual memory region must both start and end within the
        user address space range. */
     if (!is_user_vaddr((void *) phdr->p_vaddr))
@@ -415,7 +415,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         /* Add the page to the process's address space. */
         if (!install_page(upage, kpage, writable)) {
             palloc_free_page(kpage);
-            return false; 
+            return false;
         }
 
         /* Advance. */
@@ -436,10 +436,11 @@ static bool setup_stack(void **esp) {
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
         if (success) {
-            *esp = PHYS_BASE; 
+            *esp = PHYS_BASE;
         }
-        else
+        else {
             palloc_free_page(kpage);
+        }
     }
     return success;
 }
@@ -469,7 +470,7 @@ static bool setup_stack(void **esp) {
                        |----------------------------|
         ESP ---------> | return address (fake)      |
                        +----------------------------+
-        
+
     */
 static bool setup_args(void **esp, char **argv, int *argc) {
     char *esp_; /* stack pointer */
@@ -477,8 +478,7 @@ static bool setup_args(void **esp, char **argv, int *argc) {
     char *argv_0;
     char *null_term = "\0";
 
-    /* Cast esp to char * to decrement by bits */
-    esp_ = (char *) (*esp);
+    esp_ = *esp;
 
     int i;
     /* Place tokens at the top of the stack. */
@@ -508,11 +508,11 @@ static bool setup_args(void **esp, char **argv, int *argc) {
     argv_0 = (char *) &esp_;
     esp_ -= ARG_SIZE;
     memcpy(esp_, argv_0, ARG_SIZE);
-    
+
     /* Push argc */
     esp_ -= ARG_SIZE;
     memcpy(esp_, argc, ARG_SIZE);
-    
+
     /* Push a fake return address */
     esp_ -= ARG_SIZE;
     *esp_ = 0;
