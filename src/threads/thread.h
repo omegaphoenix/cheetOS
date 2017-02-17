@@ -31,7 +31,8 @@ typedef int tid_t;
 
 /* Open files' file descriptors. */
 #define CONSOLE_FD 2                    /*!< fd 0 and 1 reserved. */
-#define MAX_FD 128                      /*!< Max num of open files. */
+/* Assignment asked for 128 but 81 is the max without stack overflowing. */
+#define MAX_FD 64                       /*!< Max num of open files. */
 
 /*! A kernel thread or user process.
 
