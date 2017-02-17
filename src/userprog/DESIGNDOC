@@ -192,6 +192,21 @@ penalized.  We can't fix things until we know about them.  :-)
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
 
+The suggested order of implementation was misleading for this assignment. In
+section 5.2, it says "After the above are implemented, user processes should 
+work minimally. At the very least, they can write to the console and exit 
+correctly." But this is false -- the suggested temporary fixes for argument
+passing and process_wait() were not adequate for tests to pass.
+
+Instead, the order of implementation, based on our experience, should be:
+- user memory access
+- complete argument passing
+- syscall_handler
+- syscall_write
+- syscall_exit
+- complete process_wait
+- the rest of the syscalls
+
 >> Do you have any suggestions for the instructor and/or TAs to more
 >> effectively assist students, either for future quarters or the remaining
 >> projects?
