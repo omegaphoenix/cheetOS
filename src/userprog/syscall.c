@@ -192,9 +192,6 @@ bool sys_create(const char *file, unsigned initial_size) {
     if (!valid_read_addr((void *) file)) {
         sys_exit(ERR);
     }
-    else if (strcmp(file, "") == 0) {
-        return false;
-    }
     bool success = filesys_create(file, initial_size);
     return success;
 }
