@@ -13,7 +13,7 @@
 #include "threads/vaddr.h"
 #include "userprog/process.h"
 
-struct semaphore exec_lock, filesys_lock;
+struct semaphore filesys_lock;
 
 static void syscall_handler(struct intr_frame *);
 
@@ -46,7 +46,6 @@ static bool valid_write_addr(void *addr) UNUSED;
 
 void syscall_init(void) {
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
-    sema_init(&exec_lock, 1);
     sema_init(&filesys_lock, 1);
 }
 
@@ -166,7 +165,9 @@ void sys_exit(int status) {
     cur->exit_status = status;
 
     /* Close executable file now that process is completed. */
+    sema_down(&filesys_lock);
     file_close(cur->executable);
+    sema_up(&filesys_lock);
     thread_exit();
 }
 
@@ -176,13 +177,15 @@ pid_t sys_exec(const char *cmd_line) {
     if (!valid_read_addr(cmd_line)) {
         return ERR;
     }
-    sema_down(&exec_lock);
+    sema_down(&filesys_lock);
     pid_t new_process_pid = process_execute(cmd_line);
-    sema_up(&exec_lock);
     struct thread *cur = thread_current();
 
     /* Wait for executable to load. */
     sema_down(&cur->exec_load);
+    /* Release lock once loaded. */
+    sema_up(&filesys_lock);
+
     if (!cur->loaded) {
         /* Executable failed to load. */
         return ERR;
