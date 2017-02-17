@@ -12,7 +12,7 @@
 #include "threads/vaddr.h"
 #include "userprog/process.h"
 
-struct semaphore *exec_lock, *filesys_lock;
+struct semaphore exec_lock, filesys_lock;
 
 static void syscall_handler(struct intr_frame *);
 
@@ -30,7 +30,7 @@ int sys_wait(pid_t pid);
 /* File manipulation */
 bool sys_create(const char *file, unsigned initital_size);
 bool sys_remove(const char *file);
-bool sys_open(const char *file);
+int sys_open(const char *file);
 int sys_filesize(int fd);
 int sys_read(int fd, void *buffer, unsigned size);
 int sys_write(int fd, const void *buffer, unsigned size);
@@ -46,12 +46,8 @@ static bool valid_write_addr(void *addr) UNUSED;
 
 void syscall_init(void) {
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
-    struct semaphore execute_lock, filesystem_lock;
-    exec_lock = &execute_lock;
-    sema_init(exec_lock, 1);
-
-    filesys_lock = &filesystem_lock;
-    sema_init(filesys_lock, 1);
+    sema_init(&exec_lock, 1);
+    sema_init(&filesys_lock, 1);
 }
 
 static void syscall_handler(struct intr_frame *f UNUSED) {
@@ -176,9 +172,9 @@ pid_t sys_exec(const char *cmd_line) {
     if (cmd_line == NULL) {
         return ERR;
     }
-    sema_down(exec_lock);
+    sema_down(&exec_lock);
     pid_t new_process_pid = process_execute(cmd_line);
-    sema_up(exec_lock);
+    sema_up(&exec_lock);
     return new_process_pid;
 }
 
@@ -197,17 +193,17 @@ bool sys_create(const char *file, unsigned initial_size) {
 
 /*! Delete file called *file*. Return true if successful. */
 bool sys_remove(const char *file) {
-    sema_down(filesys_lock);
+    sema_down(&filesys_lock);
     bool success = filesys_remove(file);
-    sema_up(filesys_lock);
+    sema_up(&filesys_lock);
     return success;
 }
 
 /*! Open the file called *file*. Returns ERR if file could not be opened. */
-bool sys_open(const char *file) {
-    sema_down(filesys_lock);
+int sys_open(const char *file) {
+    sema_down(&filesys_lock);
     struct file *open_file = filesys_open(file);
-    sema_up(filesys_lock);
+    sema_up(&filesys_lock);
     struct thread *cur = thread_current();
     int fd = next_fd(cur);
     fd = add_open_file(cur, open_file, fd);
@@ -218,9 +214,9 @@ bool sys_open(const char *file) {
 int sys_filesize(int fd) {
     struct thread *cur = thread_current();
     struct file *open_file = get_fd(cur, fd);
-    sema_down(filesys_lock);
+    sema_down(&filesys_lock);
     int size = file_length(open_file);
-    sema_up(filesys_lock);
+    sema_up(&filesys_lock);
     return size;
 }
 
@@ -241,9 +237,9 @@ int sys_read(int fd, void *buffer, unsigned size) {
     } else if (is_valid_fd(fd)) {
         struct thread *cur = thread_current();
         struct file *open_file = get_fd(cur, fd);
-        sema_down(filesys_lock);
+        sema_down(&filesys_lock);
         bytes_read = file_read(open_file, buffer, size);
-        sema_up(filesys_lock);
+        sema_up(&filesys_lock);
     } else {
         bytes_read = ERR;
     }
@@ -276,9 +272,9 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     } else if (is_valid_fd(fd)) {
         struct thread *cur = thread_current();
         struct file *open_file = get_fd(cur, fd);
-        sema_down(filesys_lock);
+        sema_down(&filesys_lock);
         bytes_written = file_write(open_file, buffer, size);
-        sema_up(filesys_lock);
+        sema_up(&filesys_lock);
     }
     return bytes_written;
 }
@@ -288,9 +284,9 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 void sys_seek(int fd, unsigned position) {
     struct thread *cur = thread_current();
     struct file *open_file = get_fd(cur, fd);
-    sema_down(filesys_lock);
+    sema_down(&filesys_lock);
     file_seek(open_file, position);
-    sema_up(filesys_lock);
+    sema_up(&filesys_lock);
 }
 
 
@@ -299,9 +295,9 @@ void sys_seek(int fd, unsigned position) {
 unsigned sys_tell(int fd) {
     struct thread *cur = thread_current();
     struct file *open_file = get_fd(cur, fd);
-    sema_down(filesys_lock);
+    sema_down(&filesys_lock);
     unsigned position = file_tell(open_file);
-    sema_up(filesys_lock);
+    sema_up(&filesys_lock);
     return position;
 }
 
@@ -309,9 +305,9 @@ unsigned sys_tell(int fd) {
 void sys_close(int fd) {
     struct thread *cur = thread_current();
     struct file *open_file = get_fd(cur, fd);
-    sema_down(filesys_lock);
+    sema_down(&filesys_lock);
     file_close(open_file);
-    sema_up(filesys_lock);
+    sema_up(&filesys_lock);
     close_fd(cur, fd);
 }
 
