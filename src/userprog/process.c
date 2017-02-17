@@ -580,9 +580,6 @@ static bool setup_args(void **esp, char **argv, int *argc) {
     /* Set stack pointer to esp_ */
     *esp = (void **) esp_;
 
-    /* TODO: Remove when done dbugging */
-    //hex_dump(*esp, *esp, 64, true);
-
     return true; /* success */
 }
 
