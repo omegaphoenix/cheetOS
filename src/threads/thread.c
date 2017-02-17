@@ -350,7 +350,9 @@ void thread_exit(void) {
     list_remove(&cur->allelem);
     cur->status = THREAD_DYING;
 
-    /* Let kids know that mommy is dead. */
+    /* Let kids know that mommy is dead so that their page is freed without
+       waiting for the parent to free them. Will be freed in
+       thread_schedule_tail() instead of process_wait().*/
     struct list_elem *e;
     for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
          e = list_next(e)) {
