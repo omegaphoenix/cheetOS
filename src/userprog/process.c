@@ -459,6 +459,7 @@ static bool setup_stack(void **esp) {
             user stack |----------------------------|
         grows downward | word-align                 |
                        |----------------------------|
+                       | 0 (null pointer sentinel)  |
                        | pointer to argv[n]         |
                        | pointer to argv[n-1]       |
                        | ...                        |
@@ -498,16 +499,17 @@ static bool setup_args(void **esp, char **argv, int *argc) {
 
     /* Then, push the address of each string plus a null pointer sentinel
        on the stack, in right-to-left order */
-    argv[*argc] = NULL; /* null pointer sentinel */
-    for (i = *argc; i >= 0; i--){
+    esp_ -= ARG_SIZE;
+    *esp_ = 0; /* null pointer sentinel */
+    for (i = *argc - 1; i >= 0; i--){
         esp_ -= ARG_SIZE;
         memcpy(esp_, &ptr[i], ARG_SIZE);
     }
 
     /* Push argv (the address of argv[0]) */
     argv_0 = (char *) &esp_;
+    memcpy(esp_ - ARG_SIZE, argv_0, ARG_SIZE);
     esp_ -= ARG_SIZE;
-    memcpy(esp_, argv_0, ARG_SIZE);
 
     /* Push argc */
     esp_ -= ARG_SIZE;
