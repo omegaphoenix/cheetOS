@@ -188,12 +188,18 @@ int sys_wait(pid_t pid) {
 /*! Create new file called *file* initially *initial_size* bytes in size.
     Returns true if successful. */
 bool sys_create(const char *file, unsigned initial_size) {
+    if (file == NULL) {
+        sys_exit(ERR);
+    }
     bool success = filesys_create(file, initial_size);
     return success;
 }
 
 /*! Delete file called *file*. Return true if successful. */
 bool sys_remove(const char *file) {
+    if (file == NULL) {
+        sys_exit(ERR);
+    }
     sema_down(&filesys_lock);
     bool success = filesys_remove(file);
     sema_up(&filesys_lock);
@@ -202,11 +208,14 @@ bool sys_remove(const char *file) {
 
 /*! Open the file called *file*. Returns ERR if file could not be opened. */
 int sys_open(const char *file) {
+    if (file == NULL) {
+        sys_exit(ERR);
+    }
     sema_down(&filesys_lock);
     struct file *open_file = filesys_open(file);
     sema_up(&filesys_lock);
     if (open_file == NULL) {
-        return -1;
+        return ERR;
     }
     struct thread *cur = thread_current();
     int fd = next_fd(cur);
