@@ -109,8 +109,14 @@ static void start_process(void *cmdline_) {
     /* Set up arguments in stack */
     success = success && setup_args(&if_.esp, argv, &argc);
 
-    /* If load failed, quit. */
     palloc_free_page(file_name);
+
+    /* Let sys_exec know loading is done and if it was successful. */
+    struct thread *parent = thread_current()->parent;
+    parent->loaded = success;
+    sema_up(&parent->exec_load);
+
+    /* If load failed, quit. */
     if (!success) {
         thread_exit();
     }

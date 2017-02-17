@@ -657,6 +657,8 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     list_init(&t->kids);
     /* Block process_wait of parent until this process is ready to die. */
     sema_init(&t->wait_sema, 0);
+    sema_init(&t->exec_load, 0);
+    t->loaded = false;
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */
