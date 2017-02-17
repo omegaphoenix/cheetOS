@@ -54,7 +54,8 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     int *fd, *status, *child_pid;
     void **buffer;
     unsigned int *size, *initial_size, *position;
-    char *cmd_line, *file;
+    char *cmd_line;
+    char **file;
 
     /* Get the system call number */
     if (f == NULL || !valid_read_addr(f->esp)) {
@@ -82,17 +83,17 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             f->eax = sys_wait(*child_pid);
             break;
         case SYS_CREATE:
-            file = (char *) get_first_arg(f);
+            file = (char **) get_first_arg(f);
             initial_size = (unsigned *) get_second_arg(f);
-            f->eax = sys_create(file, *initial_size);
+            f->eax = sys_create(*file, *initial_size);
             break;
         case SYS_REMOVE:
-            file = (char *) get_first_arg(f);
-            f->eax = sys_remove(file);
+            file = (char **) get_first_arg(f);
+            f->eax = sys_remove(*file);
             break;
         case SYS_OPEN:
-            file = (char *) get_first_arg(f);
-            f->eax = sys_open(file);
+            file = (char **) get_first_arg(f);
+            f->eax = sys_open(*file);
             break;
         case SYS_FILESIZE:
             fd = (int *) get_first_arg(f);
@@ -102,7 +103,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             fd = (int *) get_first_arg(f);
             buffer = get_second_arg(f);
             size = (unsigned int *) get_third_arg(f);
-            f->eax = sys_read(*fd, buffer, *size);
+            f->eax = sys_read(*fd, *buffer, *size);
             break;
         case SYS_WRITE:
             fd = (int *) get_first_arg(f);
@@ -204,6 +205,9 @@ int sys_open(const char *file) {
     sema_down(&filesys_lock);
     struct file *open_file = filesys_open(file);
     sema_up(&filesys_lock);
+    if (open_file == NULL) {
+        return -1;
+    }
     struct thread *cur = thread_current();
     int fd = next_fd(cur);
     fd = add_open_file(cur, open_file, fd);
