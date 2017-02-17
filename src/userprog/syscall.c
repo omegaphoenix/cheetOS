@@ -189,7 +189,7 @@ int sys_wait(pid_t pid) {
     Returns true if successful. */
 bool sys_create(const char *file, unsigned initial_size) {
     if (file == NULL) {
-        sys_exit(-1);
+        sys_exit(ERR);
     }
     bool success = filesys_create(file, initial_size);
     return success;
@@ -198,7 +198,7 @@ bool sys_create(const char *file, unsigned initial_size) {
 /*! Delete file called *file*. Return true if successful. */
 bool sys_remove(const char *file) {
     if (file == NULL) {
-        sys_exit(-1);
+        sys_exit(ERR);
     }
     sema_down(&filesys_lock);
     bool success = filesys_remove(file);
@@ -209,7 +209,7 @@ bool sys_remove(const char *file) {
 /*! Open the file called *file*. Returns ERR if file could not be opened. */
 int sys_open(const char *file) {
     if (file == NULL) {
-        sys_exit(-1);
+        sys_exit(ERR);
     }
     sema_down(&filesys_lock);
     struct file *open_file = filesys_open(file);
