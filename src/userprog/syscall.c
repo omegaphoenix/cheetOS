@@ -47,8 +47,6 @@ static bool valid_write_addr(void *addr) UNUSED;
 void syscall_init(void) {
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
     sema_init(&exec_lock, 1);
-
-    // filesys_lock = &filesystem_lock;
     sema_init(&filesys_lock, 1);
 }
 
