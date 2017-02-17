@@ -55,7 +55,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     int *fd, *status, *child_pid;
     void **buffer;
     unsigned int *size, *initial_size, *position;
-    char *cmd_line;
+    char **cmd_line;
     char **file;
 
     /* Get the system call number */
@@ -76,8 +76,8 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             f->eax = *status;
             break;
         case SYS_EXEC:
-            cmd_line = (char *) get_first_arg(f);
-            f->eax = sys_exec(cmd_line);
+            cmd_line = (char **) get_first_arg(f);
+            f->eax = sys_exec(*cmd_line);
             break;
         case SYS_WAIT:
             child_pid = (pid_t *) get_first_arg(f);
@@ -171,7 +171,7 @@ void sys_exit(int status) {
 /*! Run executable and return new pid. Return ERR if program cannot
     load or run for any reason. */
 pid_t sys_exec(const char *cmd_line) {
-    if (cmd_line == NULL) {
+    if (!valid_read_addr(cmd_line)) {
         return ERR;
     }
     sema_down(&exec_lock);
