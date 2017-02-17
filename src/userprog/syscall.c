@@ -272,6 +272,9 @@ int sys_read(int fd, void *buffer, unsigned size) {
     Fd 1 writes to the console. */
 int sys_write(int fd, const void *buffer, unsigned size) {
     int bytes_written = 0;
+    if (buffer == NULL || !valid_read_addr(buffer)) {
+        sys_exit(ERR);
+    }
 
     /* Write to console */
     if (fd == STDOUT_FILENO) {
