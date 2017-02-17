@@ -141,6 +141,7 @@ struct thread {
     struct thread *parent;              /*!< Thread that created this one. */
     struct semaphore exec_load;         /*!< Semaphore for checking when executable has loaded. */
     bool loaded;                        /*!< Check if exec loaded successfully. */
+    struct file *executable;            /*!< Executable to keep open until done. */
     /**@}*/
 
 #ifdef USERPROG
