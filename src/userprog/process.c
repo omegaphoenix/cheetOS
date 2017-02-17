@@ -111,6 +111,9 @@ static void start_process(void *cmdline_) {
 
     /* If load failed, quit. */
     palloc_free_page(file_name);
+    struct thread *parent = thread_current()->parent;
+    parent->loaded = success;
+    sema_up(&parent->exec_load);
     if (!success) {
         thread_exit();
     }

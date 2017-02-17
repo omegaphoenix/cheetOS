@@ -106,8 +106,8 @@ struct thread {
     struct list_elem allelem;           /*!< List element for all threads list. */
     struct list_elem sleep_elem;        /*!< List element for sleeping list. */
     int64_t sleep_counter;              /*!< Number of ticks left to sleep. */
-    int niceness;                       /*!< Niceness value for BSD CPU priority */
-    int recent_cpu;                     /*!< Most recent CPU time usage. Fixed point */
+    int niceness;                       /*!< Niceness value for BSD CPU priority. */
+    int recent_cpu;                     /*!< Most recent CPU time usage. Fixed point. */
     struct lock *blocking_lock;         /*!< Lock that is blocking this thread */
     struct list locks_acquired;         /*!< Locks this thread is blocking */
     /**@}*/
@@ -129,11 +129,13 @@ struct thread {
 
     /*! Owned by userprog/process.c. */
     /**@{*/
-    int exit_status;                    /*!< Exit status to be retrieved by parent */
-    struct list kids;                   /*!< List of children processes */
-    struct list_elem kid_elem;          /*!< List element for parent's kids list */
-    struct semaphore wait_sema;         /*!< Sempahore for process_wait */
-    struct thread *parent;              /*!< Thread that created this one */
+    int exit_status;                    /*!< Exit status to be retrieved by parent. */
+    struct list kids;                   /*!< List of children processes. */
+    struct list_elem kid_elem;          /*!< List element for parent's kids list. */
+    struct semaphore wait_sema;         /*!< Sempahore for process_wait. */
+    struct thread *parent;              /*!< Thread that created this one. */
+    struct semaphore exec_load;         /*!< Semaphore for checking when executable has loaded. */
+    bool loaded;                        /*!< Check if exec loaded successfully. */
     /**@}*/
 
 #ifdef USERPROG
