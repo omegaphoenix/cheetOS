@@ -28,19 +28,26 @@ static bool setup_args(void **esp, char **argv, int *argc);
     returns.  Returns the new process's thread id, or TID_ERROR if the thread
     cannot be created. */
 tid_t process_execute(const char *cmdline) {
-    char *cmdline_copy;
+    char *cmdline_copy, *cmdline_copy2;
     tid_t tid;
-    //char *file_name, *save_ptr;
+    char *file_name, *save_ptr;
 
-    /* Make a copy of FILE_NAME.
+    /* Make a copy of CMDLINE.
        Otherwise there's a race between the caller and load(). */
     cmdline_copy = palloc_get_page(0);
     if (cmdline_copy == NULL)
         return TID_ERROR;
     strlcpy(cmdline_copy, cmdline, PGSIZE);
 
+    /* Get FILE_NAME from CMDLINE */
+    cmdline_copy2 = palloc_get_page(0);
+    if (cmdline_copy2 == NULL)
+        return TID_ERROR;
+    strlcpy(cmdline_copy2, cmdline, PGSIZE);
+    file_name = strtok_r(cmdline_copy2, " ", &save_ptr);
+
     /* Create a new thread to execute FILE_NAME. */
-    tid = thread_create(cmdline, PRI_DEFAULT, start_process, cmdline_copy);
+    tid = thread_create(file_name, PRI_DEFAULT, start_process, cmdline_copy);
     if (tid == TID_ERROR)
         palloc_free_page(cmdline_copy);
     return tid;
@@ -490,6 +497,7 @@ static bool setup_stack(void **esp) {
             user stack |----------------------------|
         grows downward | word-align                 |
                        |----------------------------|
+                       | 0 (null pointer sentinel)  |
                        | pointer to argv[n]         |
                        | pointer to argv[n-1]       |
                        | ...                        |
@@ -529,16 +537,17 @@ static bool setup_args(void **esp, char **argv, int *argc) {
 
     /* Then, push the address of each string plus a null pointer sentinel
        on the stack, in right-to-left order */
-    argv[*argc] = NULL; /* null pointer sentinel */
-    for (i = *argc; i >= 0; i--){
+    esp_ -= ARG_SIZE;
+    *esp_ = 0; /* null pointer sentinel */
+    for (i = *argc - 1; i >= 0; i--){
         esp_ -= ARG_SIZE;
         memcpy(esp_, &ptr[i], ARG_SIZE);
     }
 
     /* Push argv (the address of argv[0]) */
     argv_0 = (char *) &esp_;
+    memcpy(esp_ - ARG_SIZE, argv_0, ARG_SIZE);
     esp_ -= ARG_SIZE;
-    memcpy(esp_, argv_0, ARG_SIZE);
 
     /* Push argc */
     esp_ -= ARG_SIZE;
