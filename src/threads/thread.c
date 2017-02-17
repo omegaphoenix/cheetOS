@@ -547,6 +547,7 @@ int next_fd(struct thread *cur) {
             fd = index + CONSOLE_FD;
             return fd;
         }
+        index++;
     }
     return -1;
 }
