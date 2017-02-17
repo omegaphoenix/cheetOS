@@ -157,6 +157,11 @@ In our thread struct, we included these attributes and their following descripti
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
 
+File descriptors are only unique within a single process. The thread contains
+an array of pointers to open files and finds an empty (null) index to place
+an open file in. When an open file is closed, then it's spot in the array
+is set to NULL.
+
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
