@@ -39,9 +39,6 @@ static struct list sleep_list;
 /*! Idle thread. */
 static struct thread *idle_thread;
 
-/*! Initial thread, the thread running init.c:main(). */
-static struct thread *initial_thread;
-
 /*! Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
@@ -379,7 +376,7 @@ void thread_exit(void) {
     }
     cur->status = THREAD_DYING;
 
-    /* Let kids know that mommy is dead so that their page is freed without
+    /* Let kids know that parent is dead so that their page is freed without
        waiting for the parent to free them. Will be freed in
        thread_schedule_tail() instead of process_wait().*/
     for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
@@ -387,7 +384,8 @@ void thread_exit(void) {
         struct thread *kid = list_entry(e, struct thread, kid_elem);
         kid->parent = NULL;
 
-        if (kid->status == THREAD_DYING) {
+        if (kid != NULL && kid->status == THREAD_DYING
+            && kid != initial_thread) {
             palloc_free_page(kid);
         }
     }

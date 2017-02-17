@@ -11,6 +11,9 @@
 #include <stdint.h>
 #include "synch.h"
 
+/*! Initial thread, the thread running init.c:main(). */
+struct thread *initial_thread;
+
 /*! States in a thread's life cycle. */
 enum thread_status {
     THREAD_RUNNING,     /*!< Running thread. */
