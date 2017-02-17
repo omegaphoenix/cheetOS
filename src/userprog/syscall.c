@@ -204,6 +204,9 @@ int sys_open(const char *file) {
     sema_down(&filesys_lock);
     struct file *open_file = filesys_open(file);
     sema_up(&filesys_lock);
+    if (open_file == NULL) {
+        return ERR;
+    }
     struct thread *cur = thread_current();
     int fd = next_fd(cur);
     fd = add_open_file(cur, open_file, fd);
