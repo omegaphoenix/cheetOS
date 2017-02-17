@@ -258,7 +258,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
         bytes_read = file_read(open_file, buffer, size);
         sema_up(&filesys_lock);
     } else {
-        bytes_read = ERR;
+        sys_exit(ERR);
     }
     return bytes_read;
 }
@@ -295,6 +295,8 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         sema_down(&filesys_lock);
         bytes_written = file_write(open_file, buffer, size);
         sema_up(&filesys_lock);
+    } else {
+        sys_exit(ERR);
     }
     return bytes_written;
 }
