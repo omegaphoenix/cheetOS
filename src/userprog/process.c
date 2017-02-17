@@ -79,12 +79,14 @@ static void start_process(void *cmdline_) {
     char *token, *save_ptr;
     char *argv[max_args + 2]; /* maximum three arguments + filename + null*/
     int argc = 0;
+    int token_size = 0;
 
     /* Parse argument string */
     for (token = strtok_r(cmdline, " ", &save_ptr); token != NULL;
          token = strtok_r(NULL, " ", &save_ptr)) {
         /* Check that length of argument < PGSIZE = 4kB */
-        if (strlen(token) >= PGSIZE) {
+        token_size += strlen(token);
+        if (token_size >= PGSIZE) {
             printf("%s:error - arg length too long\n", thread_current()->name);
         }
         /* Check that there are at most MAX_ARGS args */

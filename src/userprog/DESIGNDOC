@@ -8,17 +8,17 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Justin Leong <jleong@caltech.edu>
+John Li <jzli@caltech.edu>
+Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment: 0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL: https://github.com/omegaphoenix/cheetOS
    commit ...
 
 ---- PRELIMINARIES ----
@@ -29,6 +29,21 @@ FirstName LastName <email@domain.example>
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
+
+incrementing pointers:
+http://stackoverflow.com/questions/16578054/how-to-make-a-pointer-increment-by-1-byte-not-1-unit
+
+aligning pointers:
+http://stackoverflow.com/questions/4840410/how-to-align-a-pointer-in-c
+
+strtok_r:
+https://linux.die.net/man/3/strtok_r
+
+reentrant functions:
+http://stackoverflow.com/questions/2799023/what-exactly-is-a-reentrant-function
+
+Linux kernel versions 2.6.39 and 4.9
+
 
 			   USER PROGRAMS
 			   =============
@@ -42,8 +57,16 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
+  Justin Leong:
+  John Li: Approximately 8 hours. Was busy planning and executing several events this week.
+  Christina Lin: Approximately 26-27 hours.
+
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+
+  Justin Leong: Implement/debug system calls and process_wait.
+  John Li: Debugging.
+  Christina Lin: User memory access. Argument passing.
 
                            ARGUMENT PASSING
                            ================
@@ -54,19 +77,48 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+static int max_args;
+
+This is set as the greatest argc seen and is used to initialize argv[] without
+having to pass argc as an argument.
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe how you implemented argument parsing.  How do
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
 
+Arguments are parsed in start_process() using strtok_r(). The arguments are
+stored in an array, char *argv[], and the total number of arguments is stored
+in argc. After the stack is set up, argv and argc are passed to setup_args along
+with the stack pointer. We then iterate through argv two times: the first time,
+we place the arguments on the stack and store pointers to their address in
+an array, ptr. The second time, we push the addresses onto the stack.
+
+To avoid overflowing the stack page, we check the size of the
+arguments. We could allocate a new page if the arguments overflow but we have
+not implemented that.
+
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
 
+It is the reentrant version which means that it can be safely called again
+before the previous call is completed which makes it thread safe.
+
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
+
+One advantage of keeping the executable name separate is easier loading and
+naming of threads. Loading requires the executable name as an argument, and
+the new thread is named after the executable. Currently, we need to make a copy
+of the command line arguments and tokenize the line for each of these
+operations. With separated executable and arguments, we could avoid all of the
+extra copies. It is easier to set up pipe and redirect as well from the shell.
+
+Another advantage is security since the shell can handle bad commands and we
+can have two levels of validation.
 
                              SYSTEM CALLS
                              ============
@@ -77,14 +129,49 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+In our thread struct, we included these attributes and their following descriptions:
+
+  /*! Owned by userprog/syscall.c. */
+  /**@{*/
+  struct file *open_files[MAX_FD];    /*!< Open files. */
+  /**@}*/
+
+  /*! Shared between userprog/process.c and thread.c. */
+  /**@{*/
+  int exit_status;                    /*!< Exit status to be retrieved by parent. */
+  struct list kids;                   /*!< List of children processes. */
+  struct list_elem kid_elem;          /*!< List element for parent's kids list. */
+  struct semaphore wait_sema;         /*!< Sempahore for process_wait. */
+  /**@}*/
+
+  /*! Shared between by userprog/process.c and userprog.syscall.c and
+      thread.c. */
+  /**@{*/
+  struct thread *parent;              /*!< Thread that created this one. */
+  struct semaphore exec_load;         /*!< Semaphore for checking when executable has loaded. */
+  bool loaded;                        /*!< Check if exec loaded successfully. */
+  struct file *executable;            /*!< Executable to keep open until done. */
+  /**@}*/
+
+
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
+
+File descriptors are only unique within a single process. The thread contains
+an array of pointers to open files and finds an empty (null) index to place
+an open file in. When an open file is closed, then it's spot in the array
+is set to NULL.
 
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
+
+We use valid_read_addr to check the pointer to the buffer and the buffer. If
+we are reading/writing from/to a file, we get the file form the thread and
+make the filesys call. If we are reading/writing from/to the terminal, we
+read one byte at a time and we output 300 bytes at a time.
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -95,6 +182,11 @@ which parts.
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
+
+sys_wait() calls process_wait which waits for a child to signal that it is
+ready to die by setting it's status or up'ing it's wait semaphore and then
+the child process's page is freed. So this finished the process termination
+in certain cases.  See B8 for more detail.
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
@@ -110,12 +202,24 @@ which parts.
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+To avoid obscuring code, we we check errors with the functions valid_read_addr()
+and valid_write_addr(). This minimizes the amount of if-else statements within
+functions.
+
+When an error is detected, we free allocated resources by TODO.
+
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
 >> fails, so it cannot return before the new executable has completed
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
+
+We add a semaphore which is blocked initially and so sys_exec() waits
+on this sempahore before returning. The semaphore is up'ed when the
+executable has completed loading and the thread has a boolean "loaded"
+which is true if successful. Once sys_exec() resumes, it can check
+the boolean and then return.
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -124,16 +228,48 @@ which parts.
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+When P calls wait(C) before C exits, the kid's status is not set to
+THREAD_DYING yet and so P waits on a semaphore that is initialized to 0
+and which is incremented when the kid is ready to die. Then it gets the
+exit status and frees the kid.
+
+After C exits, if it hasn't been freed by a previous wait call,
+P just gets the exit status and frees the kid. If it has been freed, P
+returns -1;
+
+When P terminates wihtout waiting, it tells each one of it's kids that they
+don't have a parent anymore by setting their struct thread *parent to NULL.
+If this is before C exits, then when C exits, thread_schedule_tail() will
+free the kid. If this is after C exits, then the kid is freed right away
+before the parent dies.
+
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
+When accessing user memory, we first check that the address is below PHYS_BASE
+and then attempt to read/write. In case of a page fault, instead of exiting,
+we set eax to -1. This byte is read and the address is deemed invalid.
+
+This method is fast because it takes advantage of the processor's MMU. Also, it
+distinguishes between read and write for clarity.
+
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
+The advantage is that it is quick and easy to access open_files from the array
+since fd maps directly to an index (by subtracting 2 for stdin and stout).
+The disadvantage is that this always takes the same number of bytes to store
+the array which can lead to corruption of the thread memory with too many
+processes. Using a linked list would reduce the space requirement on the
+thread struct but would increase the access time and complexity of getting the
+file associated with a file descriptor.
+
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
+
+We didn't change it.
 
 			  SURVEY QUESTIONS
 			  ================
@@ -156,6 +292,21 @@ penalized.  We can't fix things until we know about them.  :-)
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
+
+The suggested order of implementation was misleading for this assignment. In
+section 5.2, it says "After the above are implemented, user processes should
+work minimally. At the very least, they can write to the console and exit
+correctly." But this is false -- the suggested temporary fixes for argument
+passing and process_wait() were not adequate for tests to pass.
+
+Instead, the order of implementation, based on our experience, should be:
+- user memory access
+- complete argument passing
+- syscall_handler
+- syscall_write
+- syscall_exit
+- complete process_wait
+- the rest of the syscalls
 
 >> Do you have any suggestions for the instructor and/or TAs to more
 >> effectively assist students, either for future quarters or the remaining
