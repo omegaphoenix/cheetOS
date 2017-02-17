@@ -185,7 +185,9 @@ pid_t sys_exec(const char *cmd_line) {
     sema_down(&cur->exec_load);
     /* Release lock once loaded. */
     sema_up(&filesys_lock);
+
     if (!cur->loaded) {
+        /* Executable failed to load. */
         return ERR;
     }
     return new_process_pid;
