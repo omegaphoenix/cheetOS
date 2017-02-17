@@ -260,6 +260,11 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     sf->eip = switch_entry;
     sf->ebp = 0;
 
+    /* Add new thread to parent's (current thread) list */
+    struct thread *parent = thread_current();
+    list_push_back(&parent->kids, &t->kid_elem);
+    t->parent = parent;
+
     /* Add to run queue. */
     int prev_highest_priority = get_highest_priority();
     thread_unblock(t);
@@ -340,9 +345,20 @@ void thread_exit(void) {
     /* Remove thread from all threads list, set our status to dying,
        and schedule another process.  That process will destroy us
        when it calls thread_schedule_tail(). */
+    struct thread *cur = thread_current();
     intr_disable();
-    list_remove(&thread_current()->allelem);
-    thread_current()->status = THREAD_DYING;
+    list_remove(&cur->allelem);
+    cur->status = THREAD_DYING;
+
+    /* Let kids know that mommy is dead so that their page is freed without
+       waiting for the parent to free them. Will be freed in
+       thread_schedule_tail() instead of process_wait().*/
+    struct list_elem *e;
+    for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
+         e = list_next(e)) {
+        struct thread *kid = list_entry(e, struct thread, kid_elem);
+        kid->parent = NULL;
+    }
     schedule();
     NOT_REACHED();
 }
@@ -516,6 +532,12 @@ bool is_valid_fd(int fd) {
     return index >= 0 && index < MAX_FD;
 }
 
+/*! Return true if fd is in range and exists */
+bool is_existing_fd(struct thread *cur, int fd) {
+    int index = fd - CONSOLE_FD;
+    return is_valid_fd(fd) && cur->open_files[index] != NULL;
+}
+
 /*! Get next fd. */
 int next_fd(struct thread *cur) {
     int index = 0;
@@ -525,6 +547,7 @@ int next_fd(struct thread *cur) {
             fd = index + CONSOLE_FD;
             return fd;
         }
+        index++;
     }
     return -1;
 }
@@ -541,15 +564,17 @@ int add_open_file(struct thread *cur, struct file *file, int fd) {
 
 /*! Get file with file descriptor *fd*. */
 struct file *get_fd(struct thread *cur, int fd) {
-    ASSERT(is_valid_fd(fd));
-    int index = fd - CONSOLE_FD;
-    struct file *open_file = cur->open_files[index];
-    return open_file;
+    if (is_existing_fd(cur, fd)) {
+        int index = fd - CONSOLE_FD;
+        struct file *open_file = cur->open_files[index];
+        return open_file;
+    }
+    return NULL;
 }
 
 /*! Close file with file descriptor *fd*. */
 void close_fd(struct thread *cur, int fd) {
-    ASSERT(is_valid_fd(fd));
+    ASSERT(is_existing_fd(cur, fd));
     int index = fd - CONSOLE_FD;
     cur->open_files[index] = NULL;
 }
@@ -625,10 +650,15 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     strlcpy(t->name, name, sizeof t->name);
     t->stack = (uint8_t *) t + PGSIZE;
     t->donated_priority = PRI_MIN;
+    t->exit_status = 0;
     t->magic = THREAD_MAGIC;
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
-    t->num_fd = 0;
     list_init(&t->locks_acquired);
+    list_init(&t->kids);
+    /* Block process_wait of parent until this process is ready to die. */
+    sema_init(&t->wait_sema, 0);
+    sema_init(&t->exec_load, 0);
+    t->loaded = false;
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */
@@ -732,7 +762,12 @@ void thread_schedule_tail(struct thread *prev) {
     if (prev != NULL && prev->status == THREAD_DYING &&
         prev != initial_thread) {
         ASSERT(prev != cur);
-        palloc_free_page(prev);
+        /* Let parent know kid is done */
+        sema_up(&prev->wait_sema);
+        if (prev->parent == NULL) {
+            /* Don't need to wait for parent to kill kid */
+            palloc_free_page(prev);
+        }
     }
 }
 

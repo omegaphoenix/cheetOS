@@ -9,6 +9,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "synch.h"
 
 /*! States in a thread's life cycle. */
 enum thread_status {
@@ -30,7 +31,8 @@ typedef int tid_t;
 
 /* Open files' file descriptors. */
 #define CONSOLE_FD 2                    /*!< fd 0 and 1 reserved. */
-#define MAX_FD 128                      /*!< Max num of open files. */
+/* Assignment asked for 128 but 81 is the max without stack overflowing. */
+#define MAX_FD 64                       /*!< Max num of open files. */
 
 /*! A kernel thread or user process.
 
@@ -105,8 +107,8 @@ struct thread {
     struct list_elem allelem;           /*!< List element for all threads list. */
     struct list_elem sleep_elem;        /*!< List element for sleeping list. */
     int64_t sleep_counter;              /*!< Number of ticks left to sleep. */
-    int niceness;                       /*!< Niceness value for BSD CPU priority */
-    int recent_cpu;                     /*!< Most recent CPU time usage. Fixed point */
+    int niceness;                       /*!< Niceness value for BSD CPU priority. */
+    int recent_cpu;                     /*!< Most recent CPU time usage. Fixed point. */
     struct lock *blocking_lock;         /*!< Lock that is blocking this thread */
     struct list locks_acquired;         /*!< Locks this thread is blocking */
     /**@}*/
@@ -123,8 +125,24 @@ struct thread {
 
     /*! Owned by userprog/syscall.c. */
     /**@{*/
-    int num_fd;
     struct file *open_files[MAX_FD];    /*!< Open files. */
+    /**@}*/
+
+    /*! Shared between userprog/process.c and thread.c. */
+    /**@{*/
+    int exit_status;                    /*!< Exit status to be retrieved by parent. */
+    struct list kids;                   /*!< List of children processes. */
+    struct list_elem kid_elem;          /*!< List element for parent's kids list. */
+    struct semaphore wait_sema;         /*!< Sempahore for process_wait. */
+    /**@}*/
+
+    /*! Shared between by userprog/process.c and userprog.syscall.c and
+        thread.c. */
+    /**@{*/
+    struct thread *parent;              /*!< Thread that created this one. */
+    struct semaphore exec_load;         /*!< Semaphore for checking when executable has loaded. */
+    bool loaded;                        /*!< Check if exec loaded successfully. */
+    struct file *executable;            /*!< Executable to keep open until done. */
     /**@}*/
 
 #ifdef USERPROG
@@ -185,6 +203,7 @@ int get_highest_priority(void);
 bool is_highest_priority(int test_priority);
 
 bool is_valid_fd(int fd);
+bool is_existing_fd(struct thread *cur, int fd);
 int next_fd(struct thread *cur);
 int add_open_file(struct thread *cur, struct file *file, int fd);
 struct file *get_fd(struct thread *cur, int fd);

@@ -18,11 +18,12 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+static int max_args = 1;
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
 static bool setup_args(void **esp, char **argv, int *argc);
 
-/*! Starts a new thread running a user program loaded from file_name 
+/*! Starts a new thread running a user program loaded from file_name
     (the first token of CMDLINE). The new
     thread may be scheduled (and may even exit) before process_execute()
     returns.  Returns the new process's thread id, or TID_ERROR if the thread
@@ -30,7 +31,9 @@ static bool setup_args(void **esp, char **argv, int *argc);
 tid_t process_execute(const char *cmdline) {
     char *cmdline_copy, *cmdline_copy2;
     tid_t tid;
-    char *file_name, *save_ptr;
+    char *file_name;
+    char *save_ptr, *token;
+    int argc = 0;
 
     /* Make a copy of CMDLINE.
        Otherwise there's a race between the caller and load(). */
@@ -44,7 +47,20 @@ tid_t process_execute(const char *cmdline) {
     if (cmdline_copy2 == NULL)
         return TID_ERROR;
     strlcpy(cmdline_copy2, cmdline, PGSIZE);
-    file_name = strtok_r(cmdline_copy2, " ", &save_ptr);
+    file_name = cmdline_copy2; /* initialize */
+
+    /* Count number of arguments and set max_args */
+    for (token = strtok_r(cmdline_copy2, " ", &save_ptr); token != NULL;
+         token = strtok_r(NULL, " ", &save_ptr)) {
+        if (argc == 0) {
+            file_name = token;
+        }
+        argc++;
+    }
+    if (argc > max_args) {
+        max_args = argc;
+    }
+
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(file_name, PRI_DEFAULT, start_process, cmdline_copy);
@@ -53,7 +69,7 @@ tid_t process_execute(const char *cmdline) {
     return tid;
 }
 
-/*! A thread function that loads a user process and starts it running. 
+/*! A thread function that loads a user process and starts it running.
     CMDLINE_ is the command to run, including arguments. */
 static void start_process(void *cmdline_) {
     char *cmdline = cmdline_;
@@ -61,7 +77,7 @@ static void start_process(void *cmdline_) {
     bool success;
     char *file_name = cmdline;
     char *token, *save_ptr;
-    char *argv[MAX_ARGS + 2]; /* maximum three arguments + filename + null*/
+    char *argv[max_args + 2]; /* maximum three arguments + filename + null*/
     int argc = 0;
 
     /* Parse argument string */
@@ -72,7 +88,7 @@ static void start_process(void *cmdline_) {
             printf("%s:error - arg length too long\n", thread_current()->name);
         }
         /* Check that there are at most MAX_ARGS args */
-        if (argc > MAX_ARGS + 1) {
+        if (argc > max_args + 1) {
             printf("%s:error - too many args\n", thread_current()->name);
         }
 
@@ -93,10 +109,17 @@ static void start_process(void *cmdline_) {
     /* Set up arguments in stack */
     success = success && setup_args(&if_.esp, argv, &argc);
 
-    /* If load failed, quit. */
     palloc_free_page(file_name);
-    if (!success) 
+
+    /* Let sys_exec know loading is done and if it was successful. */
+    struct thread *parent = thread_current()->parent;
+    parent->loaded = success;
+    sema_up(&parent->exec_load);
+
+    /* If load failed, quit. */
+    if (!success) {
         thread_exit();
+    }
 
     /* Start the user process by simulating a return from an
        interrupt, implemented by intr_exit (in
@@ -112,14 +135,38 @@ static void start_process(void *cmdline_) {
     terminated by the kernel (i.e. killed due to an exception), returns -1.
     If TID is invalid or if it was not a child of the calling process, or if
     process_wait() has already been successfully called for the given TID,
-    returns -1 immediately, without waiting.
-
-    This function will be implemented in problem 2-2.  For now, it does
-    nothing. */
+    returns -1 immediately, without waiting. */
 int process_wait(tid_t child_tid UNUSED) {
-    while (1) {
+    struct thread *cur = thread_current();
+
+    /* Iterate through children to find child */
+    struct list_elem *e;
+    struct thread *kid = NULL;
+    for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
+         e = list_next(e)) {
+        kid = list_entry(e, struct thread, kid_elem);
+        if (kid->tid == child_tid) {
+            /* Remove so next time we look for this kid, we return -1. */
+            list_remove(&kid->kid_elem);
+            break;
+        }
     }
-    return -1;
+
+    /* Check if no kid with child_tid */
+    if (kid == NULL || kid->tid != child_tid) {
+        return -1;
+    }
+
+    /* Wait for child thread to die */
+    if (kid->status != THREAD_DYING) {
+        sema_down(&kid->wait_sema);
+    }
+
+    /* If child thread is done, just get exit status. */
+    int child_exit_status = kid->exit_status;
+    palloc_free_page(kid);
+
+    return child_exit_status;
 }
 
 /*! Free the current process's resources. */
@@ -155,7 +202,7 @@ void process_activate(void) {
     /* Set thread's kernel stack for use in processing interrupts. */
     tss_update();
 }
-
+
 /*! We load ELF binaries.  The following definitions are taken
     from the ELF specification, [ELF1], more-or-less verbatim.  */
 
@@ -250,6 +297,11 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
         goto done;
     }
 
+    /* Deny writes to executables. */
+    file_deny_write(file);
+    /* Keep file open as long as process is running to deny writes. */
+    thread_current()->executable = file;
+
     /* Read and verify executable header. */
     if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr ||
         memcmp(ehdr.e_ident, "\177ELF\1\1\1", 7) || ehdr.e_type != 2 ||
@@ -329,7 +381,6 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
 
 done:
     /* We arrive here whether the load is successful or not. */
-    file_close(file);
     return success;
 }
 
@@ -482,7 +533,7 @@ static bool setup_stack(void **esp) {
     */
 static bool setup_args(void **esp, char **argv, int *argc) {
     char *esp_; /* stack pointer */
-    void *ptr[MAX_ARGS + 1];
+    void *ptr[max_args + 1];
     char *argv_0;
     char *null_term = "\0";
 
