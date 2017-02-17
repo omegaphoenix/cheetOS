@@ -6,6 +6,7 @@
 #define ERR -1
 
 void syscall_init(void);
+void sys_exit(int);
 
 #endif /* userprog/syscall.h */
 
