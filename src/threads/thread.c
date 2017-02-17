@@ -528,8 +528,12 @@ bool is_highest_priority(int test_priority) {
 
 /*! Return true if fd is in range */
 bool is_valid_fd(int fd) {
+    struct thread *cur = thread_current();
     int index = fd - CONSOLE_FD;
-    return index >= 0 && index < MAX_FD;
+    if (index < 0 || index >= MAX_FD) {
+        return false;
+    }
+    return cur->open_files[index] != NULL;
 }
 
 /*! Get next fd. */
