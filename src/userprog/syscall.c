@@ -193,9 +193,6 @@ bool sys_create(const char *file, unsigned initial_size) {
     if (!valid_read_addr((void *) file)) {
         sys_exit(ERR);
     }
-    else if (strcmp(file, "") == 0) {
-        return false;
-    }
     bool success = filesys_create(file, initial_size);
     return success;
 }
@@ -241,6 +238,9 @@ int sys_filesize(int fd) {
 /*! Read *size* bytes from file open as fd into buffer. Return the number of
     bytes actually read, 0 at end of file, or -1 if file could not be read. */
 int sys_read(int fd, void *buffer, unsigned size) {
+    if (!valid_read_addr(buffer)) {
+        sys_exit(ERR);
+    }
     int bytes_read = 0;
     /* Pointer to point to current position in buffer */
     char *buff = (char *) buffer;
@@ -259,7 +259,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
         bytes_read = file_read(open_file, buffer, size);
         sema_up(&filesys_lock);
     } else {
-        bytes_read = ERR;
+        sys_exit(ERR);
     }
     return bytes_read;
 }
@@ -272,10 +272,10 @@ int sys_read(int fd, void *buffer, unsigned size) {
     number written, or 0 if no bytes could be written at all.
     Fd 1 writes to the console. */
 int sys_write(int fd, const void *buffer, unsigned size) {
-    int bytes_written = 0;
-    if (buffer == NULL || !valid_read_addr(buffer)) {
+    if (!valid_read_addr(buffer)) {
         sys_exit(ERR);
     }
+    int bytes_written = 0;
 
     /* Write to console */
     if (fd == STDOUT_FILENO) {
@@ -296,6 +296,8 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         sema_down(&filesys_lock);
         bytes_written = file_write(open_file, buffer, size);
         sema_up(&filesys_lock);
+    } else {
+        sys_exit(ERR);
     }
     return bytes_written;
 }
