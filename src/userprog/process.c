@@ -151,16 +151,14 @@ int process_wait(tid_t child_tid UNUSED) {
         return -1;
     }
 
-    int child_exit_status;
-    if (kid->status == THREAD_DYING) {
-        child_exit_status = kid->exit_status;
-    }
-    else {
-        /* Wait for child thread to die */
+    /* Wait for child thread to die */
+    if (kid->status != THREAD_DYING) {
         sema_down(&kid->wait_sema);
-        child_exit_status = kid->exit_status;
-        palloc_free_page(kid);
     }
+
+    /* If child thread is done, just get exit status. */
+    int child_exit_status = kid->exit_status;
+    palloc_free_page(kid);
 
     return child_exit_status;
 }
