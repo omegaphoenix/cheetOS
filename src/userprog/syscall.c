@@ -241,6 +241,9 @@ int sys_read(int fd, void *buffer, unsigned size) {
         sys_exit(ERR);
     }
     int bytes_read = 0;
+    if (!valid_read_addr(buffer)) {
+        sys_exit(ERR);
+    }
     /* Pointer to point to current position in buffer */
     char *buff = (char *) buffer;
 
@@ -275,6 +278,9 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         sys_exit(ERR);
     }
     int bytes_written = 0;
+    if (!valid_read_addr(buffer)) {
+        sys_exit(ERR);
+    }
 
     /* Write to console */
     if (fd == STDOUT_FILENO) {
