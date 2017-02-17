@@ -348,7 +348,6 @@ void thread_exit(void) {
     struct thread *cur = thread_current();
     intr_disable();
     list_remove(&cur->allelem);
-    cur->status = THREAD_DYING;
 
     /* Free all locks. */
     struct list_elem *e;
@@ -359,6 +358,8 @@ void thread_exit(void) {
         lock_release(lock);
     }
 
+    cur->status = THREAD_DYING;
+
     /* Let kids know that mommy is dead so that their page is freed without
        waiting for the parent to free them. Will be freed in
        thread_schedule_tail() instead of process_wait().*/
@@ -366,6 +367,10 @@ void thread_exit(void) {
          e = list_next(e)) {
         struct thread *kid = list_entry(e, struct thread, kid_elem);
         kid->parent = NULL;
+
+        if (kid->status == THREAD_DYING) {
+            palloc_free_page(kid);
+        }
     }
     schedule();
     NOT_REACHED();
