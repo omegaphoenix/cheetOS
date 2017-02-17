@@ -11,6 +11,9 @@
 #include <stdint.h>
 #include "synch.h"
 
+/*! Initial thread, the thread running init.c:main(). */
+struct thread *initial_thread;
+
 /*! States in a thread's life cycle. */
 enum thread_status {
     THREAD_RUNNING,     /*!< Running thread. */
@@ -31,7 +34,7 @@ typedef int tid_t;
 
 /* Open files' file descriptors. */
 #define CONSOLE_FD 2                    /*!< fd 0 and 1 reserved. */
-/* Assignment asked for 128 but 81 is the max without stack overflowing. */
+/* Assignment asked for 128 but stack overflowing. */
 #define MAX_FD 64                       /*!< Max num of open files. */
 
 /*! A kernel thread or user process.
@@ -116,14 +119,10 @@ struct thread {
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     struct list_elem elem;              /*!< List element. */
-    /**@}*/
-
-    /*! Shared between thread.c and synch.c. */
-    /**@{*/
     struct list_elem lock_elem;         /*!< List element for lock's blocked_threads. */
     /**@}*/
 
-    /*! Owned by userprog/syscall.c. */
+    /*! Shared between thread.c and userprog/syscall.c. */
     /**@{*/
     struct file *open_files[MAX_FD];    /*!< Open files. */
     /**@}*/
