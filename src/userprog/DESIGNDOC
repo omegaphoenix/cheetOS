@@ -204,6 +204,12 @@ When an error is detected, we free allocated resources by TODO.
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
 
+We add a semaphore which is blocked initially and so sys_exec() waits
+on this sempahore before returning. The semaphore is up'ed when the
+executable has completed loading and the thread has a boolean "loaded"
+which is true if successful. Once sys_exec() resumes, it can check
+the boolean and then return.
+
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
 >> calls wait(C) before C exits?  After C exits?  How do you ensure
@@ -226,8 +232,18 @@ distinguishes between read and write for clarity.
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
+The advantage is that it is quick and easy to access open_files from the array
+since fd maps directly to an index (by subtracting 2 for stdin and stout).
+The disadvantage is that this always takes the same number of bytes to store
+the array which can lead to corruption of the thread memory with too many
+processes. Using a linked list would reduce the space requirement on the
+thread struct but would increase the access time and complexity of getting the
+file associated with a file descriptor.
+
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
+
+We didn't change it.
 
 			  SURVEY QUESTIONS
 			  ================
