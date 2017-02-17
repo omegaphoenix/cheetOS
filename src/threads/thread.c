@@ -357,7 +357,10 @@ void thread_exit(void) {
         lock_release(lock);
     }
 
-    /* TODO: Tell blocking lock we are no longer waiting for it. */
+    /* Tell blocking lock we are no longer waiting for it. */
+    if (cur->blocking_lock != NULL) {
+        list_remove(&cur->lock_elem);
+    }
 
     /* Free executable */
     sema_down(&filesys_lock);
