@@ -69,7 +69,10 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-None.
+static int max_args;
+
+This is set as the greatest argc seen and is used to initialize argv[] without
+having to pass argc as an argument.
 
 ---- ALGORITHMS ----
 
@@ -145,6 +148,12 @@ Another advantage is TODO.
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+To avoid obscuring code, we we check errors with the functions valid_read_addr()
+and valid_write_addr(). This minimizes the amount of if-else statements within
+functions.
+
+When an error is detected, we free allocated resources by TODO.
+
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
@@ -163,6 +172,13 @@ Another advantage is TODO.
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
+
+When accessing user memory, we first check that the address is below PHYS_BASE
+and then attempt to read/write. In case of a page fault, instead of exiting,
+we set eax to -1. This byte is read and the address is deemed invalid.
+
+This method is fast because it takes advantage of the processor's MMU. Also, it
+distinguishes between read and write for clarity.
 
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
