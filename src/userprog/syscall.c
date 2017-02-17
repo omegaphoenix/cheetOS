@@ -55,7 +55,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     int *fd, *status, *child_pid;
     void **buffer;
     unsigned int *size, *initial_size, *position;
-    char *cmd_line;
+    char **cmd_line;
     char **file;
 
     /* Get the system call number */
@@ -76,8 +76,8 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             f->eax = *status;
             break;
         case SYS_EXEC:
-            cmd_line = (char *) get_first_arg(f);
-            f->eax = sys_exec(cmd_line);
+            cmd_line = (char **) get_first_arg(f);
+            f->eax = sys_exec(*cmd_line);
             break;
         case SYS_WAIT:
             child_pid = (pid_t *) get_first_arg(f);
@@ -171,7 +171,7 @@ void sys_exit(int status) {
 /*! Run executable and return new pid. Return ERR if program cannot
     load or run for any reason. */
 pid_t sys_exec(const char *cmd_line) {
-    if (cmd_line == NULL) {
+    if (!valid_read_addr(cmd_line)) {
         return ERR;
     }
     sema_down(&exec_lock);
@@ -237,25 +237,31 @@ int sys_filesize(int fd) {
 /*! Read *size* bytes from file open as fd into buffer. Return the number of
     bytes actually read, 0 at end of file, or -1 if file could not be read. */
 int sys_read(int fd, void *buffer, unsigned size) {
+    if (!valid_read_addr(buffer)) {
+        sys_exit(ERR);
+    }
     int bytes_read = 0;
     /* Pointer to point to current position in buffer */
     char *buff = (char *) buffer;
 
-    /* Read from keyboard input */
+    struct thread *cur = thread_current();
     if (fd == STDIN_FILENO) {
+        /* Read from keyboard input */
         while ((unsigned) bytes_read < size) {
             *buff = input_getc();
             buff++;
             bytes_read++;
         }
-    } else if (is_valid_fd(fd)) {
-        struct thread *cur = thread_current();
+    } else if (is_existing_fd(cur, fd)) {
         struct file *open_file = get_fd(cur, fd);
+        if (open_file == NULL) {
+            sys_exit(ERR);
+        }
         sema_down(&filesys_lock);
         bytes_read = file_read(open_file, buffer, size);
         sema_up(&filesys_lock);
     } else {
-        bytes_read = ERR;
+        sys_exit(ERR);
     }
     return bytes_read;
 }
@@ -268,10 +274,14 @@ int sys_read(int fd, void *buffer, unsigned size) {
     number written, or 0 if no bytes could be written at all.
     Fd 1 writes to the console. */
 int sys_write(int fd, const void *buffer, unsigned size) {
+    if (!valid_read_addr(buffer)) {
+        sys_exit(ERR);
+    }
     int bytes_written = 0;
 
-    /* Write to console */
+    struct thread *cur = thread_current();
     if (fd == STDOUT_FILENO) {
+        /* Write to console */
         size_t block_size = MAX_BUF_WRI;
 
         /* If size greater than several hundred bytes, break up */
@@ -283,12 +293,16 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         /* Write remaining bytes */
         putbuf(buffer + bytes_written, size - bytes_written);
         bytes_written = size;
-    } else if (is_valid_fd(fd)) {
-        struct thread *cur = thread_current();
+    } else if (is_existing_fd(cur, fd)) {
         struct file *open_file = get_fd(cur, fd);
+        if (open_file == NULL) {
+            sys_exit(ERR);
+        }
         sema_down(&filesys_lock);
         bytes_written = file_write(open_file, buffer, size);
         sema_up(&filesys_lock);
+    } else {
+        sys_exit(ERR);
     }
     return bytes_written;
 }
@@ -298,6 +312,9 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 void sys_seek(int fd, unsigned position) {
     struct thread *cur = thread_current();
     struct file *open_file = get_fd(cur, fd);
+    if (open_file == NULL) {
+        sys_exit(ERR);
+    }
     sema_down(&filesys_lock);
     file_seek(open_file, position);
     sema_up(&filesys_lock);
@@ -309,6 +326,9 @@ void sys_seek(int fd, unsigned position) {
 unsigned sys_tell(int fd) {
     struct thread *cur = thread_current();
     struct file *open_file = get_fd(cur, fd);
+    if (open_file == NULL) {
+        sys_exit(ERR);
+    }
     sema_down(&filesys_lock);
     unsigned position = file_tell(open_file);
     sema_up(&filesys_lock);
@@ -319,6 +339,9 @@ unsigned sys_tell(int fd) {
 void sys_close(int fd) {
     struct thread *cur = thread_current();
     struct file *open_file = get_fd(cur, fd);
+    if (open_file == NULL) {
+        sys_exit(ERR);
+    }
     sema_down(&filesys_lock);
     file_close(open_file);
     sema_up(&filesys_lock);
