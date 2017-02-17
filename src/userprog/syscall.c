@@ -25,7 +25,6 @@ void *get_third_arg(struct intr_frame *f);
 
 /* SYSTEM CALLS */
 void sys_halt(void);
-void sys_exit(int status);
 pid_t sys_exec(const char *cmd_line);
 int sys_wait(pid_t pid);
 /* File manipulation */
