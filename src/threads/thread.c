@@ -350,6 +350,14 @@ void thread_exit(void) {
     list_remove(&cur->allelem);
     cur->status = THREAD_DYING;
 
+    /* Let kids know that mommy is dead. */
+    struct list_elem *e;
+    for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
+         e = list_next(e)) {
+        struct thread *kid = list_entry(e, struct thread, kid_elem);
+        kid->parent = NULL;
+        /* TODO: Kill kid if necessary */
+    }
     schedule();
     NOT_REACHED();
 }
@@ -744,6 +752,10 @@ void thread_schedule_tail(struct thread *prev) {
         ASSERT(prev != cur);
         /* Let parent know kid is done */
         sema_up(&prev->wait_sema);
+        if (parent == NULL) {
+            /* Don't need to wait for parent to kill kid */
+            palloc_free_page(kid);
+        }
     }
 }
 
