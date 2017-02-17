@@ -1,5 +1,6 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
+#include <string.h>
 #include <syscall-nr.h>
 #include <user/syscall.h>
 #include "devices/input.h"
@@ -188,8 +189,11 @@ int sys_wait(pid_t pid) {
 /*! Create new file called *file* initially *initial_size* bytes in size.
     Returns true if successful. */
 bool sys_create(const char *file, unsigned initial_size) {
-    if (file == NULL) {
+    if (!valid_read_addr((void *) file)) {
         sys_exit(ERR);
+    }
+    else if (strcmp(file, "") == 0) {
+        return false;
     }
     bool success = filesys_create(file, initial_size);
     return success;
@@ -197,7 +201,7 @@ bool sys_create(const char *file, unsigned initial_size) {
 
 /*! Delete file called *file*. Return true if successful. */
 bool sys_remove(const char *file) {
-    if (file == NULL) {
+    if (!valid_read_addr((void *) file)) {
         sys_exit(ERR);
     }
     sema_down(&filesys_lock);
@@ -208,7 +212,7 @@ bool sys_remove(const char *file) {
 
 /*! Open the file called *file*. Returns ERR if file could not be opened. */
 int sys_open(const char *file) {
-    if (file == NULL) {
+    if (!valid_read_addr((void *) file)) {
         sys_exit(ERR);
     }
     sema_down(&filesys_lock);
