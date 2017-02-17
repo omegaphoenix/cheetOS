@@ -23,7 +23,7 @@ static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
 static bool setup_args(void **esp, char **argv, int *argc);
 
-/*! Starts a new thread running a user program loaded from file_name 
+/*! Starts a new thread running a user program loaded from file_name
     (the first token of CMDLINE). The new
     thread may be scheduled (and may even exit) before process_execute()
     returns.  Returns the new process's thread id, or TID_ERROR if the thread
@@ -69,7 +69,7 @@ tid_t process_execute(const char *cmdline) {
     return tid;
 }
 
-/*! A thread function that loads a user process and starts it running. 
+/*! A thread function that loads a user process and starts it running.
     CMDLINE_ is the command to run, including arguments. */
 static void start_process(void *cmdline_) {
     char *cmdline = cmdline_;
@@ -111,8 +111,9 @@ static void start_process(void *cmdline_) {
 
     /* If load failed, quit. */
     palloc_free_page(file_name);
-    if (!success) 
+    if (!success) {
         thread_exit();
+    }
 
     /* Start the user process by simulating a return from an
        interrupt, implemented by intr_exit (in
@@ -128,14 +129,38 @@ static void start_process(void *cmdline_) {
     terminated by the kernel (i.e. killed due to an exception), returns -1.
     If TID is invalid or if it was not a child of the calling process, or if
     process_wait() has already been successfully called for the given TID,
-    returns -1 immediately, without waiting.
-
-    This function will be implemented in problem 2-2.  For now, it does
-    nothing. */
+    returns -1 immediately, without waiting. */
 int process_wait(tid_t child_tid UNUSED) {
-    while (1) {
+    struct thread *cur = thread_current();
+
+    /* Iterate through children to find child */
+    struct list_elem *e;
+    struct thread *kid = NULL;
+    for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
+         e = list_next(e)) {
+        kid = list_entry(e, struct thread, kid_elem);
+        if (kid->tid == child_tid) {
+            /* Remove so next time we look for this kid, we return -1. */
+            list_remove(&kid->kid_elem);
+            break;
+        }
     }
-    return -1;
+
+    /* Check if no kid with child_tid */
+    if (kid == NULL || kid->tid != child_tid) {
+        return -1;
+    }
+
+    /* Wait for child thread to die */
+    if (kid->status != THREAD_DYING) {
+        sema_down(&kid->wait_sema);
+    }
+
+    /* If child thread is done, just get exit status. */
+    int child_exit_status = kid->exit_status;
+    palloc_free_page(kid);
+
+    return child_exit_status;
 }
 
 /*! Free the current process's resources. */
@@ -171,7 +196,7 @@ void process_activate(void) {
     /* Set thread's kernel stack for use in processing interrupts. */
     tss_update();
 }
-
+
 /*! We load ELF binaries.  The following definitions are taken
     from the ELF specification, [ELF1], more-or-less verbatim.  */
 
@@ -265,6 +290,9 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
         printf("load: %s: open failed\n", file_name);
         goto done;
     }
+
+    /* Deny writes to executables. */
+    file_deny_write(file);
 
     /* Read and verify executable header. */
     if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr ||
