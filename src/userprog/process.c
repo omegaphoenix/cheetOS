@@ -113,10 +113,7 @@ static void start_process(void *cmdline_) {
     terminated by the kernel (i.e. killed due to an exception), returns -1.
     If TID is invalid or if it was not a child of the calling process, or if
     process_wait() has already been successfully called for the given TID,
-    returns -1 immediately, without waiting.
-
-    This function will be implemented in problem 2-2.  For now, it does
-    nothing. */
+    returns -1 immediately, without waiting. */
 int process_wait(tid_t child_tid UNUSED) {
     struct thread *cur = thread_current();
 
@@ -127,6 +124,7 @@ int process_wait(tid_t child_tid UNUSED) {
          e = list_next(e)) {
         kid = list_entry(e, struct thread, kid_elem);
         if (kid->tid == child_tid) {
+            /* Remove so next time we look for this kid, we return -1. */
             list_remove(&kid->kid_elem);
             break;
         }
@@ -145,6 +143,7 @@ int process_wait(tid_t child_tid UNUSED) {
         /* Wait for child thread to die */
         sema_down(&kid->wait_sema);
         child_exit_status = kid->exit_status;
+        palloc_free_page(kid);
     }
 
     return child_exit_status;

@@ -165,7 +165,7 @@ void sys_halt(void) {
 /*! Terminates current user program. */
 void sys_exit(int status) {
     struct thread *cur = thread_current();
-    printf("%s:exit(%d)\n", cur->name, status);
+    printf("%s: exit(%d)\n", cur->name, status);
     cur->exit_status = status;
     thread_exit();
 }

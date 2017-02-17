@@ -350,8 +350,6 @@ void thread_exit(void) {
     list_remove(&cur->allelem);
     cur->status = THREAD_DYING;
 
-    /* Let parent know kid is done */
-    sema_up(&cur->wait_sema);
     schedule();
     NOT_REACHED();
 }
@@ -639,7 +637,8 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
     list_init(&t->locks_acquired);
     list_init(&t->kids);
-    sema_init(&t->wait_sema, 1);
+    /* Block process_wait of parent until this process is ready to die. */
+    sema_init(&t->wait_sema, 0);
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */
@@ -743,7 +742,8 @@ void thread_schedule_tail(struct thread *prev) {
     if (prev != NULL && prev->status == THREAD_DYING &&
         prev != initial_thread) {
         ASSERT(prev != cur);
-        palloc_free_page(prev);
+        /* Let parent know kid is done */
+        sema_up(&prev->wait_sema);
     }
 }
 
