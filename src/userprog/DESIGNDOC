@@ -115,9 +115,10 @@ naming of threads. Loading requires the executable name as an argument, and
 the new thread is named after the executable. Currently, we need to make a copy
 of the command line arguments and tokenize the line for each of these
 operations. With separated executable and arguments, we could avoid all of the
-extra copies.
+extra copies. It is easier to set up pipe and redirect as well from the shell.
 
-Another advantage is TODO.
+Another advantage is security since the shell can handle bad commands and we
+can have two levels of validation.
 
                              SYSTEM CALLS
                              ============
