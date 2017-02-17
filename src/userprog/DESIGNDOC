@@ -64,7 +64,7 @@ which parts.
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
-  Justin Leong: System calls and debugging.
+  Justin Leong: Implement/debug system calls and process_wait.
   John Li: Debugging.
   Christina Lin: User memory access. Argument passing.
 
@@ -168,6 +168,11 @@ is set to NULL.
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
 
+We use valid_read_addr to check the pointer to the buffer and the buffer. If
+we are reading/writing from/to a file, we get the file form the thread and
+make the filesys call. If we are reading/writing from/to the terminal, we
+read one byte at a time and we output 300 bytes at a time.
+
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
 >> and the greatest possible number of inspections of the page table
@@ -177,6 +182,11 @@ is set to NULL.
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
+
+sys_wait() calls process_wait which waits for a child to signal that it is
+ready to die by setting it's status or up'ing it's wait semaphore and then
+the child process's page is freed. So this finished the process termination
+in certain cases.  See B8 for more detail.
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
