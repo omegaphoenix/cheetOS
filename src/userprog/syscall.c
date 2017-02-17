@@ -319,7 +319,7 @@ void sys_close(int fd) {
 static bool valid_read_addr(const void *addr) {
     /* Check that address is below PHYS_BASE
        and then attempt to read a byte at the address */
-    return addr != NULL && is_user_vaddr(addr) && get_user(addr);
+    return addr != NULL && is_user_vaddr(addr) && (get_user(addr) != -1);
 }
 
 /* Returns true if addr is valid for writing */
