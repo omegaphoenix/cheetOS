@@ -356,7 +356,6 @@ void thread_exit(void) {
          e = list_next(e)) {
         struct thread *kid = list_entry(e, struct thread, kid_elem);
         kid->parent = NULL;
-        /* TODO: Kill kid if necessary */
     }
     schedule();
     NOT_REACHED();
