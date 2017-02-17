@@ -36,6 +36,8 @@ http://stackoverflow.com/questions/16578054/how-to-make-a-pointer-increment-by-1
 aligning pointers:
 http://stackoverflow.com/questions/4840410/how-to-align-a-pointer-in-c
 
+Linux kernel versions 2.6.39 and 4.9
+
 
 			   USER PROGRAMS
 			   =============
@@ -56,7 +58,7 @@ which parts.
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
-  Justin Leong:
+  Justin Leong: System calls and debugging.
   John Li:
   Christina Lin: User memory access. Argument passing.
 
