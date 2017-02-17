@@ -1,5 +1,4 @@
 #include "userprog/process.h"
-#include "userprog/syscall.h"
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
