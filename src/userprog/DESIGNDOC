@@ -217,6 +217,21 @@ the boolean and then return.
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+When P calls wait(C) before C exits, the kid's status is not set to
+THREAD_DYING yet and so P waits on a semaphore that is initialized to 0
+and which is incremented when the kid is ready to die. Then it gets the
+exit status and frees the kid.
+
+After C exits, if it hasn't been freed by a previous wait call,
+P just gets the exit status and frees the kid. If it has been freed, P
+returns -1;
+
+When P terminates wihtout waiting, it tells each one of it's kids that they
+don't have a parent anymore by setting their struct thread *parent to NULL.
+If this is before C exits, then when C exits, thread_schedule_tail() will
+free the kid. If this is after C exits, then the kid is freed right away
+before the parent dies.
+
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
@@ -268,8 +283,8 @@ penalized.  We can't fix things until we know about them.  :-)
 >> find any of our guidance to be misleading?
 
 The suggested order of implementation was misleading for this assignment. In
-section 5.2, it says "After the above are implemented, user processes should 
-work minimally. At the very least, they can write to the console and exit 
+section 5.2, it says "After the above are implemented, user processes should
+work minimally. At the very least, they can write to the console and exit
 correctly." But this is false -- the suggested temporary fixes for argument
 passing and process_wait() were not adequate for tests to pass.
 
