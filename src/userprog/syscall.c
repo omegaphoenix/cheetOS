@@ -171,8 +171,7 @@ void sys_exit(int status) {
 /*! Run executable and return new pid. Return ERR if program cannot
     load or run for any reason. */
 pid_t sys_exec(const char *cmd_line) {
-    //printf("cmd_line = %s\n", cmd_line);
-    if (cmd_line == NULL || !valid_read_addr(cmd_line)) {
+    if (!valid_read_addr(cmd_line)) {
         return ERR;
     }
     sema_down(&exec_lock);
