@@ -528,12 +528,14 @@ bool is_highest_priority(int test_priority) {
 
 /*! Return true if fd is in range */
 bool is_valid_fd(int fd) {
-    struct thread *cur = thread_current();
     int index = fd - CONSOLE_FD;
-    if (index < 0 || index >= MAX_FD) {
-        return false;
-    }
-    return cur->open_files[index] != NULL;
+    return index >= 0 && index < MAX_FD;
+}
+
+/*! Return true if fd is in range and exists */
+bool is_existing_fd(struct thread *cur, int fd) {
+    int index = fd - CONSOLE_FD;
+    return is_valid_fd(fd) && cur->open_files[index] != NULL;
 }
 
 /*! Get next fd. */
@@ -561,7 +563,7 @@ int add_open_file(struct thread *cur, struct file *file, int fd) {
 
 /*! Get file with file descriptor *fd*. */
 struct file *get_fd(struct thread *cur, int fd) {
-    ASSERT(is_valid_fd(fd));
+    ASSERT(is_existing_fd(cur, fd));
     int index = fd - CONSOLE_FD;
     struct file *open_file = cur->open_files[index];
     return open_file;
@@ -569,7 +571,7 @@ struct file *get_fd(struct thread *cur, int fd) {
 
 /*! Close file with file descriptor *fd*. */
 void close_fd(struct thread *cur, int fd) {
-    ASSERT(is_valid_fd(fd));
+    ASSERT(is_existing_fd(cur, fd));
     int index = fd - CONSOLE_FD;
     cur->open_files[index] = NULL;
 }
