@@ -254,6 +254,9 @@ int sys_read(int fd, void *buffer, unsigned size) {
         }
     } else if (is_existing_fd(cur, fd)) {
         struct file *open_file = get_fd(cur, fd);
+        if (open_file == NULL) {
+            sys_exit(ERR);
+        }
         sema_down(&filesys_lock);
         bytes_read = file_read(open_file, buffer, size);
         sema_up(&filesys_lock);
@@ -292,6 +295,9 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         bytes_written = size;
     } else if (is_existing_fd(cur, fd)) {
         struct file *open_file = get_fd(cur, fd);
+        if (open_file == NULL) {
+            sys_exit(ERR);
+        }
         sema_down(&filesys_lock);
         bytes_written = file_write(open_file, buffer, size);
         sema_up(&filesys_lock);
@@ -306,6 +312,9 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 void sys_seek(int fd, unsigned position) {
     struct thread *cur = thread_current();
     struct file *open_file = get_fd(cur, fd);
+    if (open_file == NULL) {
+        sys_exit(ERR);
+    }
     sema_down(&filesys_lock);
     file_seek(open_file, position);
     sema_up(&filesys_lock);
@@ -317,6 +326,9 @@ void sys_seek(int fd, unsigned position) {
 unsigned sys_tell(int fd) {
     struct thread *cur = thread_current();
     struct file *open_file = get_fd(cur, fd);
+    if (open_file == NULL) {
+        sys_exit(ERR);
+    }
     sema_down(&filesys_lock);
     unsigned position = file_tell(open_file);
     sema_up(&filesys_lock);
@@ -327,6 +339,9 @@ unsigned sys_tell(int fd) {
 void sys_close(int fd) {
     struct thread *cur = thread_current();
     struct file *open_file = get_fd(cur, fd);
+    if (open_file == NULL) {
+        sys_exit(ERR);
+    }
     sema_down(&filesys_lock);
     file_close(open_file);
     sema_up(&filesys_lock);
