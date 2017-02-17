@@ -127,12 +127,17 @@ struct thread {
     struct file *open_files[MAX_FD];    /*!< Open files. */
     /**@}*/
 
-    /*! Owned by userprog/process.c. */
+    /*! Shared between userprog/process.c and thread.c. */
     /**@{*/
     int exit_status;                    /*!< Exit status to be retrieved by parent. */
     struct list kids;                   /*!< List of children processes. */
     struct list_elem kid_elem;          /*!< List element for parent's kids list. */
     struct semaphore wait_sema;         /*!< Sempahore for process_wait. */
+    /**@}*/
+
+    /*! Shared between by userprog/process.c and userprog.syscall.c and
+        thread.c. */
+    /**@{*/
     struct thread *parent;              /*!< Thread that created this one. */
     struct semaphore exec_load;         /*!< Semaphore for checking when executable has loaded. */
     bool loaded;                        /*!< Check if exec loaded successfully. */
