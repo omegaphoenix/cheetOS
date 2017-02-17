@@ -69,11 +69,22 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+None.
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe how you implemented argument parsing.  How do
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
+
+Arguments are parsed in start_process() using strtok_r(). The arguments are
+stored in an array, char *argv[], and the total number of arguments is stored
+in argc. After the stack is set up, argv and argc are passed to setup_args along
+with the stack pointer. We then iterate through argv two times: the first time,
+we place the arguments on the stack and store pointers to their address in
+an array, ptr. The second time, we push the addresses onto the stack.
+
+To avoid overflowing the stack page, TODO.
 
 ---- RATIONALE ----
 
@@ -82,6 +93,15 @@ which parts.
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
+
+One advantage of keeping the executable name separate is easier loading and
+naming of threads. Loading requires the executable name as an argument, and
+the new thread is named after the executable. Currently, we need to make a copy
+of the command line arguments and tokenize the line for each of these
+operations. With separated executable and arguments, we could avoid all of the
+extra copies.
+
+Another advantage is TODO.
 
                              SYSTEM CALLS
                              ============
