@@ -2,7 +2,6 @@
 #define USERPROG_PROCESS_H
 
 #define ARG_SIZE 4
-#define MAX_ARGS 3
 
 #include "threads/thread.h"
 
