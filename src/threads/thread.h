@@ -11,6 +11,9 @@
 #include <stdint.h>
 #include "synch.h"
 
+/*! Initial thread, the thread running init.c:main(). */
+struct thread *initial_thread;
+
 /*! States in a thread's life cycle. */
 enum thread_status {
     THREAD_RUNNING,     /*!< Running thread. */
@@ -116,14 +119,10 @@ struct thread {
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     struct list_elem elem;              /*!< List element. */
-    /**@}*/
-
-    /*! Shared between thread.c and synch.c. */
-    /**@{*/
     struct list_elem lock_elem;         /*!< List element for lock's blocked_threads. */
     /**@}*/
 
-    /*! Owned by userprog/syscall.c. */
+    /*! Shared beteween thread.c and userprog/syscall.c. */
     /**@{*/
     struct file *open_files[MAX_FD];    /*!< Open files. */
     /**@}*/

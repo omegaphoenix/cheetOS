@@ -166,7 +166,9 @@ int process_wait(tid_t child_tid UNUSED) {
 
     /* If child thread is done, just get exit status. */
     int child_exit_status = kid->exit_status;
-    palloc_free_page(kid);
+    if (kid != initial_thread && kid->status == THREAD_DYING) {
+        palloc_free_page(kid);
+    }
 
     return child_exit_status;
 }

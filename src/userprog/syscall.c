@@ -13,8 +13,6 @@
 #include "threads/vaddr.h"
 #include "userprog/process.h"
 
-struct semaphore filesys_lock;
-
 static void syscall_handler(struct intr_frame *);
 
 /* Helper functions */
@@ -164,10 +162,6 @@ void sys_exit(int status) {
     printf("%s: exit(%d)\n", cur->name, status);
     cur->exit_status = status;
 
-    /* Close executable file now that process is completed. */
-    sema_down(&filesys_lock);
-    file_close(cur->executable);
-    sema_up(&filesys_lock);
     thread_exit();
 }
 

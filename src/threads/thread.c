@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "devices/timer.h"
+#include "filesys/file.h"
 #include "threads/fixed_point.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
@@ -13,6 +14,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "userprog/syscall.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -36,9 +38,6 @@ static struct list sleep_list;
 
 /*! Idle thread. */
 static struct thread *idle_thread;
-
-/*! Initial thread, the thread running init.c:main(). */
-static struct thread *initial_thread;
 
 /*! Lock used by allocate_tid(). */
 static struct lock tid_lock;
@@ -358,9 +357,29 @@ void thread_exit(void) {
         lock_release(lock);
     }
 
+    /* Tell blocking lock we are no longer waiting for it. */
+    if (cur->blocking_lock != NULL) {
+        list_remove(&cur->lock_elem);
+    }
+
+    /* Free executable */
+    sema_down(&filesys_lock);
+    file_close(cur->executable);
+    sema_up(&filesys_lock);
+
+    /* Free all file buffers. */
+    int i;
+    for (i = 0; i < MAX_FD; i++) {
+        struct file *open_file = cur->open_files[i];
+        if (open_file != NULL) {
+            sema_down(&filesys_lock);
+            file_close(open_file);
+            sema_up(&filesys_lock);
+        }
+    }
     cur->status = THREAD_DYING;
 
-    /* Let kids know that mommy is dead so that their page is freed without
+    /* Let kids know that parent is dead so that their page is freed without
        waiting for the parent to free them. Will be freed in
        thread_schedule_tail() instead of process_wait().*/
     for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
@@ -368,7 +387,8 @@ void thread_exit(void) {
         struct thread *kid = list_entry(e, struct thread, kid_elem);
         kid->parent = NULL;
 
-        if (kid->status == THREAD_DYING) {
+        if (kid != NULL && kid->status == THREAD_DYING
+            && kid != initial_thread) {
             palloc_free_page(kid);
         }
     }

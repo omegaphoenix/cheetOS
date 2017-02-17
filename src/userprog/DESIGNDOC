@@ -206,7 +206,14 @@ To avoid obscuring code, we we check errors with the functions valid_read_addr()
 and valid_write_addr(). This minimizes the amount of if-else statements within
 functions.
 
-When an error is detected, we free allocated resources by TODO.
+When an error is detected, we free allocated resources by calling sys_exit()
+which calls thread_exit() which iterates through all of its open files and
+locks and frees them. The executable is also freed here.
+
+Example: If an argument is not a valid read address, we call sys_exit(-1)
+which sets the exit status to -1 and then calls thread_exit(). thread_exit()
+frees all open files, acquired locks, the executable, and tells the lock
+that it is waiting on that it is no longer waiting.
 
 ---- SYNCHRONIZATION ----
 
