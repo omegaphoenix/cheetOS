@@ -177,9 +177,11 @@ pid_t sys_exec(const char *cmd_line) {
     pid_t new_process_pid = process_execute(cmd_line);
     sema_up(&exec_lock);
     struct thread *cur = thread_current();
-    sema_down(&cur->exec_load);
 
+    /* Wait for executable to load. */
+    sema_down(&cur->exec_load);
     if (!cur->loaded) {
+        /* Executable failed to load. */
         return ERR;
     }
     return new_process_pid;
