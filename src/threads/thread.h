@@ -194,6 +194,7 @@ int get_highest_priority(void);
 bool is_highest_priority(int test_priority);
 
 bool is_valid_fd(int fd);
+bool is_existing_fd(struct thread *cur, int fd);
 int next_fd(struct thread *cur);
 int add_open_file(struct thread *cur, struct file *file, int fd);
 struct file *get_fd(struct thread *cur, int fd);

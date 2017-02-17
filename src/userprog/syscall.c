@@ -244,15 +244,15 @@ int sys_read(int fd, void *buffer, unsigned size) {
     /* Pointer to point to current position in buffer */
     char *buff = (char *) buffer;
 
-    /* Read from keyboard input */
+    struct thread *cur = thread_current();
     if (fd == STDIN_FILENO) {
+        /* Read from keyboard input */
         while ((unsigned) bytes_read < size) {
             *buff = input_getc();
             buff++;
             bytes_read++;
         }
-    } else if (is_valid_fd(fd)) {
-        struct thread *cur = thread_current();
+    } else if (is_existing_fd(cur, fd)) {
         struct file *open_file = get_fd(cur, fd);
         sema_down(&filesys_lock);
         bytes_read = file_read(open_file, buffer, size);
@@ -276,8 +276,9 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     }
     int bytes_written = 0;
 
-    /* Write to console */
+    struct thread *cur = thread_current();
     if (fd == STDOUT_FILENO) {
+        /* Write to console */
         size_t block_size = MAX_BUF_WRI;
 
         /* If size greater than several hundred bytes, break up */
@@ -289,8 +290,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         /* Write remaining bytes */
         putbuf(buffer + bytes_written, size - bytes_written);
         bytes_written = size;
-    } else if (is_valid_fd(fd)) {
-        struct thread *cur = thread_current();
+    } else if (is_existing_fd(cur, fd)) {
         struct file *open_file = get_fd(cur, fd);
         sema_down(&filesys_lock);
         bytes_written = file_write(open_file, buffer, size);
