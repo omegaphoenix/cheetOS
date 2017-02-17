@@ -36,6 +36,12 @@ http://stackoverflow.com/questions/16578054/how-to-make-a-pointer-increment-by-1
 aligning pointers:
 http://stackoverflow.com/questions/4840410/how-to-align-a-pointer-in-c
 
+strtok_r:
+https://linux.die.net/man/3/strtok_r
+
+reentrant functions:
+http://stackoverflow.com/questions/2799023/what-exactly-is-a-reentrant-function
+
 Linux kernel versions 2.6.39 and 4.9
 
 
@@ -94,6 +100,9 @@ To avoid overflowing the stack page, TODO.
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
+
+It is the reentrant version which means that it can be safely called again
+before the previous call is completed which makes it thread safe.
 
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
