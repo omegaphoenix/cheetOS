@@ -18,6 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+static int max_args = 1;
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp);
 static bool setup_args(void **esp, char **argv, int *argc);
@@ -30,7 +31,9 @@ static bool setup_args(void **esp, char **argv, int *argc);
 tid_t process_execute(const char *cmdline) {
     char *cmdline_copy, *cmdline_copy2;
     tid_t tid;
-    char *file_name, *save_ptr;
+    char *file_name;
+    char *save_ptr, *token;
+    int argc = 0;
 
     /* Make a copy of CMDLINE.
        Otherwise there's a race between the caller and load(). */
@@ -44,7 +47,20 @@ tid_t process_execute(const char *cmdline) {
     if (cmdline_copy2 == NULL)
         return TID_ERROR;
     strlcpy(cmdline_copy2, cmdline, PGSIZE);
-    file_name = strtok_r(cmdline_copy2, " ", &save_ptr);
+    file_name = cmdline_copy2; /* initialize */
+
+    /* Count number of arguments and set max_args */
+    for (token = strtok_r(cmdline_copy2, " ", &save_ptr); token != NULL;
+         token = strtok_r(NULL, " ", &save_ptr)) {
+        if (argc == 0) {
+            file_name = token;
+        }
+        argc++;
+    }
+    if (argc > max_args) {
+        max_args = argc;
+    }
+
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(file_name, PRI_DEFAULT, start_process, cmdline_copy);
@@ -61,7 +77,7 @@ static void start_process(void *cmdline_) {
     bool success;
     char *file_name = cmdline;
     char *token, *save_ptr;
-    char *argv[MAX_ARGS + 2]; /* maximum three arguments + filename + null*/
+    char *argv[max_args + 2]; /* maximum three arguments + filename + null*/
     int argc = 0;
 
     /* Parse argument string */
@@ -72,7 +88,7 @@ static void start_process(void *cmdline_) {
             printf("%s:error - arg length too long\n", thread_current()->name);
         }
         /* Check that there are at most MAX_ARGS args */
-        if (argc > MAX_ARGS + 1) {
+        if (argc > max_args + 1) {
             printf("%s:error - too many args\n", thread_current()->name);
         }
 
@@ -512,7 +528,7 @@ static bool setup_stack(void **esp) {
     */
 static bool setup_args(void **esp, char **argv, int *argc) {
     char *esp_; /* stack pointer */
-    void *ptr[MAX_ARGS + 1];
+    void *ptr[max_args + 1];
     char *argv_0;
     char *null_term = "\0";
 
