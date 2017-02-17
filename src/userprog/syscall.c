@@ -171,14 +171,11 @@ pid_t sys_exec(const char *cmd_line) {
     if (!valid_read_addr(cmd_line)) {
         return ERR;
     }
-    sema_down(&filesys_lock);
     pid_t new_process_pid = process_execute(cmd_line);
     struct thread *cur = thread_current();
 
     /* Wait for executable to load. */
     sema_down(&cur->exec_load);
-    /* Release lock once loaded. */
-    sema_up(&filesys_lock);
 
     if (!cur->loaded) {
         /* Executable failed to load. */
