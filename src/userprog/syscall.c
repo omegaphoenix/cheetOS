@@ -237,6 +237,9 @@ int sys_filesize(int fd) {
 /*! Read *size* bytes from file open as fd into buffer. Return the number of
     bytes actually read, 0 at end of file, or -1 if file could not be read. */
 int sys_read(int fd, void *buffer, unsigned size) {
+    if (!valid_read_addr(buffer)) {
+        sys_exit(ERR);
+    }
     int bytes_read = 0;
     /* Pointer to point to current position in buffer */
     char *buff = (char *) buffer;
@@ -268,6 +271,9 @@ int sys_read(int fd, void *buffer, unsigned size) {
     number written, or 0 if no bytes could be written at all.
     Fd 1 writes to the console. */
 int sys_write(int fd, const void *buffer, unsigned size) {
+    if (!valid_read_addr(buffer)) {
+        sys_exit(ERR);
+    }
     int bytes_written = 0;
 
     /* Write to console */
