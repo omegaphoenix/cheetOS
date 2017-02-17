@@ -752,9 +752,9 @@ void thread_schedule_tail(struct thread *prev) {
         ASSERT(prev != cur);
         /* Let parent know kid is done */
         sema_up(&prev->wait_sema);
-        if (parent == NULL) {
+        if (prev->parent == NULL) {
             /* Don't need to wait for parent to kill kid */
-            palloc_free_page(kid);
+            palloc_free_page(prev);
         }
     }
 }
