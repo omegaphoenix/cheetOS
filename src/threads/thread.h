@@ -122,7 +122,7 @@ struct thread {
     struct list_elem lock_elem;         /*!< List element for lock's blocked_threads. */
     /**@}*/
 
-    /*! Shared beteween thread.c and userprog/syscall.c. */
+    /*! Shared between thread.c and userprog/syscall.c. */
     /**@{*/
     struct file *open_files[MAX_FD];    /*!< Open files. */
     /**@}*/
