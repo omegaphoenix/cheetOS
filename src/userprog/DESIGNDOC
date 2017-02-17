@@ -95,7 +95,9 @@ with the stack pointer. We then iterate through argv two times: the first time,
 we place the arguments on the stack and store pointers to their address in
 an array, ptr. The second time, we push the addresses onto the stack.
 
-To avoid overflowing the stack page, TODO.
+To avoid overflowing the stack page, we check the size of the
+arguments. We could allocate a new page if the arguments overflow but we have
+not implemented that.
 
 ---- RATIONALE ----
 
