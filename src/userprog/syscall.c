@@ -381,9 +381,9 @@ void sys_close(int fd) {
 
     /* File system call */
     lock_acquire(&cur->filesys_lock);
-    file_close(open_file);
     /* Delete file from thread */
     close_fd(cur, fd);
+    file_close(open_file);
     lock_release(&cur->filesys_lock);
 }
 
