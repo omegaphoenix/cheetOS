@@ -298,17 +298,18 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
     process_activate();
 
     /* Open executable file. */
-    sema_down(&filesys_lock);
+    struct thread *cur = thread_current();
+    sema_down(&cur->filesys_lock);
     file = filesys_open(file_name);
     if (file == NULL) {
-        sema_up(&filesys_lock);
+        sema_up(&cur->filesys_lock);
         printf("load: %s: open failed\n", file_name);
         goto done;
     }
 
     /* Deny writes to executables. */
     file_deny_write(file);
-    sema_up(&filesys_lock);
+    sema_up(&cur->filesys_lock);
     /* Keep file open as long as process is running to deny writes. */
     thread_current()->executable = file;
 
@@ -391,7 +392,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
 
 done:
     /* We arrive here whether the load is successful or not. */
-    sema_up(&filesys_lock);
+    sema_up(&cur->filesys_lock);
     return success;
 }
 

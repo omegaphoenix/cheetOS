@@ -363,18 +363,18 @@ void thread_exit(void) {
     }
 
     /* Free executable */
-    sema_down(&filesys_lock);
+    sema_down(&cur->filesys_lock);
     file_close(cur->executable);
-    sema_up(&filesys_lock);
+    sema_up(&cur->filesys_lock);
 
     /* Free all file buffers. */
     int i;
     for (i = 0; i < MAX_FD; i++) {
         struct file *open_file = cur->open_files[i];
         if (open_file != NULL) {
-            sema_down(&filesys_lock);
+            sema_down(&cur->filesys_lock);
             file_close(open_file);
-            sema_up(&filesys_lock);
+            sema_up(&cur->filesys_lock);
         }
     }
     cur->status = THREAD_DYING;
@@ -691,6 +691,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     /* Block process_wait of parent until this process is ready to die. */
     sema_init(&t->wait_sema, 0);
     sema_init(&t->exec_load, 0);
+    sema_init(&t->filesys_lock, 1);
     t->loaded = false;
 
     if (list_empty(&all_list)) {
