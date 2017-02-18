@@ -300,7 +300,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
     process_activate();
 
     /* Open executable file. */
-    sema_down(&t->filesys_lock);
+    lock_acquire(&t->filesys_lock);
     file = filesys_open(file_name);
     if (file == NULL) {
         printf("load: %s: open failed\n", file_name);
@@ -391,7 +391,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
 
 done:
     /* We arrive here whether the load is successful or not. */
-    sema_up(&t->filesys_lock);
+    lock_release(&t->filesys_lock);
     return success;
 }
 

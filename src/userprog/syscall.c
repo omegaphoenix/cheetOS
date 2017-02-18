@@ -197,10 +197,9 @@ bool sys_create(const char *file, unsigned initial_size) {
         sys_exit(ERR);
     }
     struct thread *cur = thread_current();
-    sema_down(&cur->filesys_lock);
-    ASSERT(cur->filesys_lock.value == 0);
+    lock_acquire(&cur->filesys_lock);
     bool success = filesys_create(file, initial_size);
-    sema_up(&cur->filesys_lock);
+    lock_release(&cur->filesys_lock);
     return success;
 }
 
@@ -210,10 +209,9 @@ bool sys_remove(const char *file) {
         sys_exit(ERR);
     }
     struct thread *cur = thread_current();
-    sema_down(&cur->filesys_lock);
-    ASSERT(cur->filesys_lock.value == 0);
+    lock_acquire(&cur->filesys_lock);
     bool success = filesys_remove(file);
-    sema_up(&cur->filesys_lock);
+    lock_release(&cur->filesys_lock);
     return success;
 }
 
@@ -223,27 +221,30 @@ int sys_open(const char *file) {
         sys_exit(ERR);
     }
     struct thread *cur = thread_current();
-    sema_down(&cur->filesys_lock);
-    ASSERT(cur->filesys_lock.value == 0);
+
+    /* File system call */
+    lock_acquire(&cur->filesys_lock);
     struct file *open_file = filesys_open(file);
+    lock_release(&cur->filesys_lock);
+
     if (open_file == NULL) {
-        sema_up(&cur->filesys_lock);
         return ERR;
     }
     int fd = next_fd(cur);
     fd = add_open_file(cur, open_file, fd);
-    sema_up(&cur->filesys_lock);
     return fd;
 }
 
 /*! Returns the size, in bytes, of the file open as fd. */
 int sys_filesize(int fd) {
     struct thread *cur = thread_current();
-    sema_down(&cur->filesys_lock);
-    ASSERT(cur->filesys_lock.value == 0);
     struct file *open_file = get_fd(cur, fd);
+
+    /* File system call */
+    lock_acquire(&cur->filesys_lock);
     int size = file_length(open_file);
-    sema_up(&cur->filesys_lock);
+    lock_release(&cur->filesys_lock);
+
     return size;
 }
 
@@ -258,8 +259,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
     char *buff = (char *) buffer;
 
     struct thread *cur = thread_current();
-    sema_down(&cur->filesys_lock);
-    ASSERT(cur->filesys_lock.value == 0);
+
     if (fd == STDIN_FILENO) {
         /* Read from keyboard input */
         while ((unsigned) bytes_read < size) {
@@ -267,17 +267,18 @@ int sys_read(int fd, void *buffer, unsigned size) {
             buff++;
             bytes_read++;
         }
-        sema_up(&cur->filesys_lock);
     } else if (is_existing_fd(cur, fd)) {
         struct file *open_file = get_fd(cur, fd);
         if (open_file == NULL) {
             sys_exit(ERR);
         }
+
+        /* File system call */
+        lock_acquire(&cur->filesys_lock);
         bytes_read = file_read(open_file, buffer, size);
-        sema_up(&cur->filesys_lock);
+        lock_release(&cur->filesys_lock);
     } else {
         sys_exit(ERR);
-        sema_up(&cur->filesys_lock);
     }
     return bytes_read;
 }
@@ -296,7 +297,6 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     int bytes_written = 0;
 
     struct thread *cur = thread_current();
-    sema_down(&cur->filesys_lock);
     if (fd == STDOUT_FILENO) {
         /* Write to console */
         size_t block_size = MAX_BUF_WRI;
@@ -310,16 +310,17 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         /* Write remaining bytes */
         putbuf(buffer + bytes_written, size - bytes_written);
         bytes_written = size;
-        sema_up(&cur->filesys_lock);
     } else if (is_existing_fd(cur, fd)) {
         struct file *open_file = get_fd(cur, fd);
         if (open_file == NULL) {
             sys_exit(ERR);
         }
+
+        /* File system call */
+        lock_acquire(&cur->filesys_lock);
         bytes_written = file_write(open_file, buffer, size);
-        sema_up(&cur->filesys_lock);
+        lock_release(&cur->filesys_lock);
     } else {
-        sema_up(&cur->filesys_lock);
         sys_exit(ERR);
     }
     return bytes_written;
@@ -329,15 +330,16 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     expressed in bytes from beginning of file. */
 void sys_seek(int fd, unsigned position) {
     struct thread *cur = thread_current();
-    sema_down(&cur->filesys_lock);
-    ASSERT(cur->filesys_lock.value == 0);
+
     struct file *open_file = get_fd(cur, fd);
     if (open_file == NULL) {
-        sema_up(&cur->filesys_lock);
         sys_exit(ERR);
     }
+
+    /* File system call */
+    lock_acquire(&cur->filesys_lock);
     file_seek(open_file, position);
-    sema_up(&cur->filesys_lock);
+    lock_release(&cur->filesys_lock);
 }
 
 
@@ -345,31 +347,33 @@ void sys_seek(int fd, unsigned position) {
     expressed in bytes from beginning of file. */
 unsigned sys_tell(int fd) {
     struct thread *cur = thread_current();
-    sema_down(&cur->filesys_lock);
-    ASSERT(cur->filesys_lock.value == 0);
     struct file *open_file = get_fd(cur, fd);
     if (open_file == NULL) {
         sys_exit(ERR);
-        sema_up(&cur->filesys_lock);
     }
+
+    /* File system call */
+    lock_acquire(&cur->filesys_lock);
     unsigned position = file_tell(open_file);
-    sema_up(&cur->filesys_lock);
+    lock_release(&cur->filesys_lock);
+
     return position;
 }
 
 /*! Close file descriptor fd. */
 void sys_close(int fd) {
     struct thread *cur = thread_current();
-    sema_down(&cur->filesys_lock);
-    ASSERT(cur->filesys_lock.value == 0);
     struct file *open_file = get_fd(cur, fd);
     if (open_file == NULL) {
-        sema_up(&cur->filesys_lock);
         sys_exit(ERR);
     }
-    file_close(open_file);
+
     close_fd(cur, fd);
-    sema_up(&cur->filesys_lock);
+
+    /* File system call */
+    lock_acquire(&cur->filesys_lock);
+    file_close(open_file);
+    lock_release(&cur->filesys_lock);
 }
 
 /* Returns true if addr is valid for reading */
