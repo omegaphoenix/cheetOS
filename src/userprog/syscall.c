@@ -195,7 +195,10 @@ bool sys_create(const char *file, unsigned initial_size) {
     if (!valid_read_addr((void *) file)) {
         sys_exit(ERR);
     }
+    struct thread *cur = thread_current();
+    sema_down(&cur->filesys_lock);
     bool success = filesys_create(file, initial_size);
+    sema_up(&cur->filesys_lock);
     return success;
 }
 
