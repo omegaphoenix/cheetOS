@@ -65,8 +65,10 @@ tid_t process_execute(const char *cmdline) {
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(file_name, PRI_DEFAULT, start_process, cmdline_copy);
-    if (tid == TID_ERROR)
+    if (tid == TID_ERROR) {
         palloc_free_page(cmdline_copy);
+    }
+    palloc_free_page(cmdline_copy2);
     return tid;
 }
 
@@ -299,14 +301,12 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
     sema_down(&filesys_lock);
     file = filesys_open(file_name);
     if (file == NULL) {
-        sema_up(&filesys_lock);
         printf("load: %s: open failed\n", file_name);
         goto done;
     }
 
     /* Deny writes to executables. */
     file_deny_write(file);
-    sema_up(&filesys_lock);
     /* Keep file open as long as process is running to deny writes. */
     thread_current()->executable = file;
 
@@ -389,6 +389,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
 
 done:
     /* We arrive here whether the load is successful or not. */
+    sema_up(&filesys_lock);
     return success;
 }
 
