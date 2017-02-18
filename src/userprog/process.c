@@ -45,8 +45,10 @@ tid_t process_execute(const char *cmdline) {
 
     /* Get FILE_NAME from CMDLINE */
     cmdline_copy2 = palloc_get_page(0);
-    if (cmdline_copy2 == NULL)
+    if (cmdline_copy2 == NULL) {
+        palloc_free_page(cmdline_copy2);
         return TID_ERROR;
+    }
     strlcpy(cmdline_copy2, cmdline, PGSIZE);
     file_name = cmdline_copy2; /* initialize */
 
@@ -67,8 +69,8 @@ tid_t process_execute(const char *cmdline) {
     tid = thread_create(file_name, PRI_DEFAULT, start_process, cmdline_copy);
     if (tid == TID_ERROR) {
         palloc_free_page(cmdline_copy);
+        palloc_free_page(cmdline_copy2);
     }
-    palloc_free_page(cmdline_copy2);
     return tid;
 }
 
