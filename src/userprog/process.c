@@ -67,9 +67,9 @@ tid_t process_execute(const char *cmdline) {
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(file_name, PRI_DEFAULT, start_process, cmdline_copy);
+    palloc_free_page(cmdline_copy2);
     if (tid == TID_ERROR) {
         palloc_free_page(cmdline_copy);
-        palloc_free_page(cmdline_copy2);
     }
     return tid;
 }
