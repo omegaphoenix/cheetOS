@@ -134,8 +134,9 @@ void sema_up(struct semaphore *sema) {
         thread_unblock(waiting_thread);
 
         /* Yield current thread if lower priority. */
-        if (max_priority >= thread_get_priority()
-            || !is_highest_priority(thread_get_priority())) {
+        if ((max_priority >= thread_get_priority()
+            || !is_highest_priority(thread_get_priority()))
+            && (!intr_context())) {
             thread_yield();
         }
 

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "devices/timer.h"
+#include "filesys/file.h"
 #include "threads/fixed_point.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
@@ -13,6 +14,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "userprog/syscall.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -36,9 +38,6 @@ static struct list sleep_list;
 
 /*! Idle thread. */
 static struct thread *idle_thread;
-
-/*! Initial thread, the thread running init.c:main(). */
-static struct thread *initial_thread;
 
 /*! Lock used by allocate_tid(). */
 static struct lock tid_lock;
@@ -260,6 +259,11 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     sf->eip = switch_entry;
     sf->ebp = 0;
 
+    /* Add new thread to parent's (current thread) list */
+    struct thread *parent = thread_current();
+    list_push_back(&parent->kids, &t->kid_elem);
+    t->parent = parent;
+
     /* Add to run queue. */
     int prev_highest_priority = get_highest_priority();
     thread_unblock(t);
@@ -340,9 +344,54 @@ void thread_exit(void) {
     /* Remove thread from all threads list, set our status to dying,
        and schedule another process.  That process will destroy us
        when it calls thread_schedule_tail(). */
+    struct thread *cur = thread_current();
     intr_disable();
-    list_remove(&thread_current()->allelem);
-    thread_current()->status = THREAD_DYING;
+    list_remove(&cur->allelem);
+
+    /* Free all locks. */
+    struct list_elem *e;
+    for (e = list_begin(&cur->locks_acquired);
+         e != list_end(&cur->locks_acquired);
+         e = list_next(e)) {
+        struct lock *lock = list_entry(e, struct lock, elem);
+        lock_release(lock);
+    }
+
+    /* Tell blocking lock we are no longer waiting for it. */
+    if (cur->blocking_lock != NULL) {
+        list_remove(&cur->lock_elem);
+    }
+
+    /* Free executable */
+    sema_down(&filesys_lock);
+    file_close(cur->executable);
+    sema_up(&filesys_lock);
+
+    /* Free all file buffers. */
+    int i;
+    for (i = 0; i < MAX_FD; i++) {
+        struct file *open_file = cur->open_files[i];
+        if (open_file != NULL) {
+            sema_down(&filesys_lock);
+            file_close(open_file);
+            sema_up(&filesys_lock);
+        }
+    }
+    cur->status = THREAD_DYING;
+
+    /* Let kids know that parent is dead so that their page is freed without
+       waiting for the parent to free them. Will be freed in
+       thread_schedule_tail() instead of process_wait().*/
+    for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
+         e = list_next(e)) {
+        struct thread *kid = list_entry(e, struct thread, kid_elem);
+        kid->parent = NULL;
+
+        if (kid != NULL && kid->status == THREAD_DYING
+            && kid != initial_thread) {
+            palloc_free_page(kid);
+        }
+    }
     schedule();
     NOT_REACHED();
 }
@@ -510,6 +559,59 @@ bool is_highest_priority(int test_priority) {
     return test_priority >= highest;
 }
 
+/*! Return true if fd is in range */
+bool is_valid_fd(int fd) {
+    int index = fd - CONSOLE_FD;
+    return index >= 0 && index < MAX_FD;
+}
+
+/*! Return true if fd is in range and exists */
+bool is_existing_fd(struct thread *cur, int fd) {
+    int index = fd - CONSOLE_FD;
+    return is_valid_fd(fd) && cur->open_files[index] != NULL;
+}
+
+/*! Get next fd. */
+int next_fd(struct thread *cur) {
+    int index = 0;
+    int fd;
+    while (index < MAX_FD) {
+        if (cur->open_files[index] == NULL) {
+            fd = index + CONSOLE_FD;
+            return fd;
+        }
+        index++;
+    }
+    return -1;
+}
+
+/*! Add file to open_files array. Return -1 if fails */
+int add_open_file(struct thread *cur, struct file *file, int fd) {
+    int index = fd - CONSOLE_FD;
+    if (is_valid_fd(fd)) {
+        cur->open_files[index] = file;
+        return fd;
+    }
+    return -1;
+}
+
+/*! Get file with file descriptor *fd*. */
+struct file *get_fd(struct thread *cur, int fd) {
+    if (is_existing_fd(cur, fd)) {
+        int index = fd - CONSOLE_FD;
+        struct file *open_file = cur->open_files[index];
+        return open_file;
+    }
+    return NULL;
+}
+
+/*! Close file with file descriptor *fd*. */
+void close_fd(struct thread *cur, int fd) {
+    ASSERT(is_existing_fd(cur, fd));
+    int index = fd - CONSOLE_FD;
+    cur->open_files[index] = NULL;
+}
+
 /*! Idle thread.  Executes when no other thread is ready to run.
 
     The idle thread is initially put on the ready list by thread_start().
@@ -581,9 +683,15 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     strlcpy(t->name, name, sizeof t->name);
     t->stack = (uint8_t *) t + PGSIZE;
     t->donated_priority = PRI_MIN;
+    t->exit_status = 0;
     t->magic = THREAD_MAGIC;
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
     list_init(&t->locks_acquired);
+    list_init(&t->kids);
+    /* Block process_wait of parent until this process is ready to die. */
+    sema_init(&t->wait_sema, 0);
+    sema_init(&t->exec_load, 0);
+    t->loaded = false;
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */
@@ -687,7 +795,12 @@ void thread_schedule_tail(struct thread *prev) {
     if (prev != NULL && prev->status == THREAD_DYING &&
         prev != initial_thread) {
         ASSERT(prev != cur);
-        palloc_free_page(prev);
+        /* Let parent know kid is done */
+        sema_up(&prev->wait_sema);
+        if (prev->parent == NULL) {
+            /* Don't need to wait for parent to kill kid */
+            palloc_free_page(prev);
+        }
     }
 }
 

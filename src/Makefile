@@ -1,11 +1,8 @@
 BUILD_SUBDIRS = threads userprog vm filesys
+CLEAN_SUBDIRS = $(BUILD_SUBDIRS) examples utils
 
 all::
-	@echo "To build specific assignments, run 'make' in the following"
-	@echo "subdirectories:  $(BUILD_SUBDIRS)."
-	@echo "This top-level make has only 'clean', 'docs' and 'tags' targets."
-
-CLEAN_SUBDIRS = $(BUILD_SUBDIRS) examples utils
+	for d in $(CLEAN_SUBDIRS); do $(MAKE) -C $$d $@; done
 
 clean::
 	for d in $(CLEAN_SUBDIRS); do $(MAKE) -C $$d $@; done
