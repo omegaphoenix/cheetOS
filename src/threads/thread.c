@@ -377,7 +377,6 @@ void thread_exit(void) {
             sema_up(&cur->filesys_lock);
         }
     }
-    cur->status = THREAD_DYING;
 
     /* Let kids know that parent is dead so that their page is freed without
        waiting for the parent to free them. Will be freed in
@@ -392,6 +391,7 @@ void thread_exit(void) {
             palloc_free_page(kid);
         }
     }
+    cur->status = THREAD_DYING;
     schedule();
     NOT_REACHED();
 }

@@ -301,14 +301,12 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
     sema_down(&t->filesys_lock);
     file = filesys_open(file_name);
     if (file == NULL) {
-        sema_up(&t->filesys_lock);
         printf("load: %s: open failed\n", file_name);
         goto done;
     }
 
     /* Deny writes to executables. */
     file_deny_write(file);
-    sema_up(&t->filesys_lock);
     /* Keep file open as long as process is running to deny writes. */
     thread_current()->executable = file;
 
