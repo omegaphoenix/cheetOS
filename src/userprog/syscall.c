@@ -132,7 +132,6 @@ void *get_arg(struct intr_frame *f, int num) {
     void *arg = f->esp + ARG_SIZE * num;
     if (!valid_read_addr(arg)) {
         sys_exit(ERR);
-        return NULL;
     }
     return arg;
 }
@@ -159,8 +158,8 @@ void sys_halt(void) {
 void sys_exit(int status) {
     struct thread *cur = thread_current();
     printf("%s: exit(%d)\n", cur->name, status);
-    cur->exit_status = status;
 
+    cur->exit_status = status;
     thread_exit();
 }
 
@@ -197,9 +196,12 @@ bool sys_create(const char *file, unsigned initial_size) {
         sys_exit(ERR);
     }
     struct thread *cur = thread_current();
+
+    /* File system call */
     lock_acquire(&cur->filesys_lock);
     bool success = filesys_create(file, initial_size);
     lock_release(&cur->filesys_lock);
+
     return success;
 }
 
@@ -209,9 +211,12 @@ bool sys_remove(const char *file) {
         sys_exit(ERR);
     }
     struct thread *cur = thread_current();
+
+    /* File system call */
     lock_acquire(&cur->filesys_lock);
     bool success = filesys_remove(file);
     lock_release(&cur->filesys_lock);
+
     return success;
 }
 
@@ -230,8 +235,11 @@ int sys_open(const char *file) {
     if (open_file == NULL) {
         return ERR;
     }
+    lock_acquire(&cur->filesys_lock);
     int fd = next_fd(cur);
     fd = add_open_file(cur, open_file, fd);
+    lock_release(&cur->filesys_lock);
+    ASSERT(fd > 1); /* Only for stdin and stdout */
     return fd;
 }
 
@@ -255,9 +263,8 @@ int sys_read(int fd, void *buffer, unsigned size) {
         sys_exit(ERR);
     }
     int bytes_read = 0;
-    /* Pointer to point to current position in buffer */
+    /* Pointer to current position in buffer */
     char *buff = (char *) buffer;
-
     struct thread *cur = thread_current();
 
     if (fd == STDIN_FILENO) {
@@ -280,6 +287,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
     } else {
         sys_exit(ERR);
     }
+
     return bytes_read;
 }
 
@@ -323,6 +331,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
     } else {
         sys_exit(ERR);
     }
+
     return bytes_written;
 }
 
@@ -347,6 +356,7 @@ void sys_seek(int fd, unsigned position) {
     expressed in bytes from beginning of file. */
 unsigned sys_tell(int fd) {
     struct thread *cur = thread_current();
+
     struct file *open_file = get_fd(cur, fd);
     if (open_file == NULL) {
         sys_exit(ERR);
@@ -363,16 +373,17 @@ unsigned sys_tell(int fd) {
 /*! Close file descriptor fd. */
 void sys_close(int fd) {
     struct thread *cur = thread_current();
+
     struct file *open_file = get_fd(cur, fd);
     if (open_file == NULL) {
         sys_exit(ERR);
     }
 
-    close_fd(cur, fd);
-
     /* File system call */
     lock_acquire(&cur->filesys_lock);
     file_close(open_file);
+    /* Delete file from thread */
+    close_fd(cur, fd);
     lock_release(&cur->filesys_lock);
 }
 
