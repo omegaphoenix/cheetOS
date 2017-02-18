@@ -7,6 +7,7 @@
 #include <string.h>
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
+#include "userprog/syscall.h"
 #include "userprog/tss.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
@@ -166,7 +167,9 @@ int process_wait(tid_t child_tid UNUSED) {
 
     /* If child thread is done, just get exit status. */
     int child_exit_status = kid->exit_status;
-    palloc_free_page(kid);
+    if (kid != initial_thread && kid->status == THREAD_DYING) {
+        palloc_free_page(kid);
+    }
 
     return child_exit_status;
 }
@@ -293,14 +296,17 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
     process_activate();
 
     /* Open executable file. */
+    sema_down(&filesys_lock);
     file = filesys_open(file_name);
     if (file == NULL) {
+        sema_up(&filesys_lock);
         printf("load: %s: open failed\n", file_name);
         goto done;
     }
 
     /* Deny writes to executables. */
     file_deny_write(file);
+    sema_up(&filesys_lock);
     /* Keep file open as long as process is running to deny writes. */
     thread_current()->executable = file;
 
