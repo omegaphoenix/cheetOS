@@ -188,9 +188,14 @@ void sys_exit(int status) {
     struct list_elem *e;
     for (e = list_begin(&cur->open_files);
          e != list_end(&cur->open_files);
-         e = list_next(e)) {
+         /* increment in loop */) {
         struct sys_file *open_file =
             list_entry(e, struct sys_file, file_elem);
+
+        /* Increment before removing. */
+        e = list_next(e);
+
+        /* File system call */
         acquire_file_lock();
         file_close(open_file->file);
         list_remove(&open_file->file_elem);

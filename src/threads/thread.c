@@ -363,8 +363,9 @@ void thread_exit(void) {
     struct list_elem *e;
     for (e = list_begin(&cur->locks_acquired);
          e != list_end(&cur->locks_acquired);
-         e = list_next(e)) {
+         /* increment in loop */) {
         struct lock *lock = list_entry(e, struct lock, elem);
+        e = list_next(e);
         lock_release(lock);
     }
 
@@ -378,8 +379,9 @@ void thread_exit(void) {
        waiting for the parent to free them. Will be freed in
        thread_schedule_tail() instead of process_wait().*/
     for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
-         e = list_next(e)) {
+         /* increment in loop */) {
         struct thread *kid = list_entry(e, struct thread, kid_elem);
+        e = list_next(e);
         kid->parent = NULL;
 
         if (kid != NULL && kid->status == THREAD_DYING
