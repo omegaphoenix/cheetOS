@@ -354,6 +354,11 @@ void thread_exit(void) {
     intr_disable();
     list_remove(&cur->allelem);
 
+    /* Tell blocking lock we are no longer waiting for it. */
+    if (cur->blocking_lock != NULL) {
+        list_remove(&cur->lock_elem);
+    }
+
     /* Free all locks. */
     struct list_elem *e;
     for (e = list_begin(&cur->locks_acquired);
@@ -361,11 +366,6 @@ void thread_exit(void) {
          e = list_next(e)) {
         struct lock *lock = list_entry(e, struct lock, elem);
         lock_release(lock);
-    }
-
-    /* Tell blocking lock we are no longer waiting for it. */
-    if (cur->blocking_lock != NULL) {
-        list_remove(&cur->lock_elem);
     }
 
     /* Executable should have been freed in sys_exit. */
@@ -721,6 +721,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     sema_init(&t->exec_load, 0);
     lock_init(&t->filesys_lock);
     t->loaded = false;
+    t->waited_on = true;
     t->num_files = 0;
 
     if (list_empty(&all_list)) {
@@ -827,6 +828,10 @@ void thread_schedule_tail(struct thread *prev) {
         ASSERT(prev != cur);
         /* Let parent know it is done. */
         sema_up(&prev->wait_sema);
+        while (!list_empty(&prev->wait_sema.waiters)) {
+            printf("more sema up\n");
+            sema_up(&prev->wait_sema);
+        }
         if (prev->parent == NULL) {
             /* Don't need to wait for parent to kill kid */
             palloc_free_page(prev);
