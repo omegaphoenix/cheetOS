@@ -185,10 +185,9 @@ void sys_exit(int status) {
     }
 
     /* Free executable */
-    acquire_file_lock();
-    file_close(cur->executable);
-    cur->executable = NULL;
-    release_file_lock();
+    if (cur->executable != NULL) {
+        file_allow_write(cur->executable);
+    }
 
     /* Free all file buffers. */
     struct list_elem *e;

@@ -369,9 +369,6 @@ void thread_exit(void) {
         lock_release(lock);
     }
 
-    /* Executable should have been freed in sys_exit. */
-    ASSERT(cur->executable == NULL);
-
     /* All file buffers should be freed in sys_exit. */
     ASSERT (list_empty(&cur->open_files));
 
