@@ -101,9 +101,15 @@ void sleep_threads() {
     }
 }
 
-/* Add thread to sleep_list */
+/* Add thread to sleep_list. */
 void add_sleep_thread(struct thread *t) {
 	list_push_back(&sleep_list, &t->sleep_elem);
+}
+
+/*! Returns the initial thread. This allows us to verify that a thread is not
+    the initial thread before freeing. */
+struct thread *get_initial_thread(void) {
+    return initial_thread;
 }
 
 /*! Initializes the threading system by transforming the code
@@ -362,22 +368,11 @@ void thread_exit(void) {
         list_remove(&cur->lock_elem);
     }
 
-    /* Free executable */
-    sema_down(&filesys_lock);
-    file_close(cur->executable);
-    sema_up(&filesys_lock);
+    /* Executable should have been freed in sys_exit. */
+    ASSERT(cur->executable == NULL);
 
-    /* Free all file buffers. */
-    int i;
-    for (i = 0; i < MAX_FD; i++) {
-        struct file *open_file = cur->open_files[i];
-        if (open_file != NULL) {
-            sema_down(&filesys_lock);
-            file_close(open_file);
-            sema_up(&filesys_lock);
-        }
-    }
-    cur->status = THREAD_DYING;
+    /* All file buffers should be freed in sys_exit. */
+    ASSERT (list_empty(&cur->open_files));
 
     /* Let kids know that parent is dead so that their page is freed without
        waiting for the parent to free them. Will be freed in
@@ -392,6 +387,7 @@ void thread_exit(void) {
             palloc_free_page(kid);
         }
     }
+    cur->status = THREAD_DYING;
     schedule();
     NOT_REACHED();
 }
@@ -559,57 +555,88 @@ bool is_highest_priority(int test_priority) {
     return test_priority >= highest;
 }
 
-/*! Return true if fd is in range */
+/*! Return true if fd is in range. */
 bool is_valid_fd(int fd) {
-    int index = fd - CONSOLE_FD;
-    return index >= 0 && index < MAX_FD;
+    return fd >= CONSOLE_FD;
 }
 
-/*! Return true if fd is in range and exists */
+/*! Return true if fd is in range and exists. */
 bool is_existing_fd(struct thread *cur, int fd) {
-    int index = fd - CONSOLE_FD;
-    return is_valid_fd(fd) && cur->open_files[index] != NULL;
+    if (!is_valid_fd(fd)) {
+        return false;
+    }
+
+    /* Check if fd is in open_files list. */
+    struct list_elem *e;
+    for (e = list_begin(&cur->open_files); e != list_end(&cur->open_files);
+         e = list_next(e)) {
+        struct sys_file *cur_file = list_entry(e, struct sys_file, file_elem);
+        if (cur_file->fd == fd) {
+            return true;
+        }
+    }
+
+    /* Didn't find fd. */
+    return false;
 }
 
 /*! Get next fd. */
 int next_fd(struct thread *cur) {
-    int index = 0;
-    int fd;
-    while (index < MAX_FD) {
-        if (cur->open_files[index] == NULL) {
-            fd = index + CONSOLE_FD;
-            return fd;
-        }
-        index++;
-    }
-    return -1;
+    int fd = cur->num_files + CONSOLE_FD;
+    cur->num_files++;
+    ASSERT (is_valid_fd(fd) && !is_existing_fd(cur, fd));
+    return fd;
 }
 
 /*! Add file to open_files array. Return -1 if fails */
 int add_open_file(struct thread *cur, struct file *file, int fd) {
-    int index = fd - CONSOLE_FD;
+    /* Initialize file */
+    struct sys_file *new_file = palloc_get_page(PAL_ZERO);
+    memset(new_file, 0, sizeof *new_file);
+    new_file->file = file;
+    new_file->fd = fd;
+
     if (is_valid_fd(fd)) {
-        cur->open_files[index] = file;
+        list_push_back(&cur->open_files, &new_file->file_elem);
         return fd;
     }
+
+    /* Couldn't find file. */
     return -1;
 }
 
 /*! Get file with file descriptor *fd*. */
 struct file *get_fd(struct thread *cur, int fd) {
-    if (is_existing_fd(cur, fd)) {
-        int index = fd - CONSOLE_FD;
-        struct file *open_file = cur->open_files[index];
-        return open_file;
+    struct sys_file *cur_file;
+    struct list_elem *e;
+    for (e = list_begin(&cur->open_files);
+         e != list_end(&cur->open_files);
+         e = list_next(e)) {
+        cur_file = list_entry(e, struct sys_file, file_elem);
+        if (cur_file->fd == fd) {
+            return cur_file->file;
+        }
     }
+
+    /* Couldn't find file. */
     return NULL;
 }
 
-/*! Close file with file descriptor *fd*. */
+/*! Close file with file descriptor *fd*. Assumes file is already closed so
+    just need to remove it from the thread's list. */
 void close_fd(struct thread *cur, int fd) {
     ASSERT(is_existing_fd(cur, fd));
-    int index = fd - CONSOLE_FD;
-    cur->open_files[index] = NULL;
+
+    struct list_elem *e;
+    for (e = list_begin(&cur->open_files); e != list_end(&cur->open_files);
+         e = list_next(e)) {
+        struct sys_file *cur_file = list_entry(e, struct sys_file, file_elem);
+        if (cur_file->fd == fd) {
+            list_remove(&cur_file->file_elem);
+            palloc_free_page(cur_file);
+            return;
+        }
+    }
 }
 
 /*! Idle thread.  Executes when no other thread is ready to run.
@@ -688,10 +715,13 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->sleep_counter = 0; /* set to 0 if thread is not sleeping */
     list_init(&t->locks_acquired);
     list_init(&t->kids);
+    list_init(&t->open_files);
     /* Block process_wait of parent until this process is ready to die. */
     sema_init(&t->wait_sema, 0);
     sema_init(&t->exec_load, 0);
+    lock_init(&t->filesys_lock);
     t->loaded = false;
+    t->num_files = 0;
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */
@@ -795,7 +825,7 @@ void thread_schedule_tail(struct thread *prev) {
     if (prev != NULL && prev->status == THREAD_DYING &&
         prev != initial_thread) {
         ASSERT(prev != cur);
-        /* Let parent know kid is done */
+        /* Let parent know it is done. */
         sema_up(&prev->wait_sema);
         if (prev->parent == NULL) {
             /* Don't need to wait for parent to kill kid */
