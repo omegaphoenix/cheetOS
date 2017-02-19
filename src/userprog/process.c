@@ -154,8 +154,7 @@ int process_wait(tid_t child_tid UNUSED) {
          e = list_next(e)) {
         kid = list_entry(e, struct thread, kid_elem);
         if (kid->tid == child_tid && !kid->waited_on) {
-            /* Remove so next time we look for this kid, we return -1. */
-            // list_remove(&kid->kid_elem);
+            /* Next time we look for this kid, we return -1. */
             kid->waited_on = true;
             break;
         }

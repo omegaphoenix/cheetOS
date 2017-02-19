@@ -721,7 +721,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     sema_init(&t->exec_load, 0);
     lock_init(&t->filesys_lock);
     t->loaded = false;
-    t->waited_on = true;
+    t->waited_on = false;
     t->num_files = 0;
 
     if (list_empty(&all_list)) {
@@ -829,7 +829,6 @@ void thread_schedule_tail(struct thread *prev) {
         /* Let parent know it is done. */
         sema_up(&prev->wait_sema);
         while (!list_empty(&prev->wait_sema.waiters)) {
-            printf("more sema up\n");
             sema_up(&prev->wait_sema);
         }
         if (prev->parent == NULL) {
