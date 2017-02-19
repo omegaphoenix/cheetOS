@@ -163,6 +163,28 @@ void sys_exit(int status) {
     printf("%s: exit(%d)\n", cur->name, status);
 
     cur->exit_status = status;
+    /* Free executable */
+    lock_acquire(&filesys_lock);
+    lock_acquire(&cur->filesys_lock);
+    file_close(cur->executable);
+    cur->executable = NULL;
+    lock_release(&filesys_lock);
+    lock_release(&cur->filesys_lock);
+
+    /* Free all file buffers. */
+    struct list_elem *e;
+    for (e = list_begin(&cur->open_files);
+         e != list_end(&cur->open_files);
+         e = list_next(e)) {
+        struct sys_file *open_file =
+            list_entry(e, struct sys_file, file_elem);
+        lock_acquire(&filesys_lock);
+        lock_acquire(&cur->filesys_lock);
+        file_close(open_file->file);
+        list_remove(&open_file->file_elem);
+        lock_release(&filesys_lock);
+        lock_release(&cur->filesys_lock);
+    }
     thread_exit();
 }
 
@@ -184,7 +206,6 @@ pid_t sys_exec(const char *cmd_line) {
 
     if (!cur->loaded) {
         /* Executable failed to load. */
-        lock_release(&cur->exec_load);
         return ERR;
     }
     return new_process_pid;

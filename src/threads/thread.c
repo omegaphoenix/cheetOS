@@ -365,21 +365,11 @@ void thread_exit(void) {
         list_remove(&cur->lock_elem);
     }
 
-    /* Free executable */
-    lock_acquire(&cur->filesys_lock);
-    file_close(cur->executable);
-    lock_release(&cur->filesys_lock);
+    /* Executable should have been freed. */
+    ASSERT(cur->executable == NULL);
 
-    /* Free all file buffers. */
-    for (e = list_begin(&cur->locks_acquired);
-         e != list_end(&cur->locks_acquired);
-         e = list_next(e)) {
-        struct sys_file *open_file =
-            list_entry(e, struct sys_file, file_elem);
-        lock_acquire(&cur->filesys_lock);
-        file_close(open_file->file);
-        lock_release(&cur->filesys_lock);
-    }
+    /* All file buffers should be freed. */
+    ASSERT (list_empty(&cur->open_files));
 
     /* Let kids know that parent is dead so that their page is freed without
        waiting for the parent to free them. Will be freed in

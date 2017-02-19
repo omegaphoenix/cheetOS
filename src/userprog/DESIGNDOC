@@ -131,9 +131,10 @@ can have two levels of validation.
 
 In our thread struct, we included these attributes and their following descriptions:
 
-  /*! Owned by userprog/syscall.c. */
+  /*! Shared between thread.c and userprog/syscall.c. */
   /**@{*/
-  struct file *open_files[MAX_FD];    /*!< Open files. */
+  int num_files;                      /*!< Number of open files. */
+  struct list open_files;             /*!< Open files. */
   /**@}*/
 
   /*! Shared between userprog/process.c and thread.c. */
