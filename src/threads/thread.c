@@ -343,16 +343,11 @@ tid_t thread_tid(void) {
 void thread_exit(void) {
     ASSERT(!intr_context());
 
-#ifdef USERPROG
-    process_exit();
-#endif
 
     /* Remove thread from all threads list, set our status to dying,
        and schedule another process.  That process will destroy us
        when it calls thread_schedule_tail(). */
     struct thread *cur = thread_current();
-    intr_disable();
-    list_remove(&cur->allelem);
 
     /* Tell blocking lock we are no longer waiting for it. */
     if (cur->blocking_lock != NULL) {
@@ -386,6 +381,13 @@ void thread_exit(void) {
             palloc_free_page(kid);
         }
     }
+
+#ifdef USERPROG
+    process_exit();
+#endif
+
+    intr_disable();
+    list_remove(&cur->allelem);
     cur->status = THREAD_DYING;
     schedule();
     NOT_REACHED();
