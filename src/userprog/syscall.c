@@ -154,13 +154,14 @@ void *get_third_arg(struct intr_frame *f) {
     return get_arg(f, 3);
 }
 
-/*! Acquire file locks. */
+/*! Acquire file locks. Need two because bochs might have files and their
+    static variables go out of memory. */
 void acquire_file_lock(void) {
     lock_acquire(&filesys_lock);
     lock_acquire(&thread_current()->filesys_lock);
 }
 
-/*! Acquire file locks. */
+/*! Release file locks. See comment in acquire_file_lock. */
 void release_file_lock(void) {
     lock_release(&filesys_lock);
     lock_release(&thread_current()->filesys_lock);
@@ -178,6 +179,11 @@ void sys_exit(int status) {
     printf("%s: exit(%d)\n", cur->name, status);
 
     cur->exit_status = status;
+
+    if (lock_held_by_current_thread(&filesys_lock)) {
+        release_file_lock();
+    }
+
     /* Free executable */
     acquire_file_lock();
     file_close(cur->executable);
@@ -196,10 +202,7 @@ void sys_exit(int status) {
         e = list_next(e);
 
         /* File system call */
-        acquire_file_lock();
-        file_close(open_file->file);
-        list_remove(&open_file->file_elem);
-        release_file_lock();
+        sys_close(open_file->fd);
     }
     thread_exit();
 }
