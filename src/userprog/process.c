@@ -171,7 +171,7 @@ int process_wait(tid_t child_tid UNUSED) {
 
     /* If child thread is done, just get exit status. */
     int child_exit_status = kid->exit_status;
-    if (kid != initial_thread && kid->status == THREAD_DYING) {
+    if (kid != get_initial_thread() && kid->status == THREAD_DYING) {
         palloc_free_page(kid);
     }
 
@@ -300,7 +300,6 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
     process_activate();
 
     /* Open executable file. */
-    lock_acquire(&t->filesys_lock);
     file = filesys_open(file_name);
     if (file == NULL) {
         printf("load: %s: open failed\n", file_name);
@@ -391,7 +390,6 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
 
 done:
     /* We arrive here whether the load is successful or not. */
-    lock_release(&t->filesys_lock);
     return success;
 }
 

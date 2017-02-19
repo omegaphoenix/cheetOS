@@ -106,6 +106,9 @@ void add_sleep_thread(struct thread *t) {
 	list_push_back(&sleep_list, &t->sleep_elem);
 }
 
+struct thread *get_initial_thread(void) {
+    return initial_thread;
+}
 /*! Initializes the threading system by transforming the code
     that's currently running into a thread.  This can't work in
     general and it is possible in this case only because loader.S
@@ -828,7 +831,7 @@ void thread_schedule_tail(struct thread *prev) {
     if (prev != NULL && prev->status == THREAD_DYING &&
         prev != initial_thread) {
         ASSERT(prev != cur);
-        /* Let parent know kid is done */
+        /* Let parent know it is done. */
         sema_up(&prev->wait_sema);
         if (prev->parent == NULL) {
             /* Don't need to wait for parent to kill kid */

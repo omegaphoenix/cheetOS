@@ -218,5 +218,7 @@ void close_fd(struct thread *cur, int fd);
 void add_sleep_thread(struct thread *);
 void sleep_threads(void);
 
+struct thread *get_initial_thread(void);
+
 #endif /* threads/thread.h */
 
