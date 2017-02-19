@@ -39,14 +39,15 @@ tid_t process_execute(const char *cmdline) {
     /* Make a copy of CMDLINE.
        Otherwise there's a race between the caller and load(). */
     cmdline_copy = palloc_get_page(0);
-    if (cmdline_copy == NULL)
+    if (cmdline_copy == NULL) {
         return TID_ERROR;
+    }
     strlcpy(cmdline_copy, cmdline, PGSIZE);
 
     /* Get FILE_NAME from CMDLINE */
     cmdline_copy2 = palloc_get_page(0);
     if (cmdline_copy2 == NULL) {
-        palloc_free_page(cmdline_copy2);
+        palloc_free_page(cmdline_copy);
         return TID_ERROR;
     }
     strlcpy(cmdline_copy2, cmdline, PGSIZE);
@@ -159,15 +160,16 @@ int process_wait(tid_t child_tid UNUSED) {
         }
     }
 
-    /* Check if no kid with child_tid */
+    /* Check if no kid with child_tid. */
     if (kid == NULL || kid->tid != child_tid) {
         return -1;
     }
 
-    /* Wait for child thread to die */
-    if (kid->status != THREAD_DYING) {
-        sema_down(&kid->wait_sema);
-    }
+    /* Wait for child thread to die. */
+    sema_down(&kid->wait_sema);
+
+    /* Thread exit should have already been called. */
+    ASSERT(kid->status == THREAD_DYING);
 
     /* If child thread is done, just get exit status. */
     int child_exit_status = kid->exit_status;

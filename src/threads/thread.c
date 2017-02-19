@@ -101,14 +101,17 @@ void sleep_threads() {
     }
 }
 
-/* Add thread to sleep_list */
+/* Add thread to sleep_list. */
 void add_sleep_thread(struct thread *t) {
 	list_push_back(&sleep_list, &t->sleep_elem);
 }
 
+/*! Returns the initial thread. This allows us to verify that a thread is not
+    the initial thread before freeing. */
 struct thread *get_initial_thread(void) {
     return initial_thread;
 }
+
 /*! Initializes the threading system by transforming the code
     that's currently running into a thread.  This can't work in
     general and it is possible in this case only because loader.S
@@ -365,10 +368,10 @@ void thread_exit(void) {
         list_remove(&cur->lock_elem);
     }
 
-    /* Executable should have been freed. */
+    /* Executable should have been freed in sys_exit. */
     ASSERT(cur->executable == NULL);
 
-    /* All file buffers should be freed. */
+    /* All file buffers should be freed in sys_exit. */
     ASSERT (list_empty(&cur->open_files));
 
     /* Let kids know that parent is dead so that their page is freed without
@@ -552,18 +555,18 @@ bool is_highest_priority(int test_priority) {
     return test_priority >= highest;
 }
 
-/*! Return true if fd is in range */
+/*! Return true if fd is in range. */
 bool is_valid_fd(int fd) {
     return fd >= CONSOLE_FD;
 }
 
-/*! Return true if fd is in range and exists */
+/*! Return true if fd is in range and exists. */
 bool is_existing_fd(struct thread *cur, int fd) {
     if (!is_valid_fd(fd)) {
         return false;
     }
 
-    /* Check if fd is in open */
+    /* Check if fd is in open_files list. */
     struct list_elem *e;
     for (e = list_begin(&cur->open_files); e != list_end(&cur->open_files);
          e = list_next(e)) {
@@ -607,8 +610,8 @@ struct file *get_fd(struct thread *cur, int fd) {
     struct sys_file *cur_file;
     struct list_elem *e;
     for (e = list_begin(&cur->open_files);
-            e != list_end(&cur->open_files);
-            e = list_next(e)) {
+         e != list_end(&cur->open_files);
+         e = list_next(e)) {
         cur_file = list_entry(e, struct sys_file, file_elem);
         if (cur_file->fd == fd) {
             return cur_file->file;
@@ -619,7 +622,8 @@ struct file *get_fd(struct thread *cur, int fd) {
     return NULL;
 }
 
-/*! Close file with file descriptor *fd*. */
+/*! Close file with file descriptor *fd*. Assumes file is already closed so
+    just need to remove it from the thread's list. */
 void close_fd(struct thread *cur, int fd) {
     ASSERT(is_existing_fd(cur, fd));
 

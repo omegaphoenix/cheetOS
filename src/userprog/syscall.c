@@ -13,7 +13,10 @@
 #include "threads/vaddr.h"
 #include "userprog/process.h"
 
+/* Protect filesys calls. */
 struct lock filesys_lock;
+void acquire_file_lock(void);
+void release_file_lock(void);
 
 static void syscall_handler(struct intr_frame *);
 
@@ -151,6 +154,18 @@ void *get_third_arg(struct intr_frame *f) {
     return get_arg(f, 3);
 }
 
+/*! Acquire file locks. */
+void acquire_file_lock(void) {
+    lock_acquire(&filesys_lock);
+    lock_acquire(&thread_current()->filesys_lock);
+}
+
+/*! Acquire file locks. */
+void release_file_lock(void) {
+    lock_release(&filesys_lock);
+    lock_release(&thread_current()->filesys_lock);
+}
+
 /*! Terminates Pintos. Should be seldom used due to loss of information on
     possible deadlock situations, etc. */
 void sys_halt(void) {
@@ -164,12 +179,10 @@ void sys_exit(int status) {
 
     cur->exit_status = status;
     /* Free executable */
-    lock_acquire(&filesys_lock);
-    lock_acquire(&cur->filesys_lock);
+    acquire_file_lock();
     file_close(cur->executable);
     cur->executable = NULL;
-    lock_release(&filesys_lock);
-    lock_release(&cur->filesys_lock);
+    release_file_lock();
 
     /* Free all file buffers. */
     struct list_elem *e;
@@ -178,12 +191,10 @@ void sys_exit(int status) {
          e = list_next(e)) {
         struct sys_file *open_file =
             list_entry(e, struct sys_file, file_elem);
-        lock_acquire(&filesys_lock);
-        lock_acquire(&cur->filesys_lock);
+        acquire_file_lock();
         file_close(open_file->file);
         list_remove(&open_file->file_elem);
-        lock_release(&filesys_lock);
-        lock_release(&cur->filesys_lock);
+        release_file_lock();
     }
     thread_exit();
 }
@@ -195,14 +206,12 @@ pid_t sys_exec(const char *cmd_line) {
         return ERR;
     }
     struct thread *cur = thread_current();
-    lock_acquire(&cur->filesys_lock);
-    lock_acquire(&filesys_lock);
+    acquire_file_lock();
     pid_t new_process_pid = process_execute(cmd_line);
 
     /* Wait for executable to load. */
     sema_down(&cur->exec_load);
-    lock_release(&cur->filesys_lock);
-    lock_release(&filesys_lock);
+    release_file_lock();
 
     if (!cur->loaded) {
         /* Executable failed to load. */
@@ -223,14 +232,11 @@ bool sys_create(const char *file, unsigned initial_size) {
     if (!valid_read_addr((void *) file)) {
         sys_exit(ERR);
     }
-    struct thread *cur = thread_current();
 
     /* File system call */
-    lock_acquire(&cur->filesys_lock);
-    lock_acquire(&filesys_lock);
+    acquire_file_lock();
     bool success = filesys_create(file, initial_size);
-    lock_release(&cur->filesys_lock);
-    lock_release(&filesys_lock);
+    release_file_lock();
 
     return success;
 }
@@ -240,14 +246,11 @@ bool sys_remove(const char *file) {
     if (!valid_read_addr((void *) file)) {
         sys_exit(ERR);
     }
-    struct thread *cur = thread_current();
 
     /* File system call */
-    lock_acquire(&cur->filesys_lock);
-    lock_acquire(&filesys_lock);
+    acquire_file_lock();
     bool success = filesys_remove(file);
-    lock_release(&cur->filesys_lock);
-    lock_release(&filesys_lock);
+    release_file_lock();
 
     return success;
 }
@@ -260,18 +263,15 @@ int sys_open(const char *file) {
     struct thread *cur = thread_current();
 
     /* File system call */
-    lock_acquire(&cur->filesys_lock);
-    lock_acquire(&filesys_lock);
+    acquire_file_lock();
     struct file *open_file = filesys_open(file);
     if (open_file == NULL) {
-        lock_release(&cur->filesys_lock);
-        lock_release(&filesys_lock);
+        release_file_lock();
         return ERR;
     }
     int fd = next_fd(cur);
     fd = add_open_file(cur, open_file, fd);
-    lock_release(&cur->filesys_lock);
-    lock_release(&filesys_lock);
+    release_file_lock();
 
     ASSERT(fd > 1); /* Only for stdin and stdout */
     return fd;
@@ -283,11 +283,9 @@ int sys_filesize(int fd) {
     struct file *open_file = get_fd(cur, fd);
 
     /* File system call */
-    lock_acquire(&cur->filesys_lock);
-    lock_acquire(&filesys_lock);
+    acquire_file_lock();
     int size = file_length(open_file);
-    lock_release(&cur->filesys_lock);
-    lock_release(&filesys_lock);
+    release_file_lock();
 
     return size;
 }
@@ -312,18 +310,15 @@ int sys_read(int fd, void *buffer, unsigned size) {
         }
     } else if (is_existing_fd(cur, fd)) {
         /* File system call */
-        lock_acquire(&cur->filesys_lock);
-        lock_acquire(&filesys_lock);
+        acquire_file_lock();
         struct file *open_file = get_fd(cur, fd);
         if (open_file == NULL) {
-            lock_release(&cur->filesys_lock);
-            lock_release(&filesys_lock);
+            release_file_lock();
             return ERR;
         }
 
         bytes_read = file_read(open_file, buffer, size);
-        lock_release(&cur->filesys_lock);
-        lock_release(&filesys_lock);
+        release_file_lock();
     } else {
         sys_exit(ERR);
     }
@@ -365,11 +360,9 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         }
 
         /* File system call */
-        lock_acquire(&cur->filesys_lock);
-        lock_acquire(&filesys_lock);
+        acquire_file_lock();
         bytes_written = file_write(open_file, buffer, size);
-        lock_release(&cur->filesys_lock);
-        lock_release(&filesys_lock);
+        release_file_lock();
     } else {
         sys_exit(ERR);
     }
@@ -388,11 +381,9 @@ void sys_seek(int fd, unsigned position) {
     }
 
     /* File system call */
-    lock_acquire(&cur->filesys_lock);
-    lock_acquire(&filesys_lock);
+    acquire_file_lock();
     file_seek(open_file, position);
-    lock_release(&cur->filesys_lock);
-    lock_release(&filesys_lock);
+    release_file_lock();
 }
 
 
@@ -407,11 +398,9 @@ unsigned sys_tell(int fd) {
     }
 
     /* File system call */
-    lock_acquire(&cur->filesys_lock);
-    lock_acquire(&filesys_lock);
+    acquire_file_lock();
     unsigned position = file_tell(open_file);
-    lock_release(&cur->filesys_lock);
-    lock_release(&filesys_lock);
+    release_file_lock();
 
     return position;
 }
@@ -426,13 +415,11 @@ void sys_close(int fd) {
     }
 
     /* File system call */
-    lock_acquire(&cur->filesys_lock);
-    lock_acquire(&filesys_lock);
+    acquire_file_lock();
     /* Delete file from thread */
     close_fd(cur, fd);
     file_close(open_file);
-    lock_release(&cur->filesys_lock);
-    lock_release(&filesys_lock);
+    release_file_lock();
 }
 
 /* Returns true if addr is valid for reading */

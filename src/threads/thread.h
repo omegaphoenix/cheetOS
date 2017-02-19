@@ -129,7 +129,7 @@ struct thread {
 
     /*! Shared between thread.c and userprog/syscall.c. */
     /**@{*/
-    int num_files;                      /*!< Number of open files. */
+    int num_files;                      /*!< Number of open files (counting closed ones). */
     struct list open_files;             /*!< Open files. */
     /**@}*/
 
