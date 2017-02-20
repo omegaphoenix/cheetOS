@@ -604,6 +604,10 @@ int next_fd(struct thread *cur) {
 int add_open_file(struct thread *cur, struct file *file, int fd) {
     /* Initialize file */
     struct sys_file *new_file = palloc_get_page(PAL_ZERO);
+    /* Not enough memory. */
+    if (new_file == NULL) {
+        return -1;
+    }
     memset(new_file, 0, sizeof *new_file);
     new_file->file = file;
     new_file->fd = fd;
