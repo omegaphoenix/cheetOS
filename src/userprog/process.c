@@ -39,14 +39,17 @@ tid_t process_execute(const char *cmdline) {
     /* Make a copy of CMDLINE.
        Otherwise there's a race between the caller and load(). */
     cmdline_copy = palloc_get_page(0);
-    if (cmdline_copy == NULL)
+    if (cmdline_copy == NULL) {
         return TID_ERROR;
+    }
     strlcpy(cmdline_copy, cmdline, PGSIZE);
 
     /* Get FILE_NAME from CMDLINE */
     cmdline_copy2 = palloc_get_page(0);
-    if (cmdline_copy2 == NULL)
+    if (cmdline_copy2 == NULL) {
+        palloc_free_page(cmdline_copy);
         return TID_ERROR;
+    }
     strlcpy(cmdline_copy2, cmdline, PGSIZE);
     file_name = cmdline_copy2; /* initialize */
 
@@ -65,8 +68,10 @@ tid_t process_execute(const char *cmdline) {
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(file_name, PRI_DEFAULT, start_process, cmdline_copy);
-    if (tid == TID_ERROR)
+    palloc_free_page(cmdline_copy2);
+    if (tid == TID_ERROR) {
         palloc_free_page(cmdline_copy);
+    }
     return tid;
 }
 
@@ -121,7 +126,7 @@ static void start_process(void *cmdline_) {
 
     /* If load failed, quit. */
     if (!success) {
-        thread_exit();
+        sys_exit(-1);
     }
 
     /* Start the user process by simulating a return from an
@@ -148,26 +153,29 @@ int process_wait(tid_t child_tid UNUSED) {
     for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
          e = list_next(e)) {
         kid = list_entry(e, struct thread, kid_elem);
-        if (kid->tid == child_tid) {
-            /* Remove so next time we look for this kid, we return -1. */
-            list_remove(&kid->kid_elem);
+        if (kid->tid == child_tid && !kid->waited_on) {
+            /* Next time we look for this kid, we return -1. */
+            kid->waited_on = true;
             break;
         }
     }
 
-    /* Check if no kid with child_tid */
+    /* Check if no kid with child_tid. */
     if (kid == NULL || kid->tid != child_tid) {
         return -1;
     }
 
-    /* Wait for child thread to die */
-    if (kid->status != THREAD_DYING) {
-        sema_down(&kid->wait_sema);
-    }
+    /* Wait for child thread to die. */
+    sema_down(&kid->wait_sema);
+
+    /* Thread exit should have already been called. */
+    ASSERT(kid->status == THREAD_DYING);
 
     /* If child thread is done, just get exit status. */
     int child_exit_status = kid->exit_status;
-    if (kid != initial_thread && kid->status == THREAD_DYING) {
+    kid->parent = NULL;
+    list_remove(&kid->kid_elem);
+    if (kid != get_initial_thread() && kid->status == THREAD_DYING) {
         palloc_free_page(kid);
     }
 
@@ -296,17 +304,14 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
     process_activate();
 
     /* Open executable file. */
-    sema_down(&filesys_lock);
     file = filesys_open(file_name);
     if (file == NULL) {
-        sema_up(&filesys_lock);
         printf("load: %s: open failed\n", file_name);
         goto done;
     }
 
     /* Deny writes to executables. */
     file_deny_write(file);
-    sema_up(&filesys_lock);
     /* Keep file open as long as process is running to deny writes. */
     thread_current()->executable = file;
 

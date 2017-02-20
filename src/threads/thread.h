@@ -11,6 +11,13 @@
 #include <stdint.h>
 #include "synch.h"
 
+/* Open file. This is for a linked list of open files in each thread. */
+struct sys_file {
+    struct file *file;
+    int fd;
+    struct list_elem file_elem;
+};
+
 /*! Initial thread, the thread running init.c:main(). */
 struct thread *initial_thread;
 
@@ -34,8 +41,6 @@ typedef int tid_t;
 
 /* Open files' file descriptors. */
 #define CONSOLE_FD 2                    /*!< fd 0 and 1 reserved. */
-/* Assignment asked for 128 but stack overflowing. */
-#define MAX_FD 64                       /*!< Max num of open files. */
 
 /*! A kernel thread or user process.
 
@@ -124,7 +129,8 @@ struct thread {
 
     /*! Shared between thread.c and userprog/syscall.c. */
     /**@{*/
-    struct file *open_files[MAX_FD];    /*!< Open files. */
+    int num_files;                      /*!< Number of open files (counting closed ones). */
+    struct list open_files;             /*!< Open files. */
     /**@}*/
 
     /*! Shared between userprog/process.c and thread.c. */
@@ -133,6 +139,7 @@ struct thread {
     struct list kids;                   /*!< List of children processes. */
     struct list_elem kid_elem;          /*!< List element for parent's kids list. */
     struct semaphore wait_sema;         /*!< Sempahore for process_wait. */
+    bool waited_on;                     /*!< True if process_wait has been called. */
     /**@}*/
 
     /*! Shared between by userprog/process.c and userprog.syscall.c and
@@ -142,6 +149,7 @@ struct thread {
     struct semaphore exec_load;         /*!< Semaphore for checking when executable has loaded. */
     bool loaded;                        /*!< Check if exec loaded successfully. */
     struct file *executable;            /*!< Executable to keep open until done. */
+    struct lock filesys_lock;           /*!< Lock for filesys calls. */
     /**@}*/
 
 #ifdef USERPROG
@@ -210,6 +218,8 @@ void close_fd(struct thread *cur, int fd);
 
 void add_sleep_thread(struct thread *);
 void sleep_threads(void);
+
+struct thread *get_initial_thread(void);
 
 #endif /* threads/thread.h */
 
