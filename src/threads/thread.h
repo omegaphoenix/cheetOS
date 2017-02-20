@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include "synch.h"
 
-/* Open file. */
+/* Open file. This is for a linked list of open files in each thread. */
 struct sys_file {
     struct file *file;
     int fd;
