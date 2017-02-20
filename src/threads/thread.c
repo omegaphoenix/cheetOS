@@ -649,6 +649,7 @@ void close_fd(struct thread *cur, int fd) {
         struct sys_file *cur_file = list_entry(e, struct sys_file, file_elem);
         if (cur_file->fd == fd) {
             list_remove(&cur_file->file_elem);
+            file_close(cur_file->file);
             palloc_free_page(cur_file);
             return;
         }

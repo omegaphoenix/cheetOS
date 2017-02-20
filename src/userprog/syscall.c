@@ -416,7 +416,6 @@ void sys_close(int fd) {
     acquire_file_lock();
     /* Delete file from thread */
     close_fd(cur, fd);
-    file_close(open_file);
     release_file_lock();
 }
 
