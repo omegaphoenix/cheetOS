@@ -112,6 +112,20 @@ struct thread *get_initial_thread(void) {
     return initial_thread;
 }
 
+/*! Returns the child thread with this tid. */
+struct thread *get_child_thread(tid_t child_tid) {
+    struct thread *cur = thread_current();
+    struct list_elem *e;
+    for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
+         e = list_next(e)) {
+        struct thread *kid = list_entry(e, struct thread, kid_elem);
+        if (kid->tid == child_tid) {
+            return kid;
+        }
+    }
+    return NULL;
+}
+
 /*! Initializes the threading system by transforming the code
     that's currently running into a thread.  This can't work in
     general and it is possible in this case only because loader.S
@@ -720,7 +734,6 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     list_init(&t->open_files);
     /* Block process_wait of parent until this process is ready to die. */
     sema_init(&t->wait_sema, 0);
-    sema_init(&t->exec_load, 0);
     lock_init(&t->filesys_lock);
     t->loaded = false;
     t->waited_on = false;

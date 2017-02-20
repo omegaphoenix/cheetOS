@@ -68,6 +68,9 @@ tid_t process_execute(const char *cmdline) {
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(file_name, PRI_DEFAULT, start_process, cmdline_copy);
+
+    struct thread *kid = get_child_thread(tid);
+    sema_down(&kid->wait_sema);
     palloc_free_page(cmdline_copy2);
     if (tid == TID_ERROR) {
         palloc_free_page(cmdline_copy);
@@ -120,13 +123,14 @@ static void start_process(void *cmdline_) {
     palloc_free_page(file_name);
 
     /* Let sys_exec know loading is done and if it was successful. */
-    struct thread *parent = thread_current()->parent;
+    struct thread *cur = thread_current();
+    struct thread *parent = cur->parent;
     parent->loaded = success;
-    sema_up(&parent->exec_load);
+    sema_up(&cur->wait_sema);
 
     /* If load failed, quit. */
     if (!success) {
-        sys_exit(-1);
+        thread_exit();
     }
 
     /* Start the user process by simulating a return from an
@@ -189,7 +193,7 @@ void process_exit(void) {
 
     /* Free executable */
     if (cur->executable != NULL) {
-        file_allow_write(cur->executable);
+        file_close(cur->executable);
     }
 
     /* Destroy the current process's page directory and switch back

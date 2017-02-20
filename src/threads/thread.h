@@ -220,6 +220,7 @@ void add_sleep_thread(struct thread *);
 void sleep_threads(void);
 
 struct thread *get_initial_thread(void);
+struct thread *get_child_thread(tid_t child_tid);
 
 #endif /* threads/thread.h */
 

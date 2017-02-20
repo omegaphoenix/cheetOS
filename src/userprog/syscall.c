@@ -201,7 +201,6 @@ pid_t sys_exec(const char *cmd_line) {
     pid_t new_process_pid = process_execute(cmd_line);
 
     /* Wait for executable to load. */
-    sema_down(&cur->exec_load);
     release_file_lock();
 
     if (!cur->loaded) {
