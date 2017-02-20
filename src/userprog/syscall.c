@@ -177,30 +177,14 @@ void sys_halt(void) {
 void sys_exit(int status) {
     struct thread *cur = thread_current();
     printf("%s: exit(%d)\n", cur->name, status);
-
     cur->exit_status = status;
-
-    if (lock_held_by_current_thread(&filesys_lock)) {
-        release_file_lock();
-    }
-
-    /* Free executable */
-    if (cur->executable != NULL) {
-        file_allow_write(cur->executable);
-    }
 
     /* Free all file buffers. */
     struct list_elem *e;
-    for (e = list_begin(&cur->open_files);
-         e != list_end(&cur->open_files);
-         /* increment in loop */) {
+    while (!list_empty(&cur->open_files)) {
+        e = list_begin(&cur->open_files);
         struct sys_file *open_file =
             list_entry(e, struct sys_file, file_elem);
-
-        /* Increment before removing. */
-        e = list_next(e);
-
-        /* File system call */
         sys_close(open_file->fd);
     }
     thread_exit();

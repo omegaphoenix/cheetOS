@@ -153,11 +153,14 @@ int process_wait(tid_t child_tid UNUSED) {
     for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
          e = list_next(e)) {
         kid = list_entry(e, struct thread, kid_elem);
+        lock_acquire(&kid->filesys_lock);
         if (kid->tid == child_tid && !kid->waited_on) {
             /* Next time we look for this kid, we return -1. */
             kid->waited_on = true;
+            lock_release(&kid->filesys_lock);
             break;
         }
+        lock_release(&kid->filesys_lock);
     }
 
     /* Check if no kid with child_tid. */
@@ -167,9 +170,6 @@ int process_wait(tid_t child_tid UNUSED) {
 
     /* Wait for child thread to die. */
     sema_down(&kid->wait_sema);
-
-    /* Thread exit should have already been called. */
-    ASSERT(kid->status == THREAD_DYING);
 
     /* If child thread is done, just get exit status. */
     int child_exit_status = kid->exit_status;
@@ -186,6 +186,11 @@ int process_wait(tid_t child_tid UNUSED) {
 void process_exit(void) {
     struct thread *cur = thread_current();
     uint32_t *pd;
+
+    /* Free executable */
+    if (cur->executable != NULL) {
+        file_allow_write(cur->executable);
+    }
 
     /* Destroy the current process's page directory and switch back
        to the kernel-only page directory. */
