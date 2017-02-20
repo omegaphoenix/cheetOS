@@ -608,7 +608,7 @@ int add_open_file(struct thread *cur, struct file *file, int fd) {
     new_file->file = file;
     new_file->fd = fd;
 
-    if (is_valid_fd(fd)) {
+    if (is_valid_fd(fd) && !is_existing_fd(cur, fd)) {
         list_push_back(&cur->open_files, &new_file->file_elem);
         return fd;
     }

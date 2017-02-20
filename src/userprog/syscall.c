@@ -179,6 +179,10 @@ void sys_exit(int status) {
     printf("%s: exit(%d)\n", cur->name, status);
     cur->exit_status = status;
 
+    if (lock_held_by_current_thread(&filesys_lock)) {
+        release_file_lock();
+    }
+
     /* Free all file buffers. */
     struct list_elem *e;
     while (!list_empty(&cur->open_files)) {
