@@ -190,6 +190,7 @@ void process_exit(void) {
     if (cur->executable != NULL) {
         file_close(cur->executable);
     }
+    cur->executable = NULL;
 
     /* Let parent know it is done. */
     sema_up(&cur->wait_sema);
