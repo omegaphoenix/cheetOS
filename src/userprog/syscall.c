@@ -267,7 +267,11 @@ int sys_open(const char *file) {
     fd = add_open_file(cur, open_file, fd);
     release_file_lock();
 
-    ASSERT(fd > 1); /* Only for stdin and stdout */
+    if (fd == -1) {
+        acquire_file_lock();
+        file_close(open_file);
+        release_file_lock();
+    }
     return fd;
 }
 
