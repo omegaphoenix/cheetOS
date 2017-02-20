@@ -378,6 +378,7 @@ void thread_exit(void) {
 
         if (kid != NULL && kid->status == THREAD_DYING
             && kid != initial_thread) {
+            list_remove(&kid->kid_elem);
             palloc_free_page(kid);
         }
     }
