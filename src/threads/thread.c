@@ -283,6 +283,8 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     struct thread *parent = thread_current();
     list_push_back(&parent->kids, &t->kid_elem);
     t->parent = parent;
+    ASSERT(t->done_sema.value == 1);
+    sema_down(&t->done_sema);
 
     /* Add to run queue. */
     int prev_highest_priority = get_highest_priority();
@@ -382,19 +384,13 @@ void thread_exit(void) {
     ASSERT (list_empty(&cur->open_files));
 
     /* Let kids know that parent is dead so that their page is freed without
-       waiting for the parent to free them. Will be freed in
-       thread_schedule_tail() instead of process_wait().*/
-    for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
-         /* increment in loop */) {
+       waiting for the parent. Will be freed in thread_schedule_tail().*/
+    while (!list_empty(&cur->kids)) {
+        e = list_begin(&cur->kids);
         struct thread *kid = list_entry(e, struct thread, kid_elem);
-        e = list_next(e);
         kid->parent = NULL;
-
-        if (kid != NULL && kid->status == THREAD_DYING
-            && kid != initial_thread) {
-            list_remove(&kid->kid_elem);
-            palloc_free_page(kid);
-        }
+        sema_up(&kid->done_sema);
+        list_remove(&kid->kid_elem);
     }
 
 #ifdef USERPROG
@@ -734,10 +730,12 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     list_init(&t->open_files);
     /* Block process_wait of parent until this process is ready to die. */
     sema_init(&t->wait_sema, 0);
+    sema_init(&t->done_sema, 1);
     lock_init(&t->filesys_lock);
     t->loaded = false;
     t->waited_on = false;
     t->num_files = 0;
+    t->parent = NULL;
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */
@@ -841,12 +839,7 @@ void thread_schedule_tail(struct thread *prev) {
     if (prev != NULL && prev->status == THREAD_DYING &&
         prev != initial_thread) {
         ASSERT(prev != cur);
-        /* Let parent know it is done. */
-        sema_up(&prev->wait_sema);
-        if (prev->parent == NULL) {
-            /* Don't need to wait for parent to kill kid */
-            palloc_free_page(prev);
-        }
+        palloc_free_page(prev);
     }
 }
 
