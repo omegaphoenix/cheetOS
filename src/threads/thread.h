@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include "synch.h"
 
-/* Open file. */
+/* Open file. This is for a linked list of open files in each thread. */
 struct sys_file {
     struct file *file;
     int fd;
@@ -139,6 +139,7 @@ struct thread {
     struct list kids;                   /*!< List of children processes. */
     struct list_elem kid_elem;          /*!< List element for parent's kids list. */
     struct semaphore wait_sema;         /*!< Sempahore for process_wait. */
+    bool waited_on;                     /*!< True if process_wait has been called. */
     /**@}*/
 
     /*! Shared between by userprog/process.c and userprog.syscall.c and

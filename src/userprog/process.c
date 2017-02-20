@@ -153,9 +153,9 @@ int process_wait(tid_t child_tid UNUSED) {
     for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
          e = list_next(e)) {
         kid = list_entry(e, struct thread, kid_elem);
-        if (kid->tid == child_tid) {
-            /* Remove so next time we look for this kid, we return -1. */
-            list_remove(&kid->kid_elem);
+        if (kid->tid == child_tid && !kid->waited_on) {
+            /* Next time we look for this kid, we return -1. */
+            kid->waited_on = true;
             break;
         }
     }
@@ -173,6 +173,8 @@ int process_wait(tid_t child_tid UNUSED) {
 
     /* If child thread is done, just get exit status. */
     int child_exit_status = kid->exit_status;
+    kid->parent = NULL;
+    list_remove(&kid->kid_elem);
     if (kid != get_initial_thread() && kid->status == THREAD_DYING) {
         palloc_free_page(kid);
     }

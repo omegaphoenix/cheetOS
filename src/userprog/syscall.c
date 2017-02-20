@@ -154,13 +154,14 @@ void *get_third_arg(struct intr_frame *f) {
     return get_arg(f, 3);
 }
 
-/*! Acquire file locks. */
+/*! Acquire file locks. Need two because bochs might have files and their
+    static variables go out of memory. */
 void acquire_file_lock(void) {
     lock_acquire(&filesys_lock);
     lock_acquire(&thread_current()->filesys_lock);
 }
 
-/*! Acquire file locks. */
+/*! Release file locks. See comment in acquire_file_lock. */
 void release_file_lock(void) {
     lock_release(&filesys_lock);
     lock_release(&thread_current()->filesys_lock);
@@ -178,23 +179,29 @@ void sys_exit(int status) {
     printf("%s: exit(%d)\n", cur->name, status);
 
     cur->exit_status = status;
+
+    if (lock_held_by_current_thread(&filesys_lock)) {
+        release_file_lock();
+    }
+
     /* Free executable */
-    acquire_file_lock();
-    file_close(cur->executable);
-    cur->executable = NULL;
-    release_file_lock();
+    if (cur->executable != NULL) {
+        file_allow_write(cur->executable);
+    }
 
     /* Free all file buffers. */
     struct list_elem *e;
     for (e = list_begin(&cur->open_files);
          e != list_end(&cur->open_files);
-         e = list_next(e)) {
+         /* increment in loop */) {
         struct sys_file *open_file =
             list_entry(e, struct sys_file, file_elem);
-        acquire_file_lock();
-        file_close(open_file->file);
-        list_remove(&open_file->file_elem);
-        release_file_lock();
+
+        /* Increment before removing. */
+        e = list_next(e);
+
+        /* File system call */
+        sys_close(open_file->fd);
     }
     thread_exit();
 }

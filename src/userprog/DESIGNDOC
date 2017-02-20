@@ -12,14 +12,14 @@ Justin Leong <jleong@caltech.edu>
 John Li <jzli@caltech.edu>
 Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment: 0
+>> Specify how many late tokens you are using on this assignment: 2
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
    Repository URL: https://github.com/omegaphoenix/cheetOS
-   commit: 332f1adaa8b998e1b166ab7afeb828b2f67157da
+   commit: 
 
 ---- PRELIMINARIES ----
 
@@ -57,7 +57,8 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-  Justin Leong: Approximately 31:22:50 (hh/mm/ss)
+  Justin Leong: Approximately 31:22:50 (hh/mm/ss) (45 hours total including
+  time after deadline)
   John Li: Approximately 8 hours. Was busy planning and executing several events this week.
   Christina Lin: Approximately 26-27 hours.
 
@@ -129,30 +130,42 @@ can have two levels of validation.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+We added this variable to process.c to synchronize filesystem calls.
+    struct lock filesys_lock;          /*! Lock that belongs to process. */
+
 In our thread struct, we included these attributes and their following descriptions:
 
-  /*! Shared between thread.c and userprog/syscall.c. */
-  /**@{*/
-  int num_files;                      /*!< Number of open files. */
-  struct list open_files;             /*!< Open files. */
-  /**@}*/
+    /* Open file. This is for a linked list of open files in each thread. */
+    struct sys_file {
+        struct file *file;
+        int fd;
+        struct list_elem file_elem;
+    };
 
-  /*! Shared between userprog/process.c and thread.c. */
-  /**@{*/
-  int exit_status;                    /*!< Exit status to be retrieved by parent. */
-  struct list kids;                   /*!< List of children processes. */
-  struct list_elem kid_elem;          /*!< List element for parent's kids list. */
-  struct semaphore wait_sema;         /*!< Sempahore for process_wait. */
-  /**@}*/
+    /*! Shared between thread.c and userprog/syscall.c. */
+    /**@{*/
+    int num_files;                      /*!< Number of open files (counting closed ones). */
+    struct list open_files;             /*!< Open files. */
+    /**@}*/
 
-  /*! Shared between by userprog/process.c and userprog.syscall.c and
-      thread.c. */
-  /**@{*/
-  struct thread *parent;              /*!< Thread that created this one. */
-  struct semaphore exec_load;         /*!< Semaphore for checking when executable has loaded. */
-  bool loaded;                        /*!< Check if exec loaded successfully. */
-  struct file *executable;            /*!< Executable to keep open until done. */
-  /**@}*/
+    /*! Shared between userprog/process.c and thread.c. */
+    /**@{*/
+    int exit_status;                    /*!< Exit status to be retrieved by parent. */
+    struct list kids;                   /*!< List of children processes. */
+    struct list_elem kid_elem;          /*!< List element for parent's kids list. */
+    struct semaphore wait_sema;         /*!< Sempahore for process_wait. */
+    bool waited_on;                     /*!< True if process_wait has been called. */
+    /**@}*/
+
+    /*! Shared between by userprog/process.c and userprog.syscall.c and
+        thread.c. */
+    /**@{*/
+    struct thread *parent;              /*!< Thread that created this one. */
+    struct semaphore exec_load;         /*!< Semaphore for checking when executable has loaded. */
+    bool loaded;                        /*!< Check if exec loaded successfully. */
+    struct file *executable;            /*!< Executable to keep open until done. */
+    struct lock filesys_lock;           /*!< Lock for filesys calls. */
+    /**@}*/
 
 
 >> B2: Describe how file descriptors are associated with open files.
@@ -180,6 +193,14 @@ read one byte at a time and we output 300 bytes at a time.
 >> (e.g. calls to pagedir_get_page()) that might result?  What about
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
+
+We make inspections of the page table using valid_read_addr where the
+page table is inspected once. Copying would call the inspection
+to the page table twice regardless of size if the data is on one page
+and four times if the data is on two pages depending on which function
+is called (because some functions have to check twice - once after
+dereferencing since it is a pointer to the begining address of the
+page).
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
@@ -227,7 +248,9 @@ We add a semaphore which is blocked initially and so sys_exec() waits
 on this sempahore before returning. The semaphore is up'ed when the
 executable has completed loading and the thread has a boolean "loaded"
 which is true if successful. Once sys_exec() resumes, it can check
-the boolean and then return.
+the boolean and then return. The thread isn't killed until after it's
+parent is set to null. This requires us to have 3 locations where we can
+possibly free the thread.
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -245,7 +268,7 @@ After C exits, if it hasn't been freed by a previous wait call,
 P just gets the exit status and frees the kid. If it has been freed, P
 returns -1;
 
-When P terminates wihtout waiting, it tells each one of it's kids that they
+When P terminates without waiting, it tells each one of it's kids that they
 don't have a parent anymore by setting their struct thread *parent to NULL.
 If this is before C exits, then when C exits, thread_schedule_tail() will
 free the kid. If this is after C exits, then the kid is freed right away
@@ -266,13 +289,20 @@ distinguishes between read and write for clarity.
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
-The advantage is that it is quick and easy to access open_files from the array
+The first design we used is to use an array of pointers to files. The advantage
+of this approach is that it is quick and easy to access open_files from the array
 since fd maps directly to an index (by subtracting 2 for stdin and stout).
 The disadvantage is that this always takes the same number of bytes to store
 the array which can lead to corruption of the thread memory with too many
 processes. Using a linked list would reduce the space requirement on the
 thread struct but would increase the access time and complexity of getting the
 file associated with a file descriptor.
+
+We reimplemented to use a linked list instead which solved some of our memory
+management issues and allowed us to handle as many files as necessary. We
+created a struct to make this implementation easier which kept track of the
+file descriptor, file, and has a list_elem to put it in the linked list of
+open files.
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?

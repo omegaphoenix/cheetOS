@@ -343,33 +343,26 @@ tid_t thread_tid(void) {
 void thread_exit(void) {
     ASSERT(!intr_context());
 
-#ifdef USERPROG
-    process_exit();
-#endif
 
     /* Remove thread from all threads list, set our status to dying,
        and schedule another process.  That process will destroy us
        when it calls thread_schedule_tail(). */
     struct thread *cur = thread_current();
-    intr_disable();
-    list_remove(&cur->allelem);
-
-    /* Free all locks. */
-    struct list_elem *e;
-    for (e = list_begin(&cur->locks_acquired);
-         e != list_end(&cur->locks_acquired);
-         e = list_next(e)) {
-        struct lock *lock = list_entry(e, struct lock, elem);
-        lock_release(lock);
-    }
 
     /* Tell blocking lock we are no longer waiting for it. */
     if (cur->blocking_lock != NULL) {
         list_remove(&cur->lock_elem);
     }
 
-    /* Executable should have been freed in sys_exit. */
-    ASSERT(cur->executable == NULL);
+    /* Free all locks. */
+    struct list_elem *e;
+    for (e = list_begin(&cur->locks_acquired);
+         e != list_end(&cur->locks_acquired);
+         /* increment in loop */) {
+        struct lock *lock = list_entry(e, struct lock, elem);
+        e = list_next(e);
+        lock_release(lock);
+    }
 
     /* All file buffers should be freed in sys_exit. */
     ASSERT (list_empty(&cur->open_files));
@@ -378,8 +371,9 @@ void thread_exit(void) {
        waiting for the parent to free them. Will be freed in
        thread_schedule_tail() instead of process_wait().*/
     for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
-         e = list_next(e)) {
+         /* increment in loop */) {
         struct thread *kid = list_entry(e, struct thread, kid_elem);
+        e = list_next(e);
         kid->parent = NULL;
 
         if (kid != NULL && kid->status == THREAD_DYING
@@ -387,6 +381,13 @@ void thread_exit(void) {
             palloc_free_page(kid);
         }
     }
+
+#ifdef USERPROG
+    process_exit();
+#endif
+
+    intr_disable();
+    list_remove(&cur->allelem);
     cur->status = THREAD_DYING;
     schedule();
     NOT_REACHED();
@@ -721,6 +722,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     sema_init(&t->exec_load, 0);
     lock_init(&t->filesys_lock);
     t->loaded = false;
+    t->waited_on = false;
     t->num_files = 0;
 
     if (list_empty(&all_list)) {
