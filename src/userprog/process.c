@@ -157,14 +157,11 @@ int process_wait(tid_t child_tid UNUSED) {
     for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
          e = list_next(e)) {
         kid = list_entry(e, struct thread, kid_elem);
-        lock_acquire(&kid->filesys_lock);
         if (kid->tid == child_tid && !kid->waited_on) {
             /* Next time we look for this kid, we return -1. */
             kid->waited_on = true;
-            lock_release(&kid->filesys_lock);
             break;
         }
-        lock_release(&kid->filesys_lock);
     }
 
     /* Check if no kid with child_tid. */
@@ -177,11 +174,9 @@ int process_wait(tid_t child_tid UNUSED) {
 
     /* If child thread is done, just get exit status. */
     int child_exit_status = kid->exit_status;
-    kid->parent = NULL;
     list_remove(&kid->kid_elem);
-    if (kid != get_initial_thread() && kid->status == THREAD_DYING) {
-        palloc_free_page(kid);
-    }
+    kid->parent = NULL;
+    sema_up(&kid->done_sema);
 
     return child_exit_status;
 }
@@ -195,6 +190,16 @@ void process_exit(void) {
     if (cur->executable != NULL) {
         file_close(cur->executable);
     }
+
+    /* Let parent know it is done. */
+    sema_up(&cur->wait_sema);
+    while(!list_empty(&cur->wait_sema.waiters)) {
+        sema_up(&cur->wait_sema);
+    }
+    /* Wait for parent to retrieve exit status. */
+    ASSERT(cur->parent != NULL || cur->done_sema.value > 0);
+    sema_down(&cur->done_sema);
+    ASSERT(cur->parent == NULL);
 
     /* Destroy the current process's page directory and switch back
        to the kernel-only page directory. */
