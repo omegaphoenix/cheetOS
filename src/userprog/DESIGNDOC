@@ -164,7 +164,6 @@ In our thread struct, we included these attributes and their following descripti
     struct semaphore exec_load;         /*!< Semaphore for checking when executable has loaded. */
     bool loaded;                        /*!< Check if exec loaded successfully. */
     struct file *executable;            /*!< Executable to keep open until done. */
-    struct lock filesys_lock;           /*!< Lock for filesys calls. */
     /**@}*/
 
 
