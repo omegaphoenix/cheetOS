@@ -150,24 +150,21 @@ static void start_process(void *cmdline_) {
     returns -1 immediately, without waiting. */
 int process_wait(tid_t child_tid UNUSED) {
     struct thread *cur = thread_current();
-
-    /* Iterate through children to find child */
-    struct list_elem *e;
-    struct thread *kid = NULL;
-    for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
-         e = list_next(e)) {
-        kid = list_entry(e, struct thread, kid_elem);
-        if (kid->tid == child_tid && !kid->waited_on) {
-            /* Next time we look for this kid, we return -1. */
-            kid->waited_on = true;
-            break;
-        }
-    }
+    struct thread *kid = get_child_thread(child_tid);
 
     /* Check if no kid with child_tid. */
-    if (kid == NULL || kid->tid != child_tid) {
+    if (kid == NULL || kid->tid != child_tid || kid->parent != cur) {
         return -1;
     }
+
+    /* Lock in case of interrupt. */
+    lock_acquire(&kid->wait_lock);
+    if (kid->waited_on) {
+        lock_release(&kid->wait_lock);
+        return -1;
+    }
+    kid->waited_on = true;
+    lock_release(&kid->wait_lock);
 
     /* Wait for child thread to die. */
     sema_down(&kid->wait_sema);

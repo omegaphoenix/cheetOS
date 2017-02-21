@@ -141,6 +141,7 @@ struct thread {
     struct semaphore wait_sema;         /*!< Sempahore for process_wait. */
     struct semaphore done_sema;         /*!< Sempahore for process_exit. */
     bool waited_on;                     /*!< True if process_wait has been called. */
+    struct lock wait_lock;              /*!< Lock for checking waited_on. */
     /**@}*/
 
     /*! Shared between by userprog/process.c and userprog.syscall.c and

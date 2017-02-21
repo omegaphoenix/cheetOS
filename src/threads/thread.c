@@ -736,6 +736,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     /* Block process_wait of parent until this process is ready to die. */
     sema_init(&t->wait_sema, 0);
     sema_init(&t->done_sema, 1);
+    lock_init(&t->wait_lock);
     t->loaded = false;
     t->waited_on = false;
     t->num_files = 0;

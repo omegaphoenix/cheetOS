@@ -14,7 +14,7 @@
 #include "userprog/process.h"
 
 /* Protect filesys calls. */
-struct lock filesys_lock;
+static struct lock filesys_lock;
 void acquire_file_lock(void);
 void release_file_lock(void);
 
