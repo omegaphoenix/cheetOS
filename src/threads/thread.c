@@ -386,16 +386,19 @@ void thread_exit(void) {
     /* Let kids know that parent is dead so that their page is freed without
        waiting for the parent. Will be freed in thread_schedule_tail().*/
     while (!list_empty(&cur->kids)) {
-        e = list_begin(&cur->kids);
+        e = list_pop_front(&cur->kids);
         struct thread *kid = list_entry(e, struct thread, kid_elem);
         kid->parent = NULL;
         sema_up(&kid->done_sema);
-        list_remove(&kid->kid_elem);
     }
 
 #ifdef USERPROG
     process_exit();
 #endif
+
+    if ((cur->parent != NULL) && (cur->parent != initial_thread)) {
+        list_remove(&cur->kid_elem);
+    }
 
     intr_disable();
     list_remove(&cur->allelem);
