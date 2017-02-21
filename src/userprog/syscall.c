@@ -177,10 +177,6 @@ void sys_exit(int status) {
     printf("%s: exit(%d)\n", cur->name, status);
     cur->exit_status = status;
 
-    if (lock_held_by_current_thread(&filesys_lock)) {
-        release_file_lock();
-    }
-
     /* Free all file buffers. */
     struct list_elem *e;
     while (!list_empty(&cur->open_files)) {
@@ -199,6 +195,8 @@ pid_t sys_exec(const char *cmd_line) {
         return ERR;
     }
     struct thread *cur = thread_current();
+
+    /* File system call */
     acquire_file_lock();
     pid_t new_process_pid = process_execute(cmd_line);
 
