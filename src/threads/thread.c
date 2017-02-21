@@ -385,6 +385,7 @@ void thread_exit(void) {
 
     /* Let kids know that parent is dead so that their page is freed without
        waiting for the parent. Will be freed in thread_schedule_tail().*/
+
     while (!list_empty(&cur->kids)) {
         e = list_pop_front(&cur->kids);
         struct thread *kid = list_entry(e, struct thread, kid_elem);
@@ -847,6 +848,14 @@ void thread_schedule_tail(struct thread *prev) {
     if (prev != NULL && prev->status == THREAD_DYING &&
         prev != initial_thread) {
         ASSERT(prev != cur);
+        ASSERT(try_remove(&prev->allelem) == NULL);
+        ASSERT(try_remove(&prev->sleep_elem) == NULL);
+        ASSERT(try_remove(&prev->elem) == NULL);
+        ASSERT(try_remove(&prev->lock_elem) == NULL);
+        ASSERT(try_remove(&prev->kid_elem) == NULL);
+        ASSERT(list_empty(&prev->locks_acquired));
+        ASSERT(list_empty(&prev->open_files));
+        ASSERT(list_empty(&prev->kids));
         palloc_free_page(prev);
     }
 }
