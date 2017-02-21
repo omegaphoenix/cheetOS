@@ -158,13 +158,11 @@ void *get_third_arg(struct intr_frame *f) {
     static variables go out of memory. */
 void acquire_file_lock(void) {
     lock_acquire(&filesys_lock);
-    lock_acquire(&thread_current()->filesys_lock);
 }
 
 /*! Release file locks. See comment in acquire_file_lock. */
 void release_file_lock(void) {
     lock_release(&filesys_lock);
-    lock_release(&thread_current()->filesys_lock);
 }
 
 /*! Terminates Pintos. Should be seldom used due to loss of information on
