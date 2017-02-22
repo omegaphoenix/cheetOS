@@ -12,19 +12,22 @@ Justin Leong <jleong@caltech.edu>
 John Li <jzli@caltech.edu>
 Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment: 2
+>> Specify how many late tokens you are using on this assignment: 4
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
    Repository URL: https://github.com/omegaphoenix/cheetOS
-   commit: aa0dfcc3c89b57c3faf9934ee469aa02a013e5ff
+   commit: 
+   tag: project4-3
 
 ---- PRELIMINARIES ----
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please give them here.
+
+All tests pass on qemu.
 
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
@@ -57,8 +60,7 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-  Justin Leong: Approximately 31:22:50 (hh/mm/ss) (45 hours total including
-  time after deadline)
+  Justin Leong: At least 51:22:55 (hh/mm/ss)
   John Li: Approximately 8 hours. Was busy planning and executing several events this week.
   Christina Lin: Approximately 26-27 hours.
 
@@ -133,14 +135,15 @@ can have two levels of validation.
 We added this variable to process.c to synchronize filesystem calls.
     struct lock filesys_lock;          /*! Lock that belongs to process. */
 
-In our thread struct, we included these attributes and their following descriptions:
-
+We added this struct to thread.h for the list of open files.
     /* Open file. This is for a linked list of open files in each thread. */
     struct sys_file {
         struct file *file;
         int fd;
         struct list_elem file_elem;
     };
+
+In our thread struct, we included these attributes and their following descriptions:
 
     /*! Shared between thread.c and userprog/syscall.c. */
     /**@{*/
@@ -154,7 +157,9 @@ In our thread struct, we included these attributes and their following descripti
     struct list kids;                   /*!< List of children processes. */
     struct list_elem kid_elem;          /*!< List element for parent's kids list. */
     struct semaphore wait_sema;         /*!< Sempahore for process_wait. */
+    struct semaphore done_sema;         /*!< Sempahore for process_exit. */
     bool waited_on;                     /*!< True if process_wait has been called. */
+    struct lock wait_lock;              /*!< Lock for checking waited_on. */
     /**@}*/
 
     /*! Shared between by userprog/process.c and userprog.syscall.c and
@@ -171,10 +176,10 @@ In our thread struct, we included these attributes and their following descripti
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
 
-File descriptors are only unique within a single process. The thread contains
-an array of pointers to open files and finds an empty (null) index to place
-an open file in. When an open file is closed, then it's spot in the array
-is set to NULL.
+File descriptors are only unique within a single thread. The thread contains
+a list of open files using sys_file. Every time a new file is opened num_files
+is incremented and then the new file gets a fd of num_files + 2 before it is
+incremented since 0 and 1 are reserved for stdin and stdout file descriptors.
 
 ---- ALGORITHMS ----
 
@@ -182,7 +187,7 @@ is set to NULL.
 >> kernel.
 
 We use valid_read_addr to check the pointer to the buffer and the buffer. If
-we are reading/writing from/to a file, we get the file form the thread and
+we are reading/writing from/to a file, we get the file from the thread and
 make the filesys call. If we are reading/writing from/to the terminal, we
 read one byte at a time and we output 300 bytes at a time.
 
@@ -229,7 +234,9 @@ functions.
 
 When an error is detected, we free allocated resources by calling sys_exit()
 which calls thread_exit() which iterates through all of its open files and
-locks and frees them. The executable is also freed here.
+locks and frees them. thread_exit() then calls process_exit() and the
+executable is freed here. If we know no files have been allocated we can call
+thread_exit() directly.
 
 Example: If an argument is not a valid read address, we call sys_exit(-1)
 which sets the exit status to -1 and then calls thread_exit(). thread_exit()
@@ -243,7 +250,7 @@ that it is waiting on that it is no longer waiting.
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
 
-We add a semaphore which is blocked initially and so sys_exec() waits
+We add a wait_sema semaphore which is blocked initially and so sys_exec() waits
 on this sempahore before returning. The semaphore is up'ed when the
 executable has completed loading and the thread has a boolean "loaded"
 which is true if successful. Once sys_exec() resumes, it can check
@@ -258,20 +265,27 @@ possibly free the thread.
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
-When P calls wait(C) before C exits, the kid's status is not set to
-THREAD_DYING yet and so P waits on a semaphore that is initialized to 0
-and which is incremented when the kid is ready to die. Then it gets the
-exit status and frees the kid.
+When P calls wait(C) before C exits, C is not finished yet so it has not
+up'ed C->wait_sema. So P is blocked on C->wait_sema. When C calls
+process_exit() when it is done, it up's C->wait_sema and tries to down
+C->done_sema which is set to 0 when C is created. Then P retrieves
+C->exit_status and up's C->done_sema which tells C that it can now free
+it's memory.
 
-After C exits, if it hasn't been freed by a previous wait call,
-P just gets the exit status and frees the kid. If it has been freed, P
-returns -1;
+After C exits, if it hasn't been freed by a previous wait call, it waits
+on C->done_sema which is 0 and thus blocking. When P makes the wait call,
+P just gets the exit status and frees the kid by up'ing C->done_sema.
+If wait has already been called on C, P returns -1;
 
 When P terminates without waiting, it tells each one of it's kids that they
-don't have a parent anymore by setting their struct thread *parent to NULL.
-If this is before C exits, then when C exits, thread_schedule_tail() will
-free the kid. If this is after C exits, then the kid is freed right away
-before the parent dies.
+don't have a parent anymore by setting their struct thread *parent to NULL
+and up'ing their C->done_sema. Then when C calls process_exit(), it will down
+the C->done_sema semaphore and since it was 1, it will be able to continue
+and free it's page.
+
+The special case is the initial thread where we need to initialize the
+done_sema to 1 so that when it exits, it is not waiting on a parent to
+up it's done_sema.
 
 ---- RATIONALE ----
 
@@ -288,6 +302,7 @@ distinguishes between read and write for clarity.
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
+Disadvantages of current design:
 The first design we used is to use an array of pointers to files. The advantage
 of this approach is that it is quick and easy to access open_files from the array
 since fd maps directly to an index (by subtracting 2 for stdin and stout).
@@ -297,6 +312,7 @@ processes. Using a linked list would reduce the space requirement on the
 thread struct but would increase the access time and complexity of getting the
 file associated with a file descriptor.
 
+Advantages of current design:
 We reimplemented to use a linked list instead which solved some of our memory
 management issues and allowed us to handle as many files as necessary. We
 created a struct to make this implementation easier which kept track of the

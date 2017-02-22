@@ -38,14 +38,14 @@ tid_t process_execute(const char *cmdline) {
 
     /* Make a copy of CMDLINE.
        Otherwise there's a race between the caller and load(). */
-    cmdline_copy = palloc_get_page(0);
+    cmdline_copy = palloc_get_page(PAL_ZERO);
     if (cmdline_copy == NULL) {
         return TID_ERROR;
     }
     strlcpy(cmdline_copy, cmdline, PGSIZE);
 
     /* Get FILE_NAME from CMDLINE */
-    cmdline_copy2 = palloc_get_page(0);
+    cmdline_copy2 = palloc_get_page(PAL_ZERO);
     if (cmdline_copy2 == NULL) {
         palloc_free_page(cmdline_copy);
         return TID_ERROR;
@@ -154,14 +154,14 @@ int process_wait(tid_t child_tid UNUSED) {
 
     /* Check if no kid with child_tid. */
     if (kid == NULL || kid->tid != child_tid || kid->parent != cur) {
-        return -1;
+        return ERR;
     }
 
     /* Lock in case of interrupt. */
     lock_acquire(&kid->wait_lock);
     if (kid->waited_on) {
         lock_release(&kid->wait_lock);
-        return -1;
+        return ERR;
     }
     kid->waited_on = true;
     lock_release(&kid->wait_lock);
@@ -191,9 +191,6 @@ void process_exit(void) {
 
     /* Let parent know it is done. */
     sema_up(&cur->wait_sema);
-    while(!list_empty(&cur->wait_sema.waiters)) {
-        sema_up(&cur->wait_sema);
-    }
     /* Wait for parent to retrieve exit status. */
     ASSERT(cur->parent != NULL || cur->done_sema.value > 0);
     sema_down(&cur->done_sema);

@@ -364,6 +364,7 @@ void thread_exit(void) {
        and schedule another process.  That process will destroy us
        when it calls thread_schedule_tail(). */
     struct thread *cur = thread_current();
+    struct list_elem *e;
 
     /* Tell blocking lock we are no longer waiting for it. */
     if (cur->blocking_lock != NULL) {
@@ -371,12 +372,9 @@ void thread_exit(void) {
     }
 
     /* Free all locks. */
-    struct list_elem *e;
-    for (e = list_begin(&cur->locks_acquired);
-         e != list_end(&cur->locks_acquired);
-         /* increment in loop */) {
+    while (!list_empty(&cur->locks_acquired)) {
+        e = list_begin(&cur->locks_acquired);
         struct lock *lock = list_entry(e, struct lock, elem);
-        e = list_next(e);
         lock_release(lock);
     }
 
@@ -397,7 +395,7 @@ void thread_exit(void) {
     process_exit();
 #endif
 
-    if ((cur->parent != NULL) && (cur->parent != initial_thread)) {
+    if (cur->parent != NULL) {
         list_remove(&cur->kid_elem);
     }
 
@@ -610,7 +608,8 @@ int add_open_file(struct thread *cur, struct file *file, int fd) {
     struct sys_file *new_file = palloc_get_page(PAL_ZERO);
     /* Not enough memory. */
     if (new_file == NULL) {
-        return -1;
+        file_close(file);
+        return ERR;
     }
     memset(new_file, 0, sizeof *new_file);
     new_file->file = file;
@@ -622,7 +621,7 @@ int add_open_file(struct thread *cur, struct file *file, int fd) {
     }
 
     /* Couldn't find file. */
-    return -1;
+    return ERR;
 }
 
 /*! Get file with file descriptor *fd*. */
