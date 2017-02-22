@@ -263,11 +263,7 @@ int sys_open(const char *file) {
     fd = add_open_file(cur, open_file, fd);
     release_file_lock();
 
-    if (fd == -1) {
-        acquire_file_lock();
-        file_close(open_file);
-        release_file_lock();
-    }
+    ASSERT(fd >= CONSOLE_FD || fd == ERR);
     return fd;
 }
 
@@ -419,7 +415,7 @@ void sys_close(int fd) {
 static bool valid_read_addr(const void *addr) {
     /* Check that address is below PHYS_BASE
        and then attempt to read a byte at the address */
-    return addr != NULL && is_user_vaddr(addr) && (get_user(addr) != -1);
+    return addr != NULL && is_user_vaddr(addr) && (get_user(addr) != ERR);
 }
 
 /* Returns true if addr is valid for writing */
@@ -446,5 +442,5 @@ static bool put_user (uint8_t *udst, uint8_t byte) {
     int error_code;
     asm ("movl $1f, %0; movb %b2, %1; 1:"
          : "=&a" (error_code), "=m" (*udst) : "q" (byte));
-    return error_code != -1;
+    return error_code != ERR;
 }
