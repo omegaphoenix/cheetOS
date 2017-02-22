@@ -112,6 +112,20 @@ struct thread *get_initial_thread(void) {
     return initial_thread;
 }
 
+/*! Returns the child thread with this tid. */
+struct thread *get_child_thread(tid_t child_tid) {
+    struct thread *cur = thread_current();
+    struct list_elem *e;
+    for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
+         e = list_next(e)) {
+        struct thread *kid = list_entry(e, struct thread, kid_elem);
+        if (kid->tid == child_tid) {
+            return kid;
+        }
+    }
+    return NULL;
+}
+
 /*! Initializes the threading system by transforming the code
     that's currently running into a thread.  This can't work in
     general and it is possible in this case only because loader.S
@@ -269,6 +283,8 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     struct thread *parent = thread_current();
     list_push_back(&parent->kids, &t->kid_elem);
     t->parent = parent;
+    ASSERT(t->done_sema.value == 1);
+    sema_down(&t->done_sema);
 
     /* Add to run queue. */
     int prev_highest_priority = get_highest_priority();
@@ -348,6 +364,7 @@ void thread_exit(void) {
        and schedule another process.  That process will destroy us
        when it calls thread_schedule_tail(). */
     struct thread *cur = thread_current();
+    struct list_elem *e;
 
     /* Tell blocking lock we are no longer waiting for it. */
     if (cur->blocking_lock != NULL) {
@@ -355,12 +372,9 @@ void thread_exit(void) {
     }
 
     /* Free all locks. */
-    struct list_elem *e;
-    for (e = list_begin(&cur->locks_acquired);
-         e != list_end(&cur->locks_acquired);
-         /* increment in loop */) {
+    while (!list_empty(&cur->locks_acquired)) {
+        e = list_begin(&cur->locks_acquired);
         struct lock *lock = list_entry(e, struct lock, elem);
-        e = list_next(e);
         lock_release(lock);
     }
 
@@ -368,23 +382,22 @@ void thread_exit(void) {
     ASSERT (list_empty(&cur->open_files));
 
     /* Let kids know that parent is dead so that their page is freed without
-       waiting for the parent to free them. Will be freed in
-       thread_schedule_tail() instead of process_wait().*/
-    for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
-         /* increment in loop */) {
-        struct thread *kid = list_entry(e, struct thread, kid_elem);
-        e = list_next(e);
-        kid->parent = NULL;
+       waiting for the parent. Will be freed in thread_schedule_tail().*/
 
-        if (kid != NULL && kid->status == THREAD_DYING
-            && kid != initial_thread) {
-            palloc_free_page(kid);
-        }
+    while (!list_empty(&cur->kids)) {
+        e = list_pop_front(&cur->kids);
+        struct thread *kid = list_entry(e, struct thread, kid_elem);
+        kid->parent = NULL;
+        sema_up(&kid->done_sema);
     }
 
 #ifdef USERPROG
     process_exit();
 #endif
+
+    if (cur->parent != NULL) {
+        list_remove(&cur->kid_elem);
+    }
 
     intr_disable();
     list_remove(&cur->allelem);
@@ -593,17 +606,22 @@ int next_fd(struct thread *cur) {
 int add_open_file(struct thread *cur, struct file *file, int fd) {
     /* Initialize file */
     struct sys_file *new_file = palloc_get_page(PAL_ZERO);
+    /* Not enough memory. */
+    if (new_file == NULL) {
+        file_close(file);
+        return ERR;
+    }
     memset(new_file, 0, sizeof *new_file);
     new_file->file = file;
     new_file->fd = fd;
 
-    if (is_valid_fd(fd)) {
+    if (is_valid_fd(fd) && !is_existing_fd(cur, fd)) {
         list_push_back(&cur->open_files, &new_file->file_elem);
         return fd;
     }
 
     /* Couldn't find file. */
-    return -1;
+    return ERR;
 }
 
 /*! Get file with file descriptor *fd*. */
@@ -634,6 +652,7 @@ void close_fd(struct thread *cur, int fd) {
         struct sys_file *cur_file = list_entry(e, struct sys_file, file_elem);
         if (cur_file->fd == fd) {
             list_remove(&cur_file->file_elem);
+            file_close(cur_file->file);
             palloc_free_page(cur_file);
             return;
         }
@@ -719,11 +738,12 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     list_init(&t->open_files);
     /* Block process_wait of parent until this process is ready to die. */
     sema_init(&t->wait_sema, 0);
-    sema_init(&t->exec_load, 0);
-    lock_init(&t->filesys_lock);
+    sema_init(&t->done_sema, 1);
+    lock_init(&t->wait_lock);
     t->loaded = false;
     t->waited_on = false;
     t->num_files = 0;
+    t->parent = NULL;
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */
@@ -827,12 +847,15 @@ void thread_schedule_tail(struct thread *prev) {
     if (prev != NULL && prev->status == THREAD_DYING &&
         prev != initial_thread) {
         ASSERT(prev != cur);
-        /* Let parent know it is done. */
-        sema_up(&prev->wait_sema);
-        if (prev->parent == NULL) {
-            /* Don't need to wait for parent to kill kid */
-            palloc_free_page(prev);
-        }
+        ASSERT(try_remove(&prev->allelem) == NULL);
+        ASSERT(try_remove(&prev->sleep_elem) == NULL);
+        ASSERT(try_remove(&prev->elem) == NULL);
+        ASSERT(try_remove(&prev->lock_elem) == NULL);
+        ASSERT(try_remove(&prev->kid_elem) == NULL);
+        ASSERT(list_empty(&prev->locks_acquired));
+        ASSERT(list_empty(&prev->open_files));
+        ASSERT(list_empty(&prev->kids));
+        palloc_free_page(prev);
     }
 }
 
