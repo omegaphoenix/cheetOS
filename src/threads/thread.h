@@ -139,7 +139,9 @@ struct thread {
     struct list kids;                   /*!< List of children processes. */
     struct list_elem kid_elem;          /*!< List element for parent's kids list. */
     struct semaphore wait_sema;         /*!< Sempahore for process_wait. */
+    struct semaphore done_sema;         /*!< Sempahore for process_exit. */
     bool waited_on;                     /*!< True if process_wait has been called. */
+    struct lock wait_lock;              /*!< Lock for checking waited_on. */
     /**@}*/
 
     /*! Shared between by userprog/process.c and userprog.syscall.c and
@@ -149,7 +151,6 @@ struct thread {
     struct semaphore exec_load;         /*!< Semaphore for checking when executable has loaded. */
     bool loaded;                        /*!< Check if exec loaded successfully. */
     struct file *executable;            /*!< Executable to keep open until done. */
-    struct lock filesys_lock;           /*!< Lock for filesys calls. */
     /**@}*/
 
 #ifdef USERPROG
@@ -220,6 +221,7 @@ void add_sleep_thread(struct thread *);
 void sleep_threads(void);
 
 struct thread *get_initial_thread(void);
+struct thread *get_child_thread(tid_t child_tid);
 
 #endif /* threads/thread.h */
 

@@ -14,7 +14,7 @@
 #include "userprog/process.h"
 
 /* Protect filesys calls. */
-struct lock filesys_lock;
+static struct lock filesys_lock;
 void acquire_file_lock(void);
 void release_file_lock(void);
 
@@ -158,13 +158,11 @@ void *get_third_arg(struct intr_frame *f) {
     static variables go out of memory. */
 void acquire_file_lock(void) {
     lock_acquire(&filesys_lock);
-    lock_acquire(&thread_current()->filesys_lock);
 }
 
 /*! Release file locks. See comment in acquire_file_lock. */
 void release_file_lock(void) {
     lock_release(&filesys_lock);
-    lock_release(&thread_current()->filesys_lock);
 }
 
 /*! Terminates Pintos. Should be seldom used due to loss of information on
@@ -177,30 +175,14 @@ void sys_halt(void) {
 void sys_exit(int status) {
     struct thread *cur = thread_current();
     printf("%s: exit(%d)\n", cur->name, status);
-
     cur->exit_status = status;
-
-    if (lock_held_by_current_thread(&filesys_lock)) {
-        release_file_lock();
-    }
-
-    /* Free executable */
-    if (cur->executable != NULL) {
-        file_allow_write(cur->executable);
-    }
 
     /* Free all file buffers. */
     struct list_elem *e;
-    for (e = list_begin(&cur->open_files);
-         e != list_end(&cur->open_files);
-         /* increment in loop */) {
+    while (!list_empty(&cur->open_files)) {
+        e = list_begin(&cur->open_files);
         struct sys_file *open_file =
             list_entry(e, struct sys_file, file_elem);
-
-        /* Increment before removing. */
-        e = list_next(e);
-
-        /* File system call */
         sys_close(open_file->fd);
     }
     thread_exit();
@@ -213,11 +195,12 @@ pid_t sys_exec(const char *cmd_line) {
         return ERR;
     }
     struct thread *cur = thread_current();
+
+    /* File system call */
     acquire_file_lock();
     pid_t new_process_pid = process_execute(cmd_line);
 
     /* Wait for executable to load. */
-    sema_down(&cur->exec_load);
     release_file_lock();
 
     if (!cur->loaded) {
@@ -280,7 +263,7 @@ int sys_open(const char *file) {
     fd = add_open_file(cur, open_file, fd);
     release_file_lock();
 
-    ASSERT(fd > 1); /* Only for stdin and stdout */
+    ASSERT(fd >= CONSOLE_FD || fd == ERR);
     return fd;
 }
 
@@ -300,7 +283,7 @@ int sys_filesize(int fd) {
 /*! Read *size* bytes from file open as fd into buffer. Return the number of
     bytes actually read, 0 at end of file, or -1 if file could not be read. */
 int sys_read(int fd, void *buffer, unsigned size) {
-    if (!valid_read_addr(buffer)) {
+    if (!valid_read_addr(buffer) || !valid_read_addr(buffer + size)) {
         sys_exit(ERR);
     }
     int bytes_read = 0;
@@ -341,7 +324,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
     number written, or 0 if no bytes could be written at all.
     Fd 1 writes to the console. */
 int sys_write(int fd, const void *buffer, unsigned size) {
-    if (!valid_read_addr(buffer)) {
+    if (!valid_read_addr(buffer) || !valid_read_addr(buffer + size)) {
         sys_exit(ERR);
     }
     int bytes_written = 0;
@@ -425,7 +408,6 @@ void sys_close(int fd) {
     acquire_file_lock();
     /* Delete file from thread */
     close_fd(cur, fd);
-    file_close(open_file);
     release_file_lock();
 }
 
@@ -433,7 +415,7 @@ void sys_close(int fd) {
 static bool valid_read_addr(const void *addr) {
     /* Check that address is below PHYS_BASE
        and then attempt to read a byte at the address */
-    return addr != NULL && is_user_vaddr(addr) && (get_user(addr) != -1);
+    return addr != NULL && is_user_vaddr(addr) && (get_user(addr) != ERR);
 }
 
 /* Returns true if addr is valid for writing */
@@ -460,5 +442,5 @@ static bool put_user (uint8_t *udst, uint8_t byte) {
     int error_code;
     asm ("movl $1f, %0; movb %b2, %1; 1:"
          : "=&a" (error_code), "=m" (*udst) : "q" (byte));
-    return error_code != -1;
+    return error_code != ERR;
 }

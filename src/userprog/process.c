@@ -38,14 +38,14 @@ tid_t process_execute(const char *cmdline) {
 
     /* Make a copy of CMDLINE.
        Otherwise there's a race between the caller and load(). */
-    cmdline_copy = palloc_get_page(0);
+    cmdline_copy = palloc_get_page(PAL_ZERO);
     if (cmdline_copy == NULL) {
         return TID_ERROR;
     }
     strlcpy(cmdline_copy, cmdline, PGSIZE);
 
     /* Get FILE_NAME from CMDLINE */
-    cmdline_copy2 = palloc_get_page(0);
+    cmdline_copy2 = palloc_get_page(PAL_ZERO);
     if (cmdline_copy2 == NULL) {
         palloc_free_page(cmdline_copy);
         return TID_ERROR;
@@ -68,6 +68,9 @@ tid_t process_execute(const char *cmdline) {
 
     /* Create a new thread to execute FILE_NAME. */
     tid = thread_create(file_name, PRI_DEFAULT, start_process, cmdline_copy);
+
+    struct thread *kid = get_child_thread(tid);
+    sema_down(&kid->wait_sema);
     palloc_free_page(cmdline_copy2);
     if (tid == TID_ERROR) {
         palloc_free_page(cmdline_copy);
@@ -120,13 +123,14 @@ static void start_process(void *cmdline_) {
     palloc_free_page(file_name);
 
     /* Let sys_exec know loading is done and if it was successful. */
-    struct thread *parent = thread_current()->parent;
+    struct thread *cur = thread_current();
+    struct thread *parent = cur->parent;
     parent->loaded = success;
-    sema_up(&parent->exec_load);
+    sema_up(&cur->wait_sema);
 
     /* If load failed, quit. */
     if (!success) {
-        sys_exit(-1);
+        thread_exit();
     }
 
     /* Start the user process by simulating a return from an
@@ -146,38 +150,30 @@ static void start_process(void *cmdline_) {
     returns -1 immediately, without waiting. */
 int process_wait(tid_t child_tid UNUSED) {
     struct thread *cur = thread_current();
-
-    /* Iterate through children to find child */
-    struct list_elem *e;
-    struct thread *kid = NULL;
-    for (e = list_begin(&cur->kids); e != list_end(&cur->kids);
-         e = list_next(e)) {
-        kid = list_entry(e, struct thread, kid_elem);
-        if (kid->tid == child_tid && !kid->waited_on) {
-            /* Next time we look for this kid, we return -1. */
-            kid->waited_on = true;
-            break;
-        }
-    }
+    struct thread *kid = get_child_thread(child_tid);
 
     /* Check if no kid with child_tid. */
-    if (kid == NULL || kid->tid != child_tid) {
-        return -1;
+    if (kid == NULL || kid->tid != child_tid || kid->parent != cur) {
+        return ERR;
     }
+
+    /* Lock in case of interrupt. */
+    lock_acquire(&kid->wait_lock);
+    if (kid->waited_on) {
+        lock_release(&kid->wait_lock);
+        return ERR;
+    }
+    kid->waited_on = true;
+    lock_release(&kid->wait_lock);
 
     /* Wait for child thread to die. */
     sema_down(&kid->wait_sema);
 
-    /* Thread exit should have already been called. */
-    ASSERT(kid->status == THREAD_DYING);
-
     /* If child thread is done, just get exit status. */
     int child_exit_status = kid->exit_status;
-    kid->parent = NULL;
     list_remove(&kid->kid_elem);
-    if (kid != get_initial_thread() && kid->status == THREAD_DYING) {
-        palloc_free_page(kid);
-    }
+    kid->parent = NULL;
+    sema_up(&kid->done_sema);
 
     return child_exit_status;
 }
@@ -186,6 +182,19 @@ int process_wait(tid_t child_tid UNUSED) {
 void process_exit(void) {
     struct thread *cur = thread_current();
     uint32_t *pd;
+
+    /* Free executable */
+    if (cur->executable != NULL) {
+        file_close(cur->executable);
+    }
+    cur->executable = NULL;
+
+    /* Let parent know it is done. */
+    sema_up(&cur->wait_sema);
+    /* Wait for parent to retrieve exit status. */
+    ASSERT(cur->parent != NULL || cur->done_sema.value > 0);
+    sema_down(&cur->done_sema);
+    ASSERT(cur->parent == NULL);
 
     /* Destroy the current process's page directory and switch back
        to the kernel-only page directory. */
