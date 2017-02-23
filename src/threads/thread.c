@@ -71,7 +71,6 @@ static void idle(void *aux UNUSED);
 static struct thread *running_thread(void);
 static struct thread *next_thread_to_run(void);
 static void init_thread(struct thread *, const char *name, int priority);
-static bool is_thread(struct thread *) UNUSED;
 static void *alloc_frame(struct thread *, size_t size);
 static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
@@ -318,11 +317,11 @@ void thread_block(void) {
     if the caller had disabled interrupts itself, it may expect that it can
     atomically unblock a thread and update other data. */
 void thread_unblock(struct thread *t) {
-    enum intr_level old_level;
     ASSERT(is_thread(t));
 
-    old_level = intr_disable();
+    enum intr_level old_level = intr_disable();
     ASSERT(t->status == THREAD_BLOCKED);
+    ASSERT(is_thread(t));
     list_push_back(&ready_list, &t->elem);
     t->status = THREAD_READY;
     intr_set_level(old_level);
@@ -415,8 +414,10 @@ void thread_yield(void) {
     ASSERT(!intr_context());
 
     old_level = intr_disable();
-    if (cur != idle_thread)
+    if (cur != idle_thread) {
+        ASSERT(is_thread(cur));
         list_push_back(&ready_list, &cur->elem);
+    }
     cur->status = THREAD_READY;
     schedule();
     intr_set_level(old_level);
@@ -449,6 +450,7 @@ void thread_set_priority(int new_priority) {
 
 /*! Sets the RECIPIENT thread's donated priority to NEW_PRIORITY. */
 void thread_donate_priority(struct thread *recipient, int new_priority) {
+    ASSERT(is_thread(recipient));
     if (recipient->donated_priority < new_priority) {
         recipient->donated_priority = new_priority;
 
@@ -456,6 +458,7 @@ void thread_donate_priority(struct thread *recipient, int new_priority) {
         if (recipient->blocking_lock != NULL) {
             struct thread *blocker = recipient->blocking_lock->holder;
             if (blocker != NULL) {
+                ASSERT(is_thread(blocker));
                 thread_donate_priority(blocker, new_priority);
             }
         }
@@ -486,6 +489,7 @@ void thread_reset_priority(struct thread *recipient) {
 
 /*! Returns the priority of the given thread */
 int get_priority(struct thread *thread_to_check) {
+    ASSERT(is_thread(thread_to_check));
     int donated_priority = thread_to_check->donated_priority;
     int own_priority = thread_to_check->priority;
 
@@ -546,6 +550,7 @@ int highest_priority(int priority) {
 
 /*! Returns priority of highest priority thread in ready_list. */
 int get_highest_priority(void) {
+    enum intr_level old_level = intr_disable();
     // Return minimum if no threads
     int highest_priority_val = thread_current()->priority;
     // Find max priority of threads
@@ -553,12 +558,14 @@ int get_highest_priority(void) {
     for (e = list_begin(&ready_list); e != list_end(&ready_list);
          e = list_next(e)) {
         struct thread *t = list_entry(e, struct thread, elem);
+        ASSERT(is_thread(t));
         int curr_priority = get_priority(t);
 
         if (curr_priority > highest_priority_val) {
             highest_priority_val = curr_priority;
         }
     }
+    intr_set_level(old_level);
 
     return highest_priority_val;
 }
@@ -608,7 +615,9 @@ int add_open_file(struct thread *cur, struct file *file, int fd) {
     struct sys_file *new_file = palloc_get_page(PAL_ZERO);
     /* Not enough memory. */
     if (new_file == NULL) {
+#ifdef USERPROG
         file_close(file);
+#endif
         return ERR;
     }
     memset(new_file, 0, sizeof *new_file);
@@ -652,7 +661,9 @@ void close_fd(struct thread *cur, int fd) {
         struct sys_file *cur_file = list_entry(e, struct sys_file, file_elem);
         if (cur_file->fd == fd) {
             list_remove(&cur_file->file_elem);
+#ifdef USERPROG
             file_close(cur_file->file);
+#endif
             palloc_free_page(cur_file);
             return;
         }
@@ -713,7 +724,7 @@ struct thread * running_thread(void) {
 }
 
 /*! Returns true if T appears to point to a valid thread. */
-static bool is_thread(struct thread *t) {
+bool is_thread(struct thread *t) {
     return t != NULL && t->magic == THREAD_MAGIC;
 }
 
@@ -784,6 +795,7 @@ static void * alloc_frame(struct thread *t, size_t size) {
     thread can continue running, then it will be in the run queue.)  If the
     run queue is empty, return idle_thread. */
 static struct thread * next_thread_to_run(void) {
+    ASSERT(intr_get_level() == INTR_OFF);
     if (list_empty(&ready_list)) {
         return idle_thread;
     }
@@ -794,6 +806,7 @@ static struct thread * next_thread_to_run(void) {
 
         // Find max priority of threads
         struct list_elem *e;
+        struct thread *ret;
         for (e = list_next(next); e != list_end(&ready_list);
                 e = list_next(e)) {
             t = list_entry(e, struct thread, elem);
@@ -804,8 +817,9 @@ static struct thread * next_thread_to_run(void) {
                 next = e;
             }
         }
+        ret = list_entry(next, struct  thread, elem);
         list_remove(next);
-        return list_entry(next, struct thread, elem);
+        return ret;
     }
 }
 
@@ -847,14 +861,20 @@ void thread_schedule_tail(struct thread *prev) {
     if (prev != NULL && prev->status == THREAD_DYING &&
         prev != initial_thread) {
         ASSERT(prev != cur);
+
+        /* All these elements should have been removed from their lists. */
         ASSERT(try_remove(&prev->allelem) == NULL);
         ASSERT(try_remove(&prev->sleep_elem) == NULL);
         ASSERT(try_remove(&prev->elem) == NULL);
         ASSERT(try_remove(&prev->lock_elem) == NULL);
         ASSERT(try_remove(&prev->kid_elem) == NULL);
+
+        /* All lists should be emptied. */
         ASSERT(list_empty(&prev->locks_acquired));
         ASSERT(list_empty(&prev->open_files));
         ASSERT(list_empty(&prev->kids));
+
+        /* Free thread memory. */
         palloc_free_page(prev);
     }
 }
