@@ -124,6 +124,7 @@ struct thread {
     /*! Shared between thread.c and synch.c. */
     /**@{*/
     struct list_elem elem;              /*!< List element. */
+    struct list_elem sema_elem;         /*!< List element for semaphore. */
     struct list_elem lock_elem;         /*!< List element for lock's blocked_threads. */
     /**@}*/
 
@@ -171,6 +172,7 @@ struct thread {
     Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
 
+bool is_thread(struct thread *);
 void thread_init(void);
 void thread_start(void);
 
