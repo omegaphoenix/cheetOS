@@ -861,14 +861,20 @@ void thread_schedule_tail(struct thread *prev) {
     if (prev != NULL && prev->status == THREAD_DYING &&
         prev != initial_thread) {
         ASSERT(prev != cur);
+
+        /* All these elements should have been removed from their lists. */
         ASSERT(try_remove(&prev->allelem) == NULL);
         ASSERT(try_remove(&prev->sleep_elem) == NULL);
         ASSERT(try_remove(&prev->elem) == NULL);
         ASSERT(try_remove(&prev->lock_elem) == NULL);
         ASSERT(try_remove(&prev->kid_elem) == NULL);
+
+        /* All lists should be emptied. */
         ASSERT(list_empty(&prev->locks_acquired));
         ASSERT(list_empty(&prev->open_files));
         ASSERT(list_empty(&prev->kids));
+
+        /* Free thread memory. */
         palloc_free_page(prev);
     }
 }
