@@ -9,6 +9,7 @@ void frame_table_init(void) {
     list_init(&frame_table);
 }
 
+/*! Create a new frame table entry. */
 static void *fte_create(void *frame, struct thread *owner) {
     struct frame_table_entry *fte;
 
@@ -24,6 +25,7 @@ static void *fte_create(void *frame, struct thread *owner) {
     return fte;
 }
 
+/*! Create new frame and frame table entry. */
 void *get_frame(void) {
     /* Allocate page frame*/
     void *frame = palloc_get_page(PAL_USER | PAL_ZERO);
@@ -31,7 +33,7 @@ void *get_frame(void) {
         /* TODO: evict frame */
         PANIC("store_frame: out of pages");
     }
-    
+
     /* Obtain unused frame */
     struct frame_table_entry *fte = fte_create(frame, thread_current());
 
@@ -41,7 +43,13 @@ void *get_frame(void) {
     return fte;
 }
 
+/*! Free memory after safety checks. */
 void free_frame(struct frame_table_entry *fte) {
+    /* Safety checks. */
+    /* Check if list_elem was removed. */
+    ASSERT(list_remove(&fte->frame_table_elem) == NULL);
+    ASSERT(fte->pin_count == 0); /* Should be unpinned. */
+
     palloc_free_page(fte->frame);
     palloc_free_page(fte);
 }
