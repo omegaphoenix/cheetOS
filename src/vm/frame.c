@@ -45,9 +45,11 @@ void *get_frame(void) {
 
 /*! Free memory after safety checks. */
 void free_frame(struct frame_table_entry *fte) {
+    /* TODO: Might want to remove. */
+    try_remove(&fte->frame_table_elem);
     /* Safety checks. */
     /* Check if list_elem was removed. */
-    ASSERT(list_remove(&fte->frame_table_elem) == NULL);
+    ASSERT(try_remove(&fte->frame_table_elem) == NULL);
     ASSERT(fte->pin_count == 0); /* Should be unpinned. */
 
     palloc_free_page(fte->frame);
