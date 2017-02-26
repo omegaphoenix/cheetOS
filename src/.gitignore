@@ -4,3 +4,5 @@ TAGS
 tags
 doc
 utils/pintos-gdb-config.sh
+# file created by userprog tests
+examples/libc.a
