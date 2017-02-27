@@ -30,7 +30,6 @@
 #include "userprog/gdt.h"
 #include "userprog/syscall.h"
 #include "userprog/tss.h"
-#include "vm/frame.h"
 
 #else
 
@@ -44,6 +43,12 @@
 #include "devices/ide.h"
 #include "filesys/filesys.h"
 #include "filesys/fsutil.h"
+
+#endif
+
+#ifdef VM
+
+#include "vm/frame.h"
 
 #endif
 
@@ -105,7 +110,9 @@ int main(void) {
     palloc_init(user_page_limit);
     malloc_init();
     paging_init();
+#ifdef VM
     frame_table_init();
+#endif
 
     /* Segmentation. */
 #ifdef USERPROG
