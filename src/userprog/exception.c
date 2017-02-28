@@ -7,6 +7,7 @@
 #include "userprog/syscall.h"
 #ifdef VM
 #include "threads/vaddr.h"
+#include "threads/thread.h"
 #include "userprog/pagedir.h"
 #include "vm/frame.h"
 #include "vm/page.h"
@@ -143,8 +144,9 @@ static void page_fault(struct intr_frame *f) {
 
 #ifdef VM
     if (is_user_vaddr(fault_addr)) {
+        struct thread *cur = thread_current();
         /* Locate page that faulted in supplemental page table. */
-        struct sup_page *page = sup_page_get(fault_addr);
+        struct sup_page *page = sup_page_get(cur->sup_page, fault_addr);
         if (page == NULL) {
             sys_exit(-1);
         }
@@ -155,7 +157,6 @@ static void page_fault(struct intr_frame *f) {
         fetch_data_to_frame(page, fte);
         /* Point page table entry for faulting virtual address to physical
            page. */
-        struct thread *cur = thread_current();
         ASSERT(fault_addr == page->addr);
         bool success = pagedir_set_page(cur->pagedir, fault_addr, fte->frame,
                 page->writeable);
