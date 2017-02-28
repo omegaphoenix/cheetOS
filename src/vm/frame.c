@@ -26,7 +26,7 @@ static void *fte_create(void *frame, struct thread *owner) {
 }
 
 /*! Create new frame and frame table entry. */
-void *get_frame(void) {
+struct frame_table_entry *get_frame(void) {
     /* Allocate page frame*/
     void *frame = palloc_get_page(PAL_USER | PAL_ZERO);
     if (frame == NULL) {
