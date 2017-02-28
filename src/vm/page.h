@@ -20,17 +20,20 @@ enum page_status {
 
 /*! Pages for supplemental page table. */
 struct sup_page {
-    void *addr;                           /*!< Address to the page. */
+    void *addr;                           /*!< Address to the virtual page. */
     enum page_status status;              /*!< Current status of page. */
     int page_no;                          /*!< Page number. */
     struct hash_elem sup_page_table_elem; /*!< Elem for supplemental page table. */
 };
 
+/* Initializes supplemental page hash table */
 void sup_page_table_init(void);
 void fetch_data_to_frame(struct sup_page *page, struct frame_table_entry *fte);
-struct sup_page *get_sup_page(void *addr);
-unsigned page_hash(const struct hash_elem *e, void *aux);
-bool page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux);
+
+struct sup_page *sup_page_get(void *addr);
+unsigned sup_page_hash(const struct hash_elem *e, void *aux);
+bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux);
+void sup_page_delete(void *addr);
 
 
 #endif /* vm/page.h */
