@@ -29,8 +29,8 @@ struct sup_page {
 void sup_page_table_init(void);
 void fetch_data_to_frame(struct sup_page *page, struct frame_table_entry *fte);
 struct sup_page *get_sup_page(void *addr);
-unsigned page_hash(const struct hash_elem *e, void *aux UNUSED);
-bool page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED);
+unsigned page_hash(const struct hash_elem *e, void *aux);
+bool page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux);
 
 
 #endif /* vm/page.h */
