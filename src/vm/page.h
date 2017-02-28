@@ -7,6 +7,7 @@
 #define VM_PAGE_H
 
 #include <hash.h>
+#include "vm/frame.h"
 
 static struct hash sup_page_table;
 
@@ -24,6 +25,7 @@ struct sup_page {
 };
 
 void sup_page_table_init(void);
+void fetch_data_to_frame(struct sup_page *page, struct frame_table_elem *fte);
 struct sup_page *get_sup_page(void *addr);
 
 #endif /* vm/page.h */

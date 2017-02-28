@@ -1,10 +1,10 @@
 #include "userprog/exception.h"
-#include "userprog/syscall.h"
 #include <inttypes.h>
 #include <stdio.h>
-#include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "userprog/gdt.h"
+#include "userprog/syscall.h"
 #ifdef VM
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
@@ -149,6 +149,7 @@ static void page_fault(struct intr_frame *f) {
         struct frame_table_entry *fte = get_frame();
         pin(fte);
         /* Fetch data into the frame. */
+        fetch_data_to_frame(page, fte);
         /* Point page table entry for faulting virtual address to physical
            page. */
         unpin(fte);
