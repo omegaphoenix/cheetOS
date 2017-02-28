@@ -5,6 +5,7 @@
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 
 /*! Number of page faults processed. */
 static long long page_fault_cnt;
@@ -70,7 +71,7 @@ static void kill(struct intr_frame *f) {
        the kernel.  Real Unix-like operating systems pass most
        exceptions back to the process via signals, but we don't
        implement them. */
-     
+
     /* The interrupt frame's code segment value tells us where the
        exception originated. */
     switch (f->cs) {
@@ -88,7 +89,7 @@ static void kill(struct intr_frame *f) {
            may cause kernel exceptions--but they shouldn't arrive
            here.)  Panic the kernel to make the point.  */
         intr_dump_frame(f);
-        PANIC("Kernel bug - unexpected interrupt in kernel"); 
+        PANIC("Kernel bug - unexpected interrupt in kernel");
 
     default:
         /* Some other code segment?  Shouldn't happen.  Panic the
@@ -138,18 +139,16 @@ static void page_fault(struct intr_frame *f) {
     /* To implement virtual memory, delete the rest of the function
        body, and replace it with code that brings in the page to
        which fault_addr refers. */
-
-    /* Kill process if user program faults */
-    if (user) {
-        printf("Page fault at %p: %s error %s page in %s context.\n",
-               fault_addr,
-               not_present ? "not present" : "rights violation",
-               write ? "writing" : "reading",
-               user ? "user" : "kernel");
-        kill(f);
+    if (is_user_vaddr(fault_addr)) {
+        /* Locate page that faulted in supplemental page table. */
+        /* Obtain frame to store page. */
+        /* Fetch data into the frame. */
+        /* Point page table entry for faulting virtual address to physical
+           page. */
     }
+
     /* Handle if page fault is caused by kernel instruction */
-    else {
+    if (!user) {
         /* Copy eax into eip and set eax to -1. */
         f->eip = (void *) f->eax;
         f->eax = -1;

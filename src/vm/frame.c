@@ -55,3 +55,13 @@ void free_frame(struct frame_table_entry *fte) {
     palloc_free_page(fte->frame);
     palloc_free_page(fte);
 }
+
+/*! Pin frame so it isn't swapped before use. */
+void pin(struct frame_table_entry *fte) {
+    fte->pin_count++;
+}
+/*! Unpin to indicate that frame can be freed. */
+void unpin(struct frame_table_entry *fte) {
+    ASSERT(fte->pin_count > 0);
+    fte->pin_count--;
+}
