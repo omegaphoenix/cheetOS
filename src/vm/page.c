@@ -1,5 +1,6 @@
 #include "vm/page.h"
 #include <hash.h>
+#include "vm/frame.h"
 
 /*! Initialize supplemental page table. */
 void sup_page_table_init(void) {
@@ -41,5 +42,5 @@ struct sup_page *get_sup_page(void *addr) {
 
 /*! Copy data to the frame table. */
 void fetch_data_to_frame(struct sup_page *page,
-        struct frame_table_elem *fte) {
+        struct frame_table_entry *fte) {
 }
