@@ -25,7 +25,7 @@ struct sup_page {
 };
 
 void sup_page_table_init(void);
-void fetch_data_to_frame(struct sup_page *page, struct frame_table_elem *fte);
+void fetch_data_to_frame(struct sup_page *page, struct frame_table_entry *fte);
 struct sup_page *get_sup_page(void *addr);
 
 #endif /* vm/page.h */
