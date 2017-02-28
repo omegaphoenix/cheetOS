@@ -17,7 +17,7 @@ struct frame_table_entry {
 };
 
 void frame_table_init(void);
-void *get_frame(void);
+struct frame_table_entry *get_frame(void);
 void free_frame(struct frame_table_entry *fte);
 
 void pin(struct frame_table_entry *fte);

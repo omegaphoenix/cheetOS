@@ -5,7 +5,12 @@
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#ifdef VM
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+#include "vm/frame.h"
+#include "vm/page.h"
+#endif
 
 /*! Number of page faults processed. */
 static long long page_fault_cnt;
@@ -136,17 +141,32 @@ static void page_fault(struct intr_frame *f) {
     write = (f->error_code & PF_W) != 0;
     user = (f->error_code & PF_U) != 0;
 
-    /* To implement virtual memory, delete the rest of the function
-       body, and replace it with code that brings in the page to
-       which fault_addr refers. */
+#ifdef VM
     if (is_user_vaddr(fault_addr)) {
         /* Locate page that faulted in supplemental page table. */
+        struct sup_page *page = get_sup_page(fault_addr);
         /* Obtain frame to store page. */
+        struct frame_table_entry *fte = get_frame();
+        pin(fte);
         /* Fetch data into the frame. */
         /* Point page table entry for faulting virtual address to physical
            page. */
+        unpin(fte);
     }
-
+    /* To implement virtual memory, delete the rest of the function
+       body, and replace it with code that brings in the page to
+       which fault_addr refers. */
+#else
+    /* Kill process if user program faults */
+    if (user) {
+        printf("Page fault at %p: %s error %s page in %s context.\n",
+               fault_addr,
+               not_present ? "not present" : "rights violation",
+               write ? "writing" : "reading",
+               user ? "user" : "kernel");
+        kill(f);
+    }
+#endif
     /* Handle if page fault is caused by kernel instruction */
     if (!user) {
         /* Copy eax into eip and set eax to -1. */
