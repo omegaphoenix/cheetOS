@@ -24,6 +24,7 @@ struct sup_page {
     enum page_status status;              /*!< Current status of page. */
     int page_no;                          /*!< Page number. */
     struct hash_elem sup_page_table_elem; /*!< Elem for supplemental page table. */
+    bool writable;                        /*!< Whether page is writeable. */
 };
 
 /* Initializes supplemental page hash table */
