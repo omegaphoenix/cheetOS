@@ -145,6 +145,9 @@ static void page_fault(struct intr_frame *f) {
     if (is_user_vaddr(fault_addr)) {
         /* Locate page that faulted in supplemental page table. */
         struct sup_page *page = get_sup_page(fault_addr);
+        if (page == NULL) {
+            sys_exit(-1);
+        }
         /* Obtain frame to store page. */
         struct frame_table_entry *fte = get_frame();
         pin(fte);
@@ -152,6 +155,11 @@ static void page_fault(struct intr_frame *f) {
         fetch_data_to_frame(page, fte);
         /* Point page table entry for faulting virtual address to physical
            page. */
+        struct thread *cur = thread_current();
+        ASSERT(fault_addr == page->addr);
+        uint32_t *pd = active_pd();
+        bool success = pagedir_set_page(pd, fault_addr, fte->frame,
+                true);
         unpin(fte);
     }
     /* To implement virtual memory, delete the rest of the function

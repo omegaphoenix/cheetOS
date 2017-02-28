@@ -10,7 +10,7 @@
 
 /*! Entry for frame table. */
 struct frame_table_entry {
-    void *frame;                /*!< Address of frame. */
+    void *frame;                /*!< Address of frame (kernel virtual address). */
     struct thread *owner;       /*!< Process that is using the frame. */
     int pin_count;              /*!< Should not evict pinned pages. */
     struct list_elem frame_table_elem; /*!< Use list for LRU. */
