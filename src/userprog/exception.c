@@ -144,7 +144,7 @@ static void page_fault(struct intr_frame *f) {
 #ifdef VM
     if (is_user_vaddr(fault_addr)) {
         /* Locate page that faulted in supplemental page table. */
-        struct sup_page *page = get_sup_page(fault_addr);
+        struct sup_page *page = sup_page_get(fault_addr);
         if (page == NULL) {
             sys_exit(-1);
         }
@@ -157,9 +157,11 @@ static void page_fault(struct intr_frame *f) {
            page. */
         struct thread *cur = thread_current();
         ASSERT(fault_addr == page->addr);
-        uint32_t *pd = active_pd();
-        bool success = pagedir_set_page(pd, fault_addr, fte->frame,
+        bool success = pagedir_set_page(cur->pagedir, fault_addr, fte->frame,
                 true);
+        if (!success) {
+            sys_exit(-1);
+        }
         unpin(fte);
     }
     /* To implement virtual memory, delete the rest of the function

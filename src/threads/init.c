@@ -49,6 +49,7 @@
 #ifdef VM
 
 #include "vm/frame.h"
+#include "vm/page.h"
 
 #endif
 
@@ -112,6 +113,7 @@ int main(void) {
     paging_init();
 #ifdef VM
     frame_table_init();
+    sup_page_table_init(); /* I believe I need to put this here? */
 #endif
 
     /* Segmentation. */

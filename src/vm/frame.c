@@ -54,6 +54,7 @@ void free_frame(struct frame_table_entry *fte) {
 
     palloc_free_page(fte->frame);
     palloc_free_page(fte);
+    fte = NULL;
 }
 
 /*! Pin frame so it isn't swapped before use. */
