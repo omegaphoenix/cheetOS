@@ -24,6 +24,6 @@ struct sup_page {
 };
 
 void sup_page_table_init(void);
-struct get_sup_page *get_sup_page(void *addr);
+struct sup_page *get_sup_page(void *addr);
 
 #endif /* vm/page.h */

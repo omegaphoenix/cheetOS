@@ -8,7 +8,7 @@ void sup_page_table_init(void) {
 }
 
 /*! Return supplemental page from hash table. */
-struct get_sup_page *get_sup_page(void *addr) {
+struct sup_page *get_sup_page(void *addr) {
     /* TODO */
     return NULL;
 }
