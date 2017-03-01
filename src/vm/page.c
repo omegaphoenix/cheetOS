@@ -138,9 +138,9 @@ void fetch_data_to_frame(struct sup_page *page,
             get_swap_page(page, fte);
             break;
         case FILE_PAGE:
-            lock_acquire(&read_lock);
+            // lock_acquire(&read_lock);
             success = get_file_page(page, fte);
-            lock_release(&read_lock);
+            // lock_release(&read_lock);
             break;
         case ZERO_PAGE:
             get_zero_page(page, fte);
@@ -172,27 +172,32 @@ static bool install_page(void *upage, void *kpage, bool writable) {
 
 static bool get_file_page(struct sup_page *page,
         struct frame_table_entry *fte) {
-    fte->frame = page->addr;
+    uint8_t *kpage = (uint8_t *) fte->frame;
     struct file *file = page->file_stats->file;
     off_t ofs = page->file_stats->offset;
     size_t page_read_bytes = page->file_stats->read_bytes;
     size_t page_zero_bytes = page->file_stats->zero_bytes;
     bool writable = page->writable;
     uint8_t *upage = (uint8_t *) page->addr;
-    uint8_t *kpage = (uint8_t *) fte->frame;
     file_seek(file, ofs);
+    if (kpage == NULL) {
+        sys_exit(-1);
+    }
+    ASSERT (page_read_bytes > 0);
+    ASSERT (page_read_bytes <= PGSIZE);
+    ASSERT (page_read_bytes + page_zero_bytes == PGSIZE);
 
-    size_t bytes_read = file_read(file, kpage, page_read_bytes);
+    int bytes_read = file_read(file, kpage, page_read_bytes);
     if (bytes_read != (int) page_read_bytes) {
-        palloc_free_page(kpage);
-        return false;
+        free_frame(kpage);
+        sys_exit(-1);
     }
     memset(kpage + page_read_bytes, 0, page_zero_bytes);
 
     /* Add the page to the process's address space. */
     if (!install_page(upage, kpage, writable)) {
-        palloc_free_page(kpage);
-        return false;
+        free_frame(kpage);
+        sys_exit(-1);
     }
 
     return true;

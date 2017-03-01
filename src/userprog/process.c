@@ -509,6 +509,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
     ASSERT(ofs % PGSIZE == 0);
 
     file_seek(file, ofs);
+    off_t offset = ofs;
     while (read_bytes > 0 || zero_bytes > 0) {
         /* Calculate how to fill this page.
            We will read PAGE_READ_BYTES bytes from FILE
@@ -518,7 +519,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
         /* Get a page of memory. */
 #ifdef VM
-        struct sup_page *page = sup_page_file_create(file, ofs, upage,
+        struct sup_page *page = sup_page_file_create(file, offset, upage,
                 page_read_bytes, page_zero_bytes, writable);
         if (page == NULL) {
             return false;
@@ -547,6 +548,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         read_bytes -= page_read_bytes;
         zero_bytes -= page_zero_bytes;
         upage += PGSIZE;
+        offset += PGSIZE;
     }
     return true;
 }
