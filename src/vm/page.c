@@ -13,11 +13,11 @@
 
 static struct lock read_lock;
 static bool install_page(void *upage, void *kpage, bool writable);
-static void get_swap_page(struct sup_page *page,
+static bool get_swap_page(struct sup_page *page,
         struct frame_table_entry *fte);
 static bool get_file_page(struct sup_page *page,
         struct frame_table_entry *fte);
-static void get_zero_page(struct sup_page *page,
+static bool get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte);
 
 void init_sup_page_lock(void) {
@@ -39,6 +39,9 @@ void thread_sup_page_table_delete(struct thread *t) {
 /*! Create a suplemental page. */
 struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     uint8_t *upage, size_t read_bytes, size_t zero_bytes, bool writable) {
+    ASSERT (read_bytes <= PGSIZE);
+    ASSERT (read_bytes + zero_bytes == PGSIZE);
+
     /* Copy over page data. */
     struct sup_page *page = palloc_get_page(PAL_ZERO);
     if (page == NULL) {
@@ -132,24 +135,26 @@ void sup_page_insert(struct hash *hash_table, struct sup_page *page) {
 /*! Copy data to the frame table. */
 void fetch_data_to_frame(struct sup_page *page,
         struct frame_table_entry *fte) {
-    bool success;
+    bool success = false;
     switch (page->status) {
         case SWAP_PAGE:
-            get_swap_page(page, fte);
+            success = get_swap_page(page, fte);
             break;
         case FILE_PAGE:
-            // lock_acquire(&read_lock);
+            lock_acquire(&read_lock);
             success = get_file_page(page, fte);
-            // lock_release(&read_lock);
+            lock_release(&read_lock);
             break;
         case ZERO_PAGE:
-            get_zero_page(page, fte);
+            success = get_zero_page(page, fte);
             break;
     }
+    return success;
 }
 
-static void get_swap_page(struct sup_page *page,
+static bool get_swap_page(struct sup_page *page,
         struct frame_table_entry *fte) {
+    return false;
 }
 
 /*! Adds a mapping from user virtual address UPAGE to kernel
@@ -172,6 +177,7 @@ static bool install_page(void *upage, void *kpage, bool writable) {
 
 static bool get_file_page(struct sup_page *page,
         struct frame_table_entry *fte) {
+    /* Get variables. */
     uint8_t *kpage = (uint8_t *) fte->frame;
     struct file *file = page->file_stats->file;
     off_t ofs = page->file_stats->offset;
@@ -179,31 +185,35 @@ static bool get_file_page(struct sup_page *page,
     size_t page_zero_bytes = page->file_stats->zero_bytes;
     bool writable = page->writable;
     uint8_t *upage = (uint8_t *) page->addr;
-    file_seek(file, ofs);
-    if (kpage == NULL) {
-        sys_exit(-1);
-    }
-    ASSERT (page_read_bytes > 0);
+
     ASSERT (page_read_bytes <= PGSIZE);
     ASSERT (page_read_bytes + page_zero_bytes == PGSIZE);
 
+    /* Go to offset in file. */
+    file_seek(file, ofs);
+    if (kpage == NULL) {
+        return false;
+    }
+
+    /* Read file. */
     int bytes_read = file_read(file, kpage, page_read_bytes);
     if (bytes_read != (int) page_read_bytes) {
-        free_frame(kpage);
-        sys_exit(-1);
+        return false;
     }
+
+    /* Zero out bytes. */
     memset(kpage + page_read_bytes, 0, page_zero_bytes);
 
     /* Add the page to the process's address space. */
     if (!install_page(upage, kpage, writable)) {
-        free_frame(kpage);
-        sys_exit(-1);
+        return false;
     }
 
     return true;
 }
 
-static void get_zero_page(struct sup_page *page,
+static bool get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte) {
     memset(fte->frame, 0, PGSIZE);
+    return true;
 }

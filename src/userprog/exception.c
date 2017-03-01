@@ -107,24 +107,6 @@ static void kill(struct intr_frame *f) {
     }
 }
 
-/*! Adds a mapping from user virtual address UPAGE to kernel
-    virtual address KPAGE to the page table.
-    If WRITABLE is true, the user process may modify the page;
-    otherwise, it is read-only.
-    UPAGE must not already be mapped.
-    KPAGE should probably be a page obtained from the user pool
-    with palloc_get_page().
-    Returns true on success, false if UPAGE is already mapped or
-    if memory allocation fails. */
-static bool install_page(void *upage, void *kpage, bool writable) {
-    struct thread *t = thread_current();
-
-    /* Verify that there's not already a page at that virtual
-       address, then map our page there. */
-    return (pagedir_get_page(t->pagedir, upage) == NULL &&
-            pagedir_set_page(t->pagedir, upage, kpage, writable));
-}
-
 /*! Page fault handler.  This is a skeleton that must be filled in
     to implement virtual memory.  Some solutions to project 2 may
     also require modifying this code.
@@ -175,35 +157,9 @@ static void page_fault(struct intr_frame *f) {
         /* Obtain frame to store page. */
         struct frame_table_entry *fte = get_frame();
         pin(fte);
-        uint8_t *kpage =  (uint8_t *) fte->frame;
-        file_seek(page->file_stats->file, page->file_stats->offset);
-        if (kpage == NULL) {
-            sys_exit(-1);
-        }
-        if (file_read(page->file_stats->file, kpage, page->file_stats->read_bytes)
-                != (int) page->file_stats->read_bytes) {
-            free_frame(kpage);
-            sys_exit(-1);
-        }
-        memset(kpage + page->file_stats->read_bytes, 0, page->file_stats->zero_bytes);
-
-        /* Add the page to the process's address space. */
-        if (!install_page(page->addr, kpage, page->writable)) {
-            free_frame(kpage);
-            sys_exit(-1);
-        }
 
         /* Fetch data into the frame. */
-        // fetch_data_to_frame(page, fte);
-        /* Point page table entry for faulting virtual address to physical
-           page. */
-        /*
-        bool success = pagedir_set_page(cur->pagedir, fault_addr, fte->frame,
-                page->writable);
-        if (!success) {
-            sys_exit(-1);
-        }
-        */
+        fetch_data_to_frame(page, fte);
         unpin(fte);
     }
     /* To implement virtual memory, delete the rest of the function
