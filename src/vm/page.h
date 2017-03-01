@@ -29,13 +29,15 @@ struct file_info {
 /*! Pages for supplemental page table. */
 struct sup_page {
     void *addr;                           /*!< Address to the virtual page. */
+    void *kpage;                          /*!< Address to the physical page. */
     enum page_status status;              /*!< Current status of page. */
-    int page_no;                          /*!< Page number. */
+    uintptr_t page_no;                    /*!< Page number. */
     struct hash_elem sup_page_table_elem; /*!< Elem for supplemental page table. */
     bool writable;                        /*!< Whether page is writable. */
     struct file_info *file_stats;         /*!< Keep track of file info. */
 };
 
+void init_sup_page_lock(void);
 /* Initializes supplemental page hash table */
 void thread_sup_page_table_init(struct thread *t);
 void thread_sup_page_table_delete(struct thread *t);

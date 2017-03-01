@@ -1,14 +1,17 @@
 #include "vm/page.h"
 #include <debug.h>
 #include <hash.h>
+#include <stdio.h>
 #include <string.h>
 #include "filesys/file.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include "userprog/syscall.h"
 #include "vm/frame.h"
 
+static struct lock read_lock;
 static bool install_page(void *upage, void *kpage, bool writable);
 static void get_swap_page(struct sup_page *page,
         struct frame_table_entry *fte);
@@ -16,6 +19,10 @@ static bool get_file_page(struct sup_page *page,
         struct frame_table_entry *fte);
 static void get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte);
+
+void init_sup_page_lock(void) {
+    lock_init(&read_lock);
+}
 
 /*! Initialize supplemental page table. */
 void thread_sup_page_table_init(struct thread *t) {
@@ -35,13 +42,16 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     /* Copy over page data. */
     struct sup_page *page = palloc_get_page(PAL_ZERO);
     if (page == NULL) {
-        return NULL;
+        sys_exit(-1);
     }
     page->addr = upage;
     page->status = FILE_PAGE;
+    page->page_no = pg_no(upage);
     page->writable = writable;
+    page->kpage = NULL;
 
     /* Copy over file data. */
+    page->file_stats = palloc_get_page(PAL_ZERO);
     page->file_stats->file = file;
     page->file_stats->offset = ofs;
     page->file_stats->read_bytes = read_bytes;
@@ -57,7 +67,7 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     supplied by Pintos. */
 unsigned sup_page_hash(const struct hash_elem *e, void *aux UNUSED) {
     const struct sup_page *page = hash_entry(e, struct sup_page, sup_page_table_elem);
-    int hash_index = hash_bytes(page->addr, sizeof(page->addr));
+    int hash_index = hash_bytes(&page->page_no, sizeof page->page_no);
 
     return hash_index;
 }
@@ -67,7 +77,7 @@ bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *a
     const struct sup_page *first_page = hash_entry(a, struct sup_page, sup_page_table_elem);
     const struct sup_page *second_page = hash_entry(b, struct sup_page, sup_page_table_elem);
 
-    return first_page->addr < second_page->addr;
+    return first_page->page_no < second_page->page_no;
 }
 
 /* Delete an entry from hash table using the address of the page */
@@ -104,13 +114,13 @@ struct sup_page *thread_sup_page_get(struct hash * hash_table, void *addr) {
     struct sup_page temp_page;
     struct sup_page *return_page = NULL;
     struct hash_elem *temp_elem = NULL;
-    temp_page.addr = addr;
+    temp_page.page_no = pg_no(addr);
 
     /* Recall that temp_elem is a hash_elem, so we need to hash_entry it */
     temp_elem = hash_find(hash_table, &temp_page.sup_page_table_elem);
 
     if (temp_elem != NULL) {
-      return_page = hash_entry(temp_elem, struct sup_page, sup_page_table_elem);
+        return_page = hash_entry(temp_elem, struct sup_page, sup_page_table_elem);
     }
     return return_page;
 }
@@ -122,12 +132,15 @@ void sup_page_insert(struct hash *hash_table, struct sup_page *page) {
 /*! Copy data to the frame table. */
 void fetch_data_to_frame(struct sup_page *page,
         struct frame_table_entry *fte) {
+    bool success;
     switch (page->status) {
         case SWAP_PAGE:
             get_swap_page(page, fte);
             break;
         case FILE_PAGE:
-            get_file_page(page, fte);
+            lock_acquire(&read_lock);
+            success = get_file_page(page, fte);
+            lock_release(&read_lock);
             break;
         case ZERO_PAGE:
             get_zero_page(page, fte);
@@ -169,7 +182,8 @@ static bool get_file_page(struct sup_page *page,
     uint8_t *kpage = (uint8_t *) fte->frame;
     file_seek(file, ofs);
 
-    if (file_read(file, kpage, page_read_bytes) != (int) page_read_bytes) {
+    size_t bytes_read = file_read(file, kpage, page_read_bytes);
+    if (bytes_read != (int) page_read_bytes) {
         palloc_free_page(kpage);
         return false;
     }
