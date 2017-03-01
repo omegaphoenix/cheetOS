@@ -42,10 +42,10 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     page->writable = writable;
 
     /* Copy over file data. */
-    page->file_stats.file = file;
-    page->file_stats.offset = ofs;
-    page->file_stats.read_bytes = read_bytes;
-    page->file_stats.zero_bytes = zero_bytes;
+    page->file_stats->file = file;
+    page->file_stats->offset = ofs;
+    page->file_stats->read_bytes = read_bytes;
+    page->file_stats->zero_bytes = zero_bytes;
 
     /* Insert into table. */
     struct thread *cur = thread_current();
@@ -160,17 +160,15 @@ static bool install_page(void *upage, void *kpage, bool writable) {
 static bool get_file_page(struct sup_page *page,
         struct frame_table_entry *fte) {
     fte->frame = page->addr;
-
-    /* Get data for reading from file. */
-    struct file *file = page->file_stats.file;
-    off_t ofs = page->file_stats.offset;
-    size_t page_read_bytes = page->file_stats.read_bytes;
-    size_t page_zero_bytes = page->file_stats.zero_bytes;
+    struct file *file = page->file_stats->file;
+    off_t ofs = page->file_stats->offset;
+    size_t page_read_bytes = page->file_stats->read_bytes;
+    size_t page_zero_bytes = page->file_stats->zero_bytes;
     bool writable = page->writable;
     uint8_t *upage = (uint8_t *) page->addr;
     uint8_t *kpage = (uint8_t *) fte->frame;
-
     file_seek(file, ofs);
+
     if (file_read(file, kpage, page_read_bytes) != (int) page_read_bytes) {
         palloc_free_page(kpage);
         return false;
