@@ -44,7 +44,7 @@ void thread_sup_page_table_delete(struct thread *t);
 struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     uint8_t *upage, size_t read_bytes, size_t zero_bytes, bool writable);
 void sup_page_table_delete(struct hash * hash_table);
-void fetch_data_to_frame(struct sup_page *page,
+bool fetch_data_to_frame(struct sup_page *page,
     struct frame_table_entry *fte);
 
 struct sup_page *thread_sup_page_get(struct hash * hash_table, void *addr);

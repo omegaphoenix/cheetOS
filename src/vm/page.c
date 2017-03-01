@@ -20,6 +20,7 @@ static bool get_file_page(struct sup_page *page,
 static bool get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte);
 
+/*! Initialize lock(s). Call in threads/init.c. */
 void init_sup_page_lock(void) {
     lock_init(&read_lock);
 }
@@ -30,7 +31,7 @@ void thread_sup_page_table_init(struct thread *t) {
     hash_init(&t->sup_page, sup_page_hash, sup_page_less, NULL);
 }
 
-/* Frees a hash table */
+/*! Frees a hash table */
 void thread_sup_page_table_delete(struct thread *t) {
     /* TODO: Free everything inside hash table if not freed */
     hash_destroy(&t->sup_page, NULL);
@@ -48,7 +49,12 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
         sys_exit(-1);
     }
     page->addr = upage;
-    page->status = FILE_PAGE;
+    if (read_bytes > 0) {
+        page->status = FILE_PAGE;
+    }
+    else {
+        page->status = ZERO_PAGE;
+    }
     page->page_no = pg_no(upage);
     page->writable = writable;
     page->kpage = NULL;
@@ -75,7 +81,7 @@ unsigned sup_page_hash(const struct hash_elem *e, void *aux UNUSED) {
     return hash_index;
 }
 
-/* Hash table's comparison will be using pointer comparisons */
+/*! Hash table's comparison will be using pointer comparisons */
 bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED) {
     const struct sup_page *first_page = hash_entry(a, struct sup_page, sup_page_table_elem);
     const struct sup_page *second_page = hash_entry(b, struct sup_page, sup_page_table_elem);
@@ -83,7 +89,7 @@ bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *a
     return first_page->page_no < second_page->page_no;
 }
 
-/* Delete an entry from hash table using the address of the page */
+/*! Delete an entry from hash table using the address of the page */
 void sup_page_delete(struct hash * hash_table, void *addr) {
     struct sup_page temp_page;
     struct sup_page *page_to_delete = NULL;
@@ -112,7 +118,7 @@ void sup_page_delete(struct hash * hash_table, void *addr) {
     }
 }
 
-/* Retrieves a supplemental page from the hash table via address */
+/*! Retrieves a supplemental page from the hash table via address */
 struct sup_page *thread_sup_page_get(struct hash * hash_table, void *addr) {
     struct sup_page temp_page;
     struct sup_page *return_page = NULL;
@@ -128,12 +134,13 @@ struct sup_page *thread_sup_page_get(struct hash * hash_table, void *addr) {
     return return_page;
 }
 
+/*! Insert page into supplemental hash table. */
 void sup_page_insert(struct hash *hash_table, struct sup_page *page) {
     hash_insert(hash_table, &page->sup_page_table_elem);
 }
 
 /*! Copy data to the frame table. */
-void fetch_data_to_frame(struct sup_page *page,
+bool fetch_data_to_frame(struct sup_page *page,
         struct frame_table_entry *fte) {
     bool success = false;
     switch (page->status) {
@@ -152,6 +159,7 @@ void fetch_data_to_frame(struct sup_page *page,
     return success;
 }
 
+/*! Load the a swap page into memory. */
 static bool get_swap_page(struct sup_page *page,
         struct frame_table_entry *fte) {
     return false;
@@ -175,16 +183,22 @@ static bool install_page(void *upage, void *kpage, bool writable) {
             pagedir_set_page(t->pagedir, upage, kpage, writable));
 }
 
+/*! Load the file page into memory. */
 static bool get_file_page(struct sup_page *page,
         struct frame_table_entry *fte) {
-    /* Get variables. */
+    /* Get physical address. */
     uint8_t *kpage = (uint8_t *) fte->frame;
+    page->kpage = kpage;
+
+    /* Get variables. */
+    bool writable = page->writable;
+    uint8_t *upage = (uint8_t *) page->addr;
+
+    /* Get file variables set during load_segment. */
     struct file *file = page->file_stats->file;
     off_t ofs = page->file_stats->offset;
     size_t page_read_bytes = page->file_stats->read_bytes;
     size_t page_zero_bytes = page->file_stats->zero_bytes;
-    bool writable = page->writable;
-    uint8_t *upage = (uint8_t *) page->addr;
 
     ASSERT (page_read_bytes <= PGSIZE);
     ASSERT (page_read_bytes + page_zero_bytes == PGSIZE);
@@ -212,8 +226,18 @@ static bool get_file_page(struct sup_page *page,
     return true;
 }
 
+/*! Load the a page of zeros into memory. */
 static bool get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte) {
-    memset(fte->frame, 0, PGSIZE);
+    /*
+    uint8_t *kpage = (uint8_t *) fte->frame;
+    page->kpage = kpage;
+    if (kpage == NULL) {
+        return false;
+    }
+    ASSERT(page->file_stats->zero_bytes == PGSIZE);
+    memset(kpage, 0, PGSIZE);
     return true;
+    */
+    return get_file_page(page, fte);
 }
