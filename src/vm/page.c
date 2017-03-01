@@ -31,7 +31,7 @@ void thread_sup_page_table_delete(struct thread *t) {
     supplied by Pintos. */
 unsigned sup_page_hash(const struct hash_elem *e, void *aux UNUSED) {
     const struct sup_page *page = hash_entry(e, struct sup_page, sup_page_table_elem);
-    int hash_index = hash_bytes(page->upage, sizeof(page->upage));
+    int hash_index = hash_bytes(&page->upage, sizeof(page->upage));
 
     return hash_index;
 }
@@ -91,6 +91,11 @@ struct sup_page *thread_sup_page_get(struct hash * hash_table, void *addr) {
 
 /* Inserts an address into a hash table */
 struct hash_elem * sup_page_insert(struct hash * hash_table, struct sup_page * sup_page) {
+    printf("Inserting page with address... %p\n", (void *) sup_page->upage);
+    printf("Page has offset of... %d\n", sup_page->segment_info->ofs);
+    printf("Page has readbytes of... %d\n", sup_page->segment_info->read_bytes);
+    printf("Page has zerobytes of ... %d\n\n", sup_page->segment_info->zero_bytes);
+
     return hash_insert(hash_table, &sup_page->sup_page_table_elem);
 }
 

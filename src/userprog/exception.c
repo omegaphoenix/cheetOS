@@ -146,8 +146,10 @@ static void page_fault(struct intr_frame *f) {
     if (is_user_vaddr(fault_addr) && not_present) {
         struct thread *cur = thread_current();
         /* Locate page that faulted in supplemental page table. */
+        printf("Address in question is... %p\n\n", (void *) fault_addr);
         struct sup_page *page = thread_sup_page_get(&cur->sup_page, fault_addr);
         if (page == NULL) {
+            printf("Page is null! \n");
             sys_exit(-1);
         }
         /* Obtain frame to store page. */
@@ -161,6 +163,7 @@ static void page_fault(struct intr_frame *f) {
         bool success = pagedir_set_page(cur->pagedir, fault_addr, fte->frame,
                 page->segment_info->writable);
         if (!success) {
+            printf("Not successful! \n");
             sys_exit(-1);
         }
         unpin(fte);

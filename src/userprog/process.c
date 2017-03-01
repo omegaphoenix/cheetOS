@@ -348,7 +348,7 @@ bool load(const char *file_name, void (**eip) (void), void **esp) {
     if (t->pagedir == NULL)
         goto done;
     process_activate();
-
+    printf("File name is... %s\n", file_name);
     /* Open executable file. */
     file = filesys_open(file_name);
     if (file == NULL) {
@@ -517,7 +517,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
     if (new_segment == NULL || new_page == NULL)
         return false;
-
+    printf("Thread name... %s\n", cur->name);
     new_segment->file = file;
     new_segment->ofs = ofs;
     new_segment->read_bytes = read_bytes;
