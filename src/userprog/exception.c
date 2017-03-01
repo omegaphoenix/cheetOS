@@ -144,9 +144,9 @@ static void page_fault(struct intr_frame *f) {
 
 #ifdef VM
     if (is_user_vaddr(fault_addr)) {
-        struct thread *cur = thread_current(); // This is buggy
+        struct thread *cur = thread_current();
         /* Locate page that faulted in supplemental page table. */
-        struct sup_page *page = sup_page_get(cur->sup_page, fault_addr);
+        struct sup_page *page = thread_sup_page_get(&cur->sup_page, fault_addr);
         /* Obtain frame to store page. */
         struct frame_table_entry *fte = get_frame();
         pin(fte);

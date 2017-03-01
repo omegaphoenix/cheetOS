@@ -2,22 +2,28 @@
 #include "vm/frame.h"
 #include "userprog/pagedir.h"
 #include "threads/palloc.h"
-#include "threads/malloc.h"
 #include <hash.h>
 #include <debug.h>
 
 /*! Initialize supplemental page table. */
-struct hash * sup_page_table_init(void) {
+void thread_sup_page_table_init(struct thread *t) {
     /* For this simple hash table, no auxiliary data should be necessary */
-    struct hash * thread_sup_table = malloc(sizeof(struct hash));
-    hash_init(thread_sup_table, sup_page_hash, sup_page_less, NULL);
-    return thread_sup_table;
+    hash_init(&t->sup_page, sup_page_hash, sup_page_less, NULL);
+}
+
+/*! Initialize supplemental page table. */
+void sup_page_table_init(void) {
+    /* For this simple hash table, no auxiliary data should be necessary */
+    // struct hash * thread_sup_table = malloc(sizeof(struct hash));
+    hash_init(&sup_page_table, sup_page_hash, sup_page_less, NULL);
+    printf("Why did this work fine?...\n");
+    // return thread_sup_table;
 }
 
 /* Frees a hash table */
-void sup_page_table_delete(struct hash * hash_table) {
+void thread_sup_page_table_delete(struct thread *t) {
     /* TODO: Free everything inside hash table if not freed */
-    free(hash_table);
+    hash_destroy(&t->sup_page, NULL);
 }
 
 /*! Since we're hashing by address, we will be using hash_bytes
@@ -55,7 +61,7 @@ void sup_page_delete(struct hash * hash_table, void *addr) {
 
         /* Defensively check to see if it's still inside the hash_table/deleted_elem is not null */
         ASSERT(deleted_elem != NULL);
-        ASSERT(sup_page_get(hash_table, addr) == NULL);
+        ASSERT(sup_page_get(/*hash_table, */addr) == NULL);
 
         /* Retrieve sup_page struct */
         page_to_delete = hash_entry(deleted_elem, struct sup_page, sup_page_table_elem);
@@ -67,7 +73,23 @@ void sup_page_delete(struct hash * hash_table, void *addr) {
 }
 
 /* Retrieves a supplemental page from the hash table via address */
-struct sup_page *sup_page_get(struct hash * hash_table, void *addr) {
+struct sup_page *sup_page_get(void *addr) {
+    struct sup_page temp_page;
+    struct sup_page *return_page = NULL;
+    struct hash_elem *temp_elem = NULL;
+    temp_page.addr = addr;
+
+    /* Recall that temp_elem is a hash_elem, so we need to hash_entry it */
+    temp_elem = hash_find(&sup_page_table, &temp_page.sup_page_table_elem);
+
+    if (temp_elem != NULL) {
+      return_page = hash_entry(temp_elem, struct sup_page, sup_page_table_elem);
+    }
+    return return_page;
+}
+
+/* Retrieves a supplemental page from the hash table via address */
+struct sup_page *thread_sup_page_get(struct hash * hash_table, void *addr) {
     struct sup_page temp_page;
     struct sup_page *return_page = NULL;
     struct hash_elem *temp_elem = NULL;
