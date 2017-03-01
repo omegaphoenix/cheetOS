@@ -1,10 +1,19 @@
 #include "vm/page.h"
-#include "vm/frame.h"
-#include "userprog/pagedir.h"
-#include "threads/palloc.h"
-#include "threads/malloc.h"
-#include <hash.h>
 #include <debug.h>
+#include <hash.h>
+#include "filesys/file.h"
+#include "threads/malloc.h"
+#include "threads/palloc.h"
+#include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+#include "vm/frame.h"
+
+static void get_swap_page(struct sup_page *page,
+        struct frame_table_entry *fte);
+static void get_file_page(struct sup_page *page,
+        struct frame_table_entry *fte);
+static void get_zero_page(struct sup_page *page,
+        struct frame_table_entry *fte);
 
 /*! Initialize supplemental page table. */
 struct hash * sup_page_table_init(void) {
@@ -89,4 +98,28 @@ void sup_page_insert(struct hash * hash_table, void *addr) {
 /*! Copy data to the frame table. */
 void fetch_data_to_frame(struct sup_page *page,
         struct frame_table_entry *fte) {
+    switch (page->status) {
+        case SWAP_PAGE:
+            get_swap_page(page, fte);
+            break;
+        case FILE_PAGE:
+            get_file_page(page, fte);
+            break;
+        case ZERO_PAGE:
+            get_zero_page(page, fte);
+            break;
+    }
+}
+
+static void get_swap_page(struct sup_page *page,
+        struct frame_table_entry *fte) {
+}
+
+static void get_file_page(struct sup_page *page,
+        struct frame_table_entry *fte) {
+}
+
+static void get_zero_page(struct sup_page *page,
+        struct frame_table_entry *fte) {
+    memset(fte->frame, 0, PGSIZE);
 }

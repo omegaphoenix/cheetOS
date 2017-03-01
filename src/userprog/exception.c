@@ -143,7 +143,7 @@ static void page_fault(struct intr_frame *f) {
     user = (f->error_code & PF_U) != 0;
 
 #ifdef VM
-    if (is_user_vaddr(fault_addr)) {
+    if (!is_user_vaddr(fault_addr) && not_present) {
         struct thread *cur = thread_current();
         /* Locate page that faulted in supplemental page table. */
         struct sup_page *page = sup_page_get(cur->sup_page, fault_addr);
@@ -184,6 +184,9 @@ static void page_fault(struct intr_frame *f) {
         /* Copy eax into eip and set eax to -1. */
         f->eip = (void *) f->eax;
         f->eax = -1;
+    }
+    else {
+        sys_exit(-1);
     }
 }
 
