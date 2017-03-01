@@ -15,8 +15,6 @@
 
 /* Protect filesys calls. */
 static struct lock filesys_lock;
-void acquire_file_lock(void);
-void release_file_lock(void);
 
 static void syscall_handler(struct intr_frame *);
 

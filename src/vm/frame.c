@@ -13,7 +13,7 @@ void frame_table_init(void) {
 static void *fte_create(void *frame, struct thread *owner) {
     struct frame_table_entry *fte;
 
-    fte = palloc_get_page(PAL_USER | PAL_ZERO); // but do we need a whole page for this...
+    fte = palloc_get_page(PAL_USER | PAL_ZERO);
     if (fte == NULL) {
         /* TODO: evict frame */
         PANIC("store_frame: out of frames");

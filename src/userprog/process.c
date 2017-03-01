@@ -509,6 +509,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
     ASSERT(ofs % PGSIZE == 0);
 
     file_seek(file, ofs);
+    off_t offset = ofs;
     while (read_bytes > 0 || zero_bytes > 0) {
         /* Calculate how to fill this page.
            We will read PAGE_READ_BYTES bytes from FILE
@@ -518,39 +519,36 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
         /* Get a page of memory. */
 #ifdef VM
-        struct frame_table_entry *kpage_fte = get_frame();
-        uint8_t *kpage = (uint8_t *) kpage_fte->frame;
+        struct sup_page *page = sup_page_file_create(file, offset, upage,
+                page_read_bytes, page_zero_bytes, writable);
+        if (page == NULL) {
+            return false;
+        }
 #else
         uint8_t *kpage = palloc_get_page(PAL_USER);
-#endif
-        if (kpage == NULL)
+        if (kpage == NULL) {
             return false;
+        }
 
         /* Load this page. */
         if (file_read(file, kpage, page_read_bytes) != (int) page_read_bytes) {
-#ifdef VM
-            free_frame(kpage_fte);
-#else
             palloc_free_page(kpage);
-#endif
             return false;
         }
         memset(kpage + page_read_bytes, 0, page_zero_bytes);
 
         /* Add the page to the process's address space. */
         if (!install_page(upage, kpage, writable)) {
-#ifdef VM
-            free_frame(kpage_fte);
-#else
             palloc_free_page(kpage);
-#endif
             return false;
         }
+#endif
 
         /* Advance. */
         read_bytes -= page_read_bytes;
         zero_bytes -= page_zero_bytes;
         upage += PGSIZE;
+        offset += PGSIZE;
     }
     return true;
 }
