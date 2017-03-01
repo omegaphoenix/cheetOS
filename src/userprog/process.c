@@ -166,6 +166,7 @@ static void start_process(void *cmdline_) {
         thread_exit();
     }
 
+    /* How to invoke this on demand? */
     /* Start the user process by simulating a return from an
        interrupt, implemented by intr_exit (in
        threads/intr-stubs.S).  Because intr_exit takes all of its
