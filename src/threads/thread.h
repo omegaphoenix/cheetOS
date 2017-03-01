@@ -10,6 +10,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "synch.h"
+#include <hash.h>
 
 /* Open file. This is for a linked list of open files in each thread. */
 struct sys_file {
@@ -160,6 +161,9 @@ struct thread {
     /**@}*/
 #endif
 
+#ifdef VM
+    struct hash sup_page;              /*!<Supplemental Page Table. */
+#endif
     /*! Owned by thread.c. */
     /**@{*/
     unsigned magic;                     /* Detects stack overflow. */

@@ -20,6 +20,7 @@
 #include "threads/vaddr.h"
 #ifdef VM
 #include "vm/frame.h"
+#include "vm/page.h"
 #endif
 
 static int max_args = 1;
@@ -115,6 +116,11 @@ static void start_process(void *cmdline_) {
     char *argv[max_args + 2]; /* maximum three arguments + filename + null*/
     int argc = 0;
     int token_size = 0;
+
+    #ifdef VM
+        struct thread *t = thread_current();
+        thread_sup_page_table_init(t);
+    #endif
 
     /* Parse argument string */
     for (token = strtok_r(cmdline, " ", &save_ptr); token != NULL;
@@ -237,6 +243,10 @@ void process_exit(void) {
         pagedir_activate(NULL);
         pagedir_destroy(pd);
     }
+
+    #ifdef VM
+        thread_sup_page_table_delete(cur);
+    #endif
 }
 
 /*! Sets up the CPU for running user code in the current thread.

@@ -1,10 +1,17 @@
 #include "userprog/exception.h"
-#include "userprog/syscall.h"
 #include <inttypes.h>
 #include <stdio.h>
-#include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "userprog/gdt.h"
+#include "userprog/syscall.h"
+#ifdef VM
+#include "threads/vaddr.h"
+#include "threads/thread.h"
+#include "userprog/pagedir.h"
+#include "vm/frame.h"
+#include "vm/page.h"
+#endif
 
 /*! Number of page faults processed. */
 static long long page_fault_cnt;
@@ -70,7 +77,7 @@ static void kill(struct intr_frame *f) {
        the kernel.  Real Unix-like operating systems pass most
        exceptions back to the process via signals, but we don't
        implement them. */
-     
+
     /* The interrupt frame's code segment value tells us where the
        exception originated. */
     switch (f->cs) {
@@ -88,7 +95,7 @@ static void kill(struct intr_frame *f) {
            may cause kernel exceptions--but they shouldn't arrive
            here.)  Panic the kernel to make the point.  */
         intr_dump_frame(f);
-        PANIC("Kernel bug - unexpected interrupt in kernel"); 
+        PANIC("Kernel bug - unexpected interrupt in kernel");
 
     default:
         /* Some other code segment?  Shouldn't happen.  Panic the
@@ -135,10 +142,24 @@ static void page_fault(struct intr_frame *f) {
     write = (f->error_code & PF_W) != 0;
     user = (f->error_code & PF_U) != 0;
 
+#ifdef VM
+    if (is_user_vaddr(fault_addr)) {
+        struct thread *cur = thread_current();
+        /* Locate page that faulted in supplemental page table. */
+        struct sup_page *page = thread_sup_page_get(&cur->sup_page, fault_addr);
+        /* Obtain frame to store page. */
+        struct frame_table_entry *fte = get_frame();
+        pin(fte);
+        /* Fetch data into the frame. */
+        fetch_data_to_frame(page, fte);
+        /* Point page table entry for faulting virtual address to physical
+           page. */
+        unpin(fte);
+    }
     /* To implement virtual memory, delete the rest of the function
        body, and replace it with code that brings in the page to
        which fault_addr refers. */
-
+#else
     /* Kill process if user program faults */
     if (user) {
         printf("Page fault at %p: %s error %s page in %s context.\n",
@@ -148,8 +169,9 @@ static void page_fault(struct intr_frame *f) {
                user ? "user" : "kernel");
         kill(f);
     }
+#endif
     /* Handle if page fault is caused by kernel instruction */
-    else {
+    if (!user) {
         /* Copy eax into eip and set eax to -1. */
         f->eip = (void *) f->eax;
         f->eax = -1;

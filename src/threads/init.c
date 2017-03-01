@@ -49,6 +49,7 @@
 #ifdef VM
 
 #include "vm/frame.h"
+#include "vm/page.h"
 
 #endif
 

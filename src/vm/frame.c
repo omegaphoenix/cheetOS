@@ -26,7 +26,7 @@ static void *fte_create(void *frame, struct thread *owner) {
 }
 
 /*! Create new frame and frame table entry. */
-void *get_frame(void) {
+struct frame_table_entry *get_frame(void) {
     /* Allocate page frame*/
     void *frame = palloc_get_page(PAL_USER | PAL_ZERO);
     if (frame == NULL) {
@@ -54,4 +54,15 @@ void free_frame(struct frame_table_entry *fte) {
 
     palloc_free_page(fte->frame);
     palloc_free_page(fte);
+    fte = NULL;
+}
+
+/*! Pin frame so it isn't swapped before use. */
+void pin(struct frame_table_entry *fte) {
+    fte->pin_count++;
+}
+/*! Unpin to indicate that frame can be freed. */
+void unpin(struct frame_table_entry *fte) {
+    ASSERT(fte->pin_count > 0);
+    fte->pin_count--;
 }
