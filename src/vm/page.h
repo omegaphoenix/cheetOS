@@ -18,14 +18,6 @@ enum page_status {
     ZERO_PAGE
 };
 
-/* Container to keep track of file info for loading. */
-struct file_info {
-    struct file *file;
-    off_t offset;
-    size_t read_bytes;
-    size_t zero_bytes;
-};
-
 /*! Pages for supplemental page table. */
 struct sup_page {
     void *addr;                           /*!< Address to the virtual page. */
@@ -33,7 +25,13 @@ struct sup_page {
     int page_no;                          /*!< Page number. */
     struct hash_elem sup_page_table_elem; /*!< Elem for supplemental page table. */
     bool writable;                        /*!< Whether page is writable. */
-    struct file_info *file_stats;         /*!< Keep track of file info. */
+    /*!< Keep track of file info. */
+    struct {
+        struct file *file;
+        off_t offset;
+        size_t read_bytes;
+        size_t zero_bytes;
+    } file_stats;
 };
 
 /* Initializes supplemental page hash table */
