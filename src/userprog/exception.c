@@ -143,10 +143,10 @@ static void page_fault(struct intr_frame *f) {
     user = (f->error_code & PF_U) != 0;
 
 #ifdef VM
-    if (!is_user_vaddr(fault_addr) && not_present) {
+    if (is_user_vaddr(fault_addr) && not_present) {
         struct thread *cur = thread_current();
         /* Locate page that faulted in supplemental page table. */
-        struct sup_page *page = sup_page_get(cur->sup_page, fault_addr);
+        struct sup_page *page = thread_sup_page_get(&cur->sup_page, fault_addr);
         if (page == NULL) {
             sys_exit(-1);
         }

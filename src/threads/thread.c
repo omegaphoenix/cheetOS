@@ -396,10 +396,6 @@ void thread_exit(void) {
     process_exit();
 #endif
 
-#ifdef VM
-    sup_page_table_delete(cur->sup_page);
-#endif
-
     if (cur->parent != NULL) {
         list_remove(&cur->kid_elem);
     }
@@ -761,10 +757,6 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->waited_on = false;
     t->num_files = 0;
     t->parent = NULL;
-
-    #ifdef VM
-        t->sup_page = sup_page_table_init();
-    #endif
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */
