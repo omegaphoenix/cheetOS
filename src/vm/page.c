@@ -1,6 +1,7 @@
 #include "vm/page.h"
 #include <debug.h>
 #include <hash.h>
+#include <string.h>
 #include "filesys/file.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
@@ -25,6 +26,26 @@ void thread_sup_page_table_init(struct thread *t) {
 void thread_sup_page_table_delete(struct thread *t) {
     /* TODO: Free everything inside hash table if not freed */
     hash_destroy(&t->sup_page, NULL);
+}
+
+/*! Create a suplemental page. */
+struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
+    uint8_t *upage, size_t read_bytes, size_t zero_bytes, bool writable) {
+    /* Copy over page data. */
+    struct sup_page *page = palloc_get_page(PAL_ZERO);
+    page->addr = upage;
+    page->status = FILE_PAGE;
+    page->writable = writable;
+
+    /* Copy over file data. */
+    page->file_stats.file = file;
+    page->file_stats.offset = ofs;
+    page->file_stats.read_bytes = read_bytes;
+    page->file_stats.zero_bytes = zero_bytes;
+
+    /* Insert into table. */
+    struct thread *cur = thread_current();
+    sup_page_insert(&cur->sup_page, page);
 }
 
 /*! Since we're hashing by address, we will be using hash_bytes
@@ -89,8 +110,8 @@ struct sup_page *thread_sup_page_get(struct hash * hash_table, void *addr) {
     return return_page;
 }
 
-void sup_page_insert(struct hash * hash_table, void *addr) {
-
+void sup_page_insert(struct hash *hash_table, struct sup_page *page) {
+    hash_insert(hash_table, &page->sup_page_table_elem);
 }
 
 /*! Copy data to the frame table. */

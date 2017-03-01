@@ -518,34 +518,26 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
 
         /* Get a page of memory. */
 #ifdef VM
-        struct frame_table_entry *kpage_fte = get_frame();
-        uint8_t *kpage = (uint8_t *) kpage_fte->frame;
+        struct sup_page *page = sup_page_file_create(file, ofs, upage,
+                page_read_bytes, page_zero_bytes, writable);
 #else
         uint8_t *kpage = palloc_get_page(PAL_USER);
-#endif
         if (kpage == NULL)
             return false;
 
         /* Load this page. */
         if (file_read(file, kpage, page_read_bytes) != (int) page_read_bytes) {
-#ifdef VM
-            free_frame(kpage_fte);
-#else
             palloc_free_page(kpage);
-#endif
             return false;
         }
         memset(kpage + page_read_bytes, 0, page_zero_bytes);
 
         /* Add the page to the process's address space. */
         if (!install_page(upage, kpage, writable)) {
-#ifdef VM
-            free_frame(kpage_fte);
-#else
             palloc_free_page(kpage);
-#endif
             return false;
         }
+#endif
 
         /* Advance. */
         read_bytes -= page_read_bytes;

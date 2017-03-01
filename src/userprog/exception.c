@@ -159,7 +159,7 @@ static void page_fault(struct intr_frame *f) {
            page. */
         ASSERT(fault_addr == page->addr);
         bool success = pagedir_set_page(cur->pagedir, fault_addr, fte->frame,
-                page->writeable);
+                page->writable);
         if (!success) {
             sys_exit(-1);
         }

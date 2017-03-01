@@ -162,8 +162,9 @@ struct thread {
 #endif
 
 #ifdef VM
-    struct hash sup_page;              /*!<Supplemental Page Table. */
+    struct hash sup_page;              /*!< Supplemental Page Table. */
 #endif
+
     /*! Owned by thread.c. */
     /**@{*/
     unsigned magic;                     /* Detects stack overflow. */
