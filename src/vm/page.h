@@ -37,7 +37,7 @@ struct sup_page {
 /* Initializes supplemental page hash table */
 void thread_sup_page_table_init(struct thread *t);
 void thread_sup_page_table_delete(struct thread *t);
-void fetch_data_to_frame(struct sup_page *page, struct frame_table_entry *fte);
+bool fetch_data_to_frame(struct sup_page *page);
 
 struct sup_page *thread_sup_page_get(struct hash * hash_table, void *addr);
 unsigned sup_page_hash(const struct hash_elem *e, void *aux);
@@ -45,5 +45,6 @@ bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *a
 void sup_page_delete(struct hash * hash_table, void *addr);
 struct hash_elem * sup_page_insert(struct hash * hash_table, struct sup_page * new_page);
 
+bool sup_page_load(struct sup_page *page_to_load);
 
 #endif /* vm/page.h */
