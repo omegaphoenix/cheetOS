@@ -15,6 +15,7 @@
 #include "threads/flags.h"
 #include "threads/init.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -508,6 +509,36 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
     ASSERT(pg_ofs(upage) == 0);
     ASSERT(ofs % PGSIZE == 0);
 
+#ifdef VM
+    struct thread *cur = thread_current();
+    struct hash_elem *check;
+    struct segment *new_segment = malloc(sizeof(struct segment));
+    struct sup_page *new_page = malloc(sizeof(struct sup_page));
+
+    if (new_segment == NULL || new_page == NULL)
+        return false;
+
+    new_segment->file = file;
+    new_segment->ofs = ofs;
+    new_segment->read_bytes = read_bytes;
+    new_segment->zero_bytes = zero_bytes;
+    new_segment->writable = writable;
+
+    new_page->segment_info = new_segment;
+    new_page->upage = upage;
+
+    if (read_bytes == 0)
+        new_page->status = ZERO_PAGE;
+    else 
+        new_page->status = FILE_PAGE;
+
+    check = sup_page_insert(&cur->sup_page, new_page);
+
+    if (check != NULL) {
+        printf("Already populated before... \n");
+    }
+    return true;
+#else
     file_seek(file, ofs);
     while (read_bytes > 0 || zero_bytes > 0) {
         /* Calculate how to fill this page.
@@ -517,33 +548,33 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
         /* Get a page of memory. */
-#ifdef VM
-        struct frame_table_entry *kpage_fte = get_frame();
-        uint8_t *kpage = (uint8_t *) kpage_fte->frame;
-#else
+// #ifdef VM
+//         struct frame_table_entry *kpage_fte = get_frame();
+//         uint8_t *kpage = (uint8_t *) kpage_fte->frame;
+// #else
         uint8_t *kpage = palloc_get_page(PAL_USER);
-#endif
+// #endif
         if (kpage == NULL)
             return false;
 
         /* Load this page. */
         if (file_read(file, kpage, page_read_bytes) != (int) page_read_bytes) {
-#ifdef VM
-            free_frame(kpage_fte);
-#else
+// #ifdef VM
+//             free_frame(kpage_fte);
+// #else
             palloc_free_page(kpage);
-#endif
+// #endif
             return false;
         }
         memset(kpage + page_read_bytes, 0, page_zero_bytes);
 
         /* Add the page to the process's address space. */
         if (!install_page(upage, kpage, writable)) {
-#ifdef VM
-            free_frame(kpage_fte);
-#else
+// #ifdef VM
+//             free_frame(kpage_fte);
+// #else
             palloc_free_page(kpage);
-#endif
+// #endif
             return false;
         }
 
@@ -553,6 +584,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
         upage += PGSIZE;
     }
     return true;
+#endif 
 }
 
 /*! Create a minimal stack by mapping a zeroed page at the top of

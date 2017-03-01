@@ -31,7 +31,7 @@ void thread_sup_page_table_delete(struct thread *t) {
     supplied by Pintos. */
 unsigned sup_page_hash(const struct hash_elem *e, void *aux UNUSED) {
     const struct sup_page *page = hash_entry(e, struct sup_page, sup_page_table_elem);
-    int hash_index = hash_bytes(page->addr, sizeof(page->addr));
+    int hash_index = hash_bytes(page->upage, sizeof(page->upage));
 
     return hash_index;
 }
@@ -41,7 +41,7 @@ bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *a
     const struct sup_page *first_page = hash_entry(a, struct sup_page, sup_page_table_elem);
     const struct sup_page *second_page = hash_entry(b, struct sup_page, sup_page_table_elem);
 
-    return first_page->addr < second_page->addr;
+    return first_page->upage < second_page->upage;
 }
 
 /* Delete an entry from hash table using the address of the page */
@@ -51,7 +51,7 @@ void sup_page_delete(struct hash * hash_table, void *addr) {
     struct hash_elem *elem_to_delete = NULL;
     struct hash_elem *deleted_elem = NULL;
 
-    temp_page.addr = addr;
+    temp_page.upage = addr;
 
     elem_to_delete = hash_find(hash_table, &temp_page.sup_page_table_elem);
 
@@ -78,7 +78,7 @@ struct sup_page *thread_sup_page_get(struct hash * hash_table, void *addr) {
     struct sup_page temp_page;
     struct sup_page *return_page = NULL;
     struct hash_elem *temp_elem = NULL;
-    temp_page.addr = addr;
+    temp_page.upage = addr;
 
     /* Recall that temp_elem is a hash_elem, so we need to hash_entry it */
     temp_elem = hash_find(hash_table, &temp_page.sup_page_table_elem);
@@ -89,8 +89,9 @@ struct sup_page *thread_sup_page_get(struct hash * hash_table, void *addr) {
     return return_page;
 }
 
-void sup_page_insert(struct hash * hash_table, void *addr) {
-
+/* Inserts an address into a hash table */
+struct hash_elem * sup_page_insert(struct hash * hash_table, struct sup_page * sup_page) {
+    return hash_insert(hash_table, &sup_page->sup_page_table_elem);
 }
 
 /*! Copy data to the frame table. */

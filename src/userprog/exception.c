@@ -157,9 +157,9 @@ static void page_fault(struct intr_frame *f) {
         fetch_data_to_frame(page, fte);
         /* Point page table entry for faulting virtual address to physical
            page. */
-        ASSERT(fault_addr == page->addr);
+        ASSERT(fault_addr == page->upage);
         bool success = pagedir_set_page(cur->pagedir, fault_addr, fte->frame,
-                page->writeable);
+                page->segment_info->writable);
         if (!success) {
             sys_exit(-1);
         }
