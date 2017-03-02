@@ -19,6 +19,7 @@ static bool get_file_page(struct sup_page *page,
         struct frame_table_entry *fte);
 static bool get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte);
+static void sup_page_free(struct hash_elem *e, void *aux);
 
 /*! Initialize lock(s). Call in threads/init.c. */
 void init_sup_page_lock(void) {
@@ -32,7 +33,7 @@ void thread_sup_page_table_init(struct thread *t) {
 }
 
 /* Frees a sup_page element. */
-void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
+static void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
     struct sup_page *page_to_delete = hash_entry(e, struct sup_page, sup_page_table_elem);
 
     ASSERT(page_to_delete != NULL);
