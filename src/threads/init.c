@@ -144,7 +144,6 @@ int main(void) {
 #endif
 
 #ifdef VM
-    init_sup_page_lock();
     swap_table_init();
 #endif
 

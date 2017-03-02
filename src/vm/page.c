@@ -12,7 +12,6 @@
 #include "vm/frame.h"
 #include "vm/swap.h"
 
-static struct lock read_lock;
 static bool install_page(void *upage, void *kpage, bool writable);
 static bool get_swap_page(struct sup_page *page,
         struct frame_table_entry *fte);
@@ -20,11 +19,6 @@ static bool get_file_page(struct sup_page *page,
         struct frame_table_entry *fte);
 static bool get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte);
-
-/*! Initialize lock(s). Call in threads/init.c. */
-void init_sup_page_lock(void) {
-    lock_init(&read_lock);
-}
 
 /*! Initialize supplemental page table. */
 void thread_sup_page_table_init(struct thread *t) {
@@ -150,9 +144,7 @@ bool fetch_data_to_frame(struct sup_page *page,
             success = get_swap_page(page, fte);
             break;
         case FILE_PAGE:
-            lock_acquire(&read_lock);
             success = get_file_page(page, fte);
-            lock_release(&read_lock);
             break;
         case ZERO_PAGE:
             success = get_zero_page(page, fte);
@@ -206,13 +198,17 @@ static bool get_file_page(struct sup_page *page,
     ASSERT (page_read_bytes + page_zero_bytes == PGSIZE);
 
     /* Go to offset in file. */
+    acquire_file_lock();
     file_seek(file, ofs);
+    release_file_lock();
     if (kpage == NULL) {
         return false;
     }
 
     /* Read file. */
+    acquire_file_lock();
     int bytes_read = file_read(file, kpage, page_read_bytes);
+    release_file_lock();
     if (bytes_read != (int) page_read_bytes) {
         return false;
     }

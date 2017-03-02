@@ -163,7 +163,6 @@ static void page_fault(struct intr_frame *f) {
         success = fetch_data_to_frame(page, fte);
         unpin(fte);
         if (!success) {
-            unpin(fte);
             free_frame(fte);
         }
     }
