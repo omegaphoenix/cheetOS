@@ -161,18 +161,17 @@ static void page_fault(struct intr_frame *f) {
 
         /* Fetch data into the frame. */
         success = fetch_data_to_frame(page, fte);
-        if (success) {
-          unpin(fte);
-        }
-        else {
-          unpin(fte);
-          free_frame(fte);
+        unpin(fte);
+        if (!success) {
+            unpin(fte);
+            free_frame(fte);
         }
     }
     /* To implement virtual memory, delete the rest of the function
        body, and replace it with code that brings in the page to
        which fault_addr refers. */
 #endif
+
     /* Handle process if file doesn't load*/
     if (!success) {
         if (!user) {
