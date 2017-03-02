@@ -143,6 +143,7 @@ static void page_fault(struct intr_frame *f) {
     write = (f->error_code & PF_W) != 0;
     user = (f->error_code & PF_U) != 0;
 
+    bool success = false;
 #ifdef VM
     if (!is_user_vaddr(fault_addr)) {
         sys_exit(-1);
@@ -159,26 +160,33 @@ static void page_fault(struct intr_frame *f) {
         pin(fte);
 
         /* Fetch data into the frame. */
-        fetch_data_to_frame(page, fte);
-        unpin(fte);
+        success = fetch_data_to_frame(page, fte);
+        if (success) {
+          unpin(fte);
+        }
+        else {
+          unpin(fte);
+          free_frame(fte);
+        }
     }
     /* To implement virtual memory, delete the rest of the function
        body, and replace it with code that brings in the page to
        which fault_addr refers. */
-#else
-    /* Kill process if user program faults */
-    if (user) {
-        printf("Page fault at %p: %s error %s page in %s context.\n",
+#endif
+    /* Handle process if file doesn't load*/
+    if (!success) {
+        if (!user) {
+            f->eip = (void *) f->eax;
+            f->eax = -1;
+        }
+        else {
+            printf("Page fault at %p: %s error %s page in %s context.\n",
                fault_addr,
                not_present ? "not present" : "rights violation",
                write ? "writing" : "reading",
                user ? "user" : "kernel");
-        kill(f);
-    }
-#endif
-    if (!user) {
-        f->eip = (void *) f->eax;
-        f->eax = -1;
+            kill(f);
+        }
     }
 }
 
