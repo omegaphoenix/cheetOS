@@ -38,7 +38,6 @@ struct sup_page {
     bool is_mmap;                         /*!< Page is part of mapped memory */
 };
 
-void init_sup_page_lock(void);
 /* Initializes supplemental page hash table */
 void thread_sup_page_table_init(struct thread *t);
 void thread_sup_page_table_delete(struct thread *t);

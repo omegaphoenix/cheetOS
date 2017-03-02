@@ -367,13 +367,14 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         putbuf(buffer + bytes_written, size - bytes_written);
         bytes_written = size;
     } else if (is_existing_fd(cur, fd)) {
+        acquire_file_lock();
         struct file *open_file = get_fd(cur, fd);
         if (open_file == NULL) {
+            release_file_lock();
             sys_exit(ERR);
         }
 
         /* File system call */
-        acquire_file_lock();
         bytes_written = file_write(open_file, buffer, size);
         release_file_lock();
     } else {
