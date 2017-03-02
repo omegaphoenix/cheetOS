@@ -37,7 +37,6 @@ struct sup_page {
     struct file_info *file_stats;         /*!< Keep track of file info. */
 };
 
-void init_sup_page_lock(void);
 /* Initializes supplemental page hash table */
 void thread_sup_page_table_init(struct thread *t);
 void thread_sup_page_table_delete(struct thread *t);
