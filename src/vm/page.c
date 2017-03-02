@@ -10,6 +10,7 @@
 #include "userprog/pagedir.h"
 #include "userprog/syscall.h"
 #include "vm/frame.h"
+#include "vm/swap.h"
 
 static struct lock read_lock;
 static bool install_page(void *upage, void *kpage, bool writable);
@@ -57,7 +58,8 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     }
     page->page_no = pg_no(upage);
     page->writable = writable;
-    page->kpage = NULL;
+    page->fte = NULL;
+    page->swap_position = NOT_SWAP; /* Not in swap yet */
 
     /* Copy over file data. */
     page->file_stats = palloc_get_page(PAL_ZERO);
@@ -156,13 +158,14 @@ bool fetch_data_to_frame(struct sup_page *page,
             success = get_zero_page(page, fte);
             break;
     }
+    page->fte = fte;
     return success;
 }
 
 /*! Load the a swap page into memory. */
 static bool get_swap_page(struct sup_page *page,
         struct frame_table_entry *fte) {
-    return false;
+    return swap_table_in(page, fte);
 }
 
 /*! Adds a mapping from user virtual address UPAGE to kernel
@@ -188,7 +191,6 @@ static bool get_file_page(struct sup_page *page,
         struct frame_table_entry *fte) {
     /* Get physical address. */
     uint8_t *kpage = (uint8_t *) fte->frame;
-    page->kpage = kpage;
 
     /* Get variables. */
     bool writable = page->writable;

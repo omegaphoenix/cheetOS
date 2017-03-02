@@ -50,7 +50,7 @@
 
 #include "vm/frame.h"
 #include "vm/page.h"
-
+#include "vm/swap.h"
 #endif
 
 /*! Page directory with kernel mappings only. */
@@ -145,6 +145,7 @@ int main(void) {
 
 #ifdef VM
     init_sup_page_lock();
+    swap_table_init();
 #endif
 
     printf("Boot complete.\n");
