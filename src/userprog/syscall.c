@@ -133,7 +133,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
         case SYS_MMAP:
             fd = (int *) get_first_arg(f);
             addr = (void **) get_second_arg(f);
-            sys_mmap(*fd, *addr);
+            f->eax = sys_mmap(*fd, *addr);
             break;
         case SYS_MUNMAP:
             mapping = (mapid_t *) get_first_arg(f);
@@ -198,6 +198,16 @@ void sys_exit(int status) {
             list_entry(e, struct sys_file, file_elem);
         sys_close(open_file->fd);
     }
+
+    /* Free all mappings. */
+    struct list_elem *f;
+    while (!list_empty(&cur->mappings)) {
+        f = list_begin(&cur->mappings);
+        struct mmap_file *mmap =
+            list_entry(f, struct mmap_file, mmap_elem);
+        sys_munmap(mmap->mapping);
+    }
+
     thread_exit();
 }
 
@@ -446,7 +456,7 @@ mapid_t sys_mmap (int fd, void *addr) {
         printf("ERROR: address is 0 or address is not page aligned!\n");
         return -1;
     }
-    /* LOCK HERE */
+
     /* Page range cannot overlap with other pages in use */
     void *upage = addr;
     while (upage < addr + file_length(open_file)) {
@@ -460,7 +470,7 @@ mapid_t sys_mmap (int fd, void *addr) {
     upage = addr;
     uint32_t read_bytes = file_length(open_file);
     off_t offset = 0;
-    bool writable = false; /* TODO: fix this */
+    bool writable = true; /* TODO: fix this */
     while (read_bytes > 0) {
         size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
         size_t page_zero_bytes = PGSIZE - page_read_bytes;
@@ -471,20 +481,39 @@ mapid_t sys_mmap (int fd, void *addr) {
         if (page == NULL) {
             return false;
         }
+        /* Flag indicates that when evicted, write back to file */
+        page->is_mmap = true;
 
         read_bytes -= page_read_bytes;
         upage += PGSIZE;
         offset += PGSIZE;
     }
-    /* UNLOCK HERE */
 
-    /* Set FD as backing; never write to swap */
-    /* Get and return unique mapping id */
-
-    return -1;
+    /* Add mapping to thread's mappings list and return unique mapping id */
+    int mapping = next_mapping(cur);
+    return add_mmap(cur, addr, mapping);
 }
 
 void sys_munmap (mapid_t mapping) {
+    /* TODO: finish this function */
+    struct thread *cur = thread_current();
+
+    struct sup_page *mmap_file = get_mmap(cur, mapping);
+    if (mmap_file == NULL) {
+        sys_exit(ERR);
+    }
+
+    /* Get file lock */
+    acquire_file_lock();
+    /* Write dirty pages back to the file */
+
+    release_file_lock();
+    
+    /* Remove pages from page table */
+
+
+    /* Remove entry from list of mmap files */
+    remove_mmap(cur, mapping);
 
 }
 

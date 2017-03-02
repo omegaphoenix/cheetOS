@@ -10,6 +10,7 @@
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/switch.h"
 #include "threads/synch.h"
@@ -382,6 +383,9 @@ void thread_exit(void) {
     /* All file buffers should be freed in sys_exit. */
     ASSERT (list_empty(&cur->open_files));
 
+    /* All mappings should be freed in sys_exit too. */
+    ASSERT (list_empty(&cur->mappings));
+
     /* Let kids know that parent is dead so that their page is freed without
        waiting for the parent. Will be freed in thread_schedule_tail().*/
 
@@ -672,6 +676,91 @@ void close_fd(struct thread *cur, int fd) {
     }
 }
 
+/* Returns true if mapping is >= 0. -1 is for failutres. */
+bool is_valid_mapping(int mapping) {
+    return mapping >= 0;
+}
+
+/* Returns true if mapping ID is in use */
+bool is_existing_mapping(struct thread *cur, int mapping) {
+    if (!is_valid_mapping(mapping)) {
+        return false;
+    }
+
+    /* Check if mapping is in mmap_files list. */
+    struct list_elem *e;
+    for (e = list_begin(&cur->mappings); e != list_end(&cur->mappings);
+         e = list_next(e)) {
+        struct mmap_file *cur_mmap = list_entry(e, struct mmap_file, mmap_elem);
+        if (cur_mmap->mapping == mapping) {
+            return true;
+        }
+    }
+
+    /* Didn't find mapping. */
+    return false;
+}
+
+/* Return next mapping ID. */
+int next_mapping(struct thread *cur) {
+    int mapping = cur->num_mappings;
+    cur->num_mappings++;
+    ASSERT (is_valid_mapping(mapping) && !is_existing_mapping(cur, mapping));
+    return mapping;
+}
+
+/* Add new mapping to list. Returns mapping or -1 on failure. */
+int add_mmap(struct thread *cur, struct sup_page *page, int mapping) {
+    /* Initialize file */
+    struct mmap_file *new_mapping = calloc(1, sizeof(struct mmap_file));
+    /* Not enough memory. */
+    if (new_mapping == NULL) {
+        return ERR;
+    }
+    new_mapping->page = page;
+    new_mapping->mapping = mapping;
+
+    if (is_valid_mapping(mapping) && !is_existing_mapping(cur, mapping)) {
+        list_push_back(&cur->mappings, &new_mapping->mmap_elem);
+        return mapping;
+    }
+
+    /* Couldn't find page. */
+    return ERR;
+}
+
+/* Returns page of mapped memory. */
+struct sup_page *get_mmap(struct thread *cur, int mapping) {
+    struct list_elem *e;
+    for (e = list_begin(&cur->mappings); e != list_end(&cur->mappings);
+         e = list_next(e)) {
+        struct mmap_file *cur_mmap = list_entry(e, struct mmap_file, mmap_elem);
+        if (cur_mmap->mapping == mapping) {
+            return cur_mmap->page;
+        }
+    }
+
+    /* Couldn't find mapping. */
+    return NULL;
+}
+
+/* Removes mapping from list. Assumes pages have already been written back. */
+void remove_mmap(struct thread *cur, int mapping) {
+    ASSERT(is_existing_mapping(cur, mapping));
+
+    struct list_elem *e;
+    for (e = list_begin(&cur->mappings); e != list_end(&cur->mappings);
+         e = list_next(e)) {
+        struct mmap_file *cur_mmap = list_entry(e, struct mmap_file, mmap_elem);
+        if (cur_mmap->mapping == mapping) {
+            list_remove(&cur_mmap->mmap_elem);
+            free(cur_mmap);
+            return;
+        }
+    }
+}
+
+
 /*! Idle thread.  Executes when no other thread is ready to run.
 
     The idle thread is initially put on the ready list by thread_start().
@@ -749,6 +838,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     list_init(&t->locks_acquired);
     list_init(&t->kids);
     list_init(&t->open_files);
+    list_init(&t->mappings);
     /* Block process_wait of parent until this process is ready to die. */
     sema_init(&t->wait_sema, 0);
     sema_init(&t->done_sema, 1);
@@ -756,6 +846,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->loaded = false;
     t->waited_on = false;
     t->num_files = 0;
+    t->num_mappings = 0;
     t->parent = NULL;
 
     if (list_empty(&all_list)) {
