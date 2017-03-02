@@ -38,6 +38,9 @@ int sys_write(int fd, const void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 void sys_close(int fd);
+/* Memory mapping */
+mapid_t sys_mmap(int fd, void *addr);
+void sys_munmap(mapid_t mapping);
 
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
@@ -56,6 +59,8 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     unsigned int *size, *initial_size, *position;
     char **cmd_line;
     char **file;
+    void **addr;
+    mapid_t *mapping;
 
     /* Get the system call number */
     if (f == NULL || !valid_read_addr(f->esp)) {
@@ -123,6 +128,15 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
         case SYS_CLOSE:
             fd = (int *) get_first_arg(f);
             sys_close(*fd);
+            break;
+        case SYS_MMAP:
+            fd = (int *) get_first_arg(f);
+            addr = (void **) get_second_arg(f);
+            sys_mmap(*fd, *addr);
+            break;
+        case SYS_MUNMAP:
+            mapping = (mapid_t *) get_first_arg(f);
+            sys_munmap(*mapping);
             break;
         default:
             printf("Unimplemented system call number\n");
@@ -407,6 +421,40 @@ void sys_close(int fd) {
     /* Delete file from thread */
     close_fd(cur, fd);
     release_file_lock();
+}
+
+/*! Maps the file open as FD into the process's virtual address space.
+    The entire file is mapped as consecutive pages starting at ADDR. 
+    Returns mapping id that is unique within the process, or -1 on failure. */
+mapid_t sys_mmap (int fd, void *addr) {
+    printf("entering mmap with fd = %d, addr = %x\n", fd, addr);
+    struct thread *cur = thread_current();
+    struct file *open_file = get_fd(cur, fd);
+
+    /* Cannot map FD 0 or FD 1 */
+    if (fd == 0 || fd == 1) {
+        printf("ERROR: cannot mmap fd0 or 1\n");
+        return -1;
+    }
+    /* File must be not NULL and file must have length > 0 */
+    if (open_file == NULL || file_length(open_file) == 0) {
+        printf("ERROR: file is null or has length zero\n");
+        return -1;
+    }
+    /* ADDR must not be 0 and ADDR must be page aligned */
+    if (addr == 0 || pg_ofs(addr) != 0) {
+        printf("ERROR: address is 0 or address is not page aligned!\n");
+        return -1;
+    }
+    /* Page range cannot overlap with other pages in use */
+
+    printf("attempting to mmap...\n");
+
+    return -1;
+}
+
+void sys_munmap (mapid_t mapping) {
+
 }
 
 /* Returns true if addr is valid for reading */
