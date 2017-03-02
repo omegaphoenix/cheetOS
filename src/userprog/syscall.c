@@ -12,6 +12,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
+#include "vm/page.h"
 
 /* Protect filesys calls. */
 static struct lock filesys_lock;
@@ -427,7 +428,6 @@ void sys_close(int fd) {
     The entire file is mapped as consecutive pages starting at ADDR. 
     Returns mapping id that is unique within the process, or -1 on failure. */
 mapid_t sys_mmap (int fd, void *addr) {
-    printf("entering mmap with fd = %d, addr = %x\n", fd, addr);
     struct thread *cur = thread_current();
     struct file *open_file = get_fd(cur, fd);
 
@@ -446,9 +446,40 @@ mapid_t sys_mmap (int fd, void *addr) {
         printf("ERROR: address is 0 or address is not page aligned!\n");
         return -1;
     }
+    /* LOCK HERE */
     /* Page range cannot overlap with other pages in use */
+    void *upage = addr;
+    while (upage < addr + file_length(open_file)) {
+        if (thread_sup_page_get(&cur->sup_page, upage) != NULL) {
+            return -1;
+        }
+        upage += PGSIZE;
+    }
 
-    printf("attempting to mmap...\n");
+    /* Load file to virtual address */
+    upage = addr;
+    uint32_t read_bytes = file_length(open_file);
+    off_t offset = 0;
+    bool writable = false; /* TODO: fix this */
+    while (read_bytes > 0) {
+        size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+        size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+        ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
+        struct sup_page *page = sup_page_file_create(open_file, offset, upage,
+                page_read_bytes, page_zero_bytes, writable);
+        if (page == NULL) {
+            return false;
+        }
+
+        read_bytes -= page_read_bytes;
+        upage += PGSIZE;
+        offset += PGSIZE;
+    }
+    /* UNLOCK HERE */
+
+    /* Set FD as backing; never write to swap */
+    /* Get and return unique mapping id */
 
     return -1;
 }
