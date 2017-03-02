@@ -31,10 +31,21 @@ void thread_sup_page_table_init(struct thread *t) {
     hash_init(&t->sup_page, sup_page_hash, sup_page_less, NULL);
 }
 
+/* Frees a sup_page element. */
+void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
+    struct sup_page *page_to_delete = hash_entry(e, struct sup_page, sup_page_table_elem);
+
+    ASSERT(page_to_delete != NULL);
+    /* First, free the file stats */
+    palloc_free_page(page_to_delete->file_stats);
+    /* Then free page_to_delete */
+    palloc_free_page(page_to_delete);
+    page_to_delete = NULL;
+}
+
 /*! Frees a hash table */
 void thread_sup_page_table_delete(struct thread *t) {
-    /* TODO: Free everything inside hash table if not freed */
-    hash_destroy(&t->sup_page, NULL);
+    hash_destroy(&t->sup_page, sup_page_free);
 }
 
 /*! Create a suplemental page. */
@@ -45,9 +56,11 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
 
     /* Copy over page data. */
     struct sup_page *page = palloc_get_page(PAL_ZERO);
-    if (page == NULL) {
+    struct file_info *file_stats = palloc_get_page(PAL_ZERO);
+    if (page == NULL || file_stats == NULL) {
         sys_exit(-1);
     }
+
     page->addr = upage;
     if (read_bytes > 0) {
         page->status = FILE_PAGE;
@@ -60,7 +73,7 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     page->kpage = NULL;
 
     /* Copy over file data. */
-    page->file_stats = palloc_get_page(PAL_ZERO);
+    page->file_stats = file_stats;
     page->file_stats->file = file;
     page->file_stats->offset = ofs;
     page->file_stats->read_bytes = read_bytes;
@@ -109,12 +122,8 @@ void sup_page_delete(struct hash * hash_table, void *addr) {
         ASSERT(deleted_elem != NULL);
         ASSERT(thread_sup_page_get(hash_table, addr) == NULL);
 
-        /* Retrieve sup_page struct */
-        page_to_delete = hash_entry(deleted_elem, struct sup_page, sup_page_table_elem);
-
-        /* TODO: free deleted_elem stuff before freeing entire struct */
-        palloc_free_page(page_to_delete);
-        page_to_delete = NULL;
+        /* Free the element */
+        sup_page_free(deleted_elem, NULL);
     }
 }
 
