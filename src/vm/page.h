@@ -39,7 +39,6 @@ struct sup_page {
 
 /* Initializes supplemental page hash table */
 void thread_sup_page_table_init(struct thread *t);
-void sup_page_free(struct hash_elem *e, void *aux);
 void thread_sup_page_table_delete(struct thread *t);
 struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     uint8_t *upage, size_t read_bytes, size_t zero_bytes, bool writable);
