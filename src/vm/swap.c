@@ -11,12 +11,14 @@ static struct lock swap_lock;
 
 /* Acquire's the swap lock so that there isn't concurrent writing to swap */
 void acquire_swap_lock(void) {
-    lock_acquire(&swap_lock);
+    if (!lock_held_by_current_thread(&swap_lock))
+        lock_acquire(&swap_lock);
 }
 
 /* Release the swap's lock to allow others to write into it */
 void release_swap_lock(void) {
-    lock_release(&swap_lock);
+    if (lock_held_by_current_thread(&swap_lock))
+        lock_release(&swap_lock);
 }
 
 /* Initialize the swap table. Populating the blocks and
@@ -54,21 +56,12 @@ size_t swap_table_out(struct sup_page *evicted_page) {
     size_t swap_idx;
     int cnt_sector;
 
-    /* Allocate a new frame. Null check done in get_frame */
-    struct frame_table_entry *fte = get_frame();
-    ASSERT(fte != NULL);
-
-    evicted_page->fte = fte;
+    struct frame_table_entry *fte = evicted_page->fte;
 
     /* Start using physical address */
     uint8_t *kpage = (uint8_t *) fte->frame;
     uint8_t *upage = (uint8_t *) evicted_page->addr;
 
-    /* Don't load it yet, just set pagetable locations... */
-    if (!install_page(upage, kpage, evicted_page->writable)) {
-        free_frame(fte);
-        PANIC("Swap frame failed to install!");
-    }
     acquire_swap_lock();
 
     swap_idx = bitmap_scan_and_flip(global_swap.swap_bitmap,
