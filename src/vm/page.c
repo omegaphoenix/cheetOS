@@ -98,13 +98,13 @@ bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *a
 }
 
 /*! Delete an entry from hash table using the address of the page */
-void sup_page_delete(struct hash * hash_table, void *addr) {
+bool sup_page_delete(struct hash * hash_table, void *addr) {
     struct sup_page temp_page;
     struct sup_page *page_to_delete = NULL;
     struct hash_elem *elem_to_delete = NULL;
     struct hash_elem *deleted_elem = NULL;
 
-    temp_page.addr = addr;
+    temp_page.page_no = pg_no(addr);
 
     elem_to_delete = hash_find(hash_table, &temp_page.sup_page_table_elem);
 
@@ -117,9 +117,9 @@ void sup_page_delete(struct hash * hash_table, void *addr) {
         ASSERT(deleted_elem != NULL);
         ASSERT(thread_sup_page_get(hash_table, addr) == NULL);
 
-        /* Free the element */
-        sup_page_free(deleted_elem, NULL);
+        return true;
     }
+    return false;
 }
 
 /*! Retrieves a supplemental page from the hash table via address */

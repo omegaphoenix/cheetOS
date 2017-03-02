@@ -49,7 +49,7 @@ bool fetch_data_to_frame(struct sup_page *page,
 struct sup_page *thread_sup_page_get(struct hash *hash_table, void *addr);
 unsigned sup_page_hash(const struct hash_elem *e, void *aux);
 bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux);
-void sup_page_delete(struct hash *hash_table, void *addr);
+bool sup_page_delete(struct hash *hash_table, void *addr);
 void sup_page_insert(struct hash *hash_table, struct sup_page *page);
 
 
