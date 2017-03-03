@@ -104,9 +104,7 @@ void evict_frame(struct frame_table_entry *fte) {
     /* Otherwise, write to swap */
     else if (page->status == SWAP_PAGE) {
         /* Write to swap */
-        acquire_swap_lock();
         page->swap_position = swap_table_out(page);
-        release_swap_lock();
     }
 
     /* If ZERO_PAGE, no need to save */
