@@ -10,6 +10,7 @@
 #include "userprog/pagedir.h"
 #include "userprog/syscall.h"
 #include "vm/frame.h"
+#include "vm/swap.h"
 
 static bool install_page(void *upage, void *kpage, bool writable);
 static bool get_swap_page(struct sup_page *page,
@@ -18,6 +19,7 @@ static bool get_file_page(struct sup_page *page,
         struct frame_table_entry *fte);
 static bool get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte);
+static void sup_page_free(struct hash_elem *e, void *aux);
 
 /*! Initialize supplemental page table. */
 void thread_sup_page_table_init(struct thread *t) {
@@ -25,10 +27,21 @@ void thread_sup_page_table_init(struct thread *t) {
     hash_init(&t->sup_page, sup_page_hash, sup_page_less, NULL);
 }
 
+/* Frees a sup_page element. */
+static void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
+    struct sup_page *page_to_delete = hash_entry(e, struct sup_page, sup_page_table_elem);
+
+    ASSERT(page_to_delete != NULL);
+    /* First, free the file stats */
+    palloc_free_page(page_to_delete->file_stats);
+    /* Then free page_to_delete */
+    palloc_free_page(page_to_delete);
+    page_to_delete = NULL;
+}
+
 /*! Frees a hash table */
 void thread_sup_page_table_delete(struct thread *t) {
-    /* TODO: Free everything inside hash table if not freed */
-    hash_destroy(&t->sup_page, NULL);
+    hash_destroy(&t->sup_page, sup_page_free);
 }
 
 /*! Create a suplemental page. */
@@ -42,6 +55,12 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     if (page == NULL) {
         sys_exit(-1);
     }
+    struct file_info *file_stats = palloc_get_page(PAL_ZERO);
+    if (file_stats == NULL) {
+        palloc_free_page(page);
+        sys_exit(-1);
+    }
+
     page->addr = upage;
     if (read_bytes > 0) {
         page->status = FILE_PAGE;
@@ -51,13 +70,11 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     }
     page->page_no = pg_no(upage);
     page->writable = writable;
-    page->kpage = NULL;
+    page->fte = NULL;
+    page->swap_position = NOT_SWAP; /* Not in swap yet */
 
     /* Copy over file data. */
-    page->file_stats = palloc_get_page(PAL_ZERO);
-    if (page->file_stats == NULL) {
-        sys_exit(-1);
-    }
+    page->file_stats = file_stats;
     page->file_stats->file = file;
     page->file_stats->offset = ofs;
     page->file_stats->read_bytes = read_bytes;
@@ -80,7 +97,6 @@ struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable) {
     page->status = ZERO_PAGE;
     page->page_no = pg_no(upage);
     page->writable = writable;
-    page->kpage = NULL;
 
     /* Copy over file data. */
     page->file_stats = palloc_get_page(PAL_ZERO);
@@ -116,13 +132,13 @@ bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *a
 }
 
 /*! Delete an entry from hash table using the address of the page */
-void sup_page_delete(struct hash * hash_table, void *addr) {
+bool sup_page_delete(struct hash * hash_table, void *addr) {
     struct sup_page temp_page;
     struct sup_page *page_to_delete = NULL;
     struct hash_elem *elem_to_delete = NULL;
     struct hash_elem *deleted_elem = NULL;
 
-    temp_page.addr = addr;
+    temp_page.page_no = pg_no(addr);
 
     elem_to_delete = hash_find(hash_table, &temp_page.sup_page_table_elem);
 
@@ -135,13 +151,12 @@ void sup_page_delete(struct hash * hash_table, void *addr) {
         ASSERT(deleted_elem != NULL);
         ASSERT(thread_sup_page_get(hash_table, addr) == NULL);
 
-        /* Retrieve sup_page struct */
-        page_to_delete = hash_entry(deleted_elem, struct sup_page, sup_page_table_elem);
+	/* Free the element */
+        sup_page_free(deleted_elem, NULL);
 
-        /* TODO: free deleted_elem stuff before freeing entire struct */
-        palloc_free_page(page_to_delete);
-        page_to_delete = NULL;
+        return true;
     }
+    return false;
 }
 
 /*! Retrieves a supplemental page from the hash table via address */
@@ -165,6 +180,16 @@ void sup_page_insert(struct hash *hash_table, struct sup_page *page) {
     hash_insert(hash_table, &page->sup_page_table_elem);
 }
 
+/*! Returns true if page has been accessed. Does not account for aliases. */
+bool sup_page_is_accessed(struct hash * hash_table, void *addr) {
+    return pagedir_is_accessed(thread_current()->pagedir, addr);
+}
+
+/*! Returns true if page has been written to. Does not account for aliases. */
+bool sup_page_is_dirty(struct hash * hash_table, void *addr) {
+    return pagedir_is_dirty(thread_current()->pagedir, addr);
+}
+
 /*! Copy data to the frame table. */
 bool fetch_data_to_frame(struct sup_page *page,
         struct frame_table_entry *fte) {
@@ -180,13 +205,14 @@ bool fetch_data_to_frame(struct sup_page *page,
             success = get_zero_page(page, fte);
             break;
     }
+    page->fte = fte;
     return success;
 }
 
 /*! Load the a swap page into memory. */
 static bool get_swap_page(struct sup_page *page,
         struct frame_table_entry *fte) {
-    return false;
+    return swap_table_in(page, fte);
 }
 
 /*! Adds a mapping from user virtual address UPAGE to kernel
@@ -212,7 +238,6 @@ static bool get_file_page(struct sup_page *page,
         struct frame_table_entry *fte) {
     /* Get physical address. */
     uint8_t *kpage = (uint8_t *) fte->frame;
-    page->kpage = kpage;
 
     /* Get variables. */
     bool writable = page->writable;
@@ -259,7 +284,6 @@ static bool get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte) {
     /* Get physical address. */
     uint8_t *kpage = (uint8_t *) fte->frame;
-    page->kpage = kpage;
 
     /* Get variables. */
     bool writable = page->writable;
