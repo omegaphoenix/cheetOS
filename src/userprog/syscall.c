@@ -195,15 +195,6 @@ void sys_exit(int status) {
     printf("%s: exit(%d)\n", cur->name, status);
     cur->exit_status = status;
 
-    /* Free all file buffers. */
-    struct list_elem *e;
-    while (!list_empty(&cur->open_files)) {
-        e = list_begin(&cur->open_files);
-        struct sys_file *open_file =
-            list_entry(e, struct sys_file, file_elem);
-        sys_close(open_file->fd);
-    }
-
     /* Free all mappings. */
     struct list_elem *f;
     while (!list_empty(&cur->mappings)) {
@@ -213,6 +204,14 @@ void sys_exit(int status) {
         sys_munmap(mmap->mapping);
     }
 
+    /* Free all file buffers. */
+    struct list_elem *e;
+    while (!list_empty(&cur->open_files)) {
+        e = list_begin(&cur->open_files);
+        struct sys_file *open_file =
+            list_entry(e, struct sys_file, file_elem);
+        sys_close(open_file->fd);
+    }
     thread_exit();
 }
 
@@ -445,7 +444,7 @@ void sys_close(int fd) {
     Returns mapping id that is unique within the process, or -1 on failure. */
 mapid_t sys_mmap (int fd, void *addr) {
     struct thread *cur = thread_current();
-    struct file *open_file = get_fd(cur, fd);
+    struct file *open_file = file_reopen(get_fd(cur, fd));
 
     /* Cannot map FD 0 or FD 1 */
     if (fd == 0 || fd == 1) {
@@ -545,7 +544,7 @@ void sys_munmap (mapid_t mapping) {
 
         upage += PGSIZE;
     }
-
+    file_close(file);
     release_file_lock();
 
     /* Remove entry from list of mmap files */

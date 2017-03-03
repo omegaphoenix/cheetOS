@@ -255,17 +255,13 @@ static bool get_file_page(struct sup_page *page,
     ASSERT (page_read_bytes <= PGSIZE);
     ASSERT (page_read_bytes + page_zero_bytes == PGSIZE);
 
-    /* Go to offset in file. */
-    acquire_file_lock();
-    file_seek(file, ofs);
-    release_file_lock();
     if (kpage == NULL) {
         return false;
     }
 
     /* Read file. */
     acquire_file_lock();
-    int bytes_read = file_read(file, kpage, page_read_bytes);
+    int bytes_read = file_read_at(file, kpage, page_read_bytes, ofs);
     release_file_lock();
     if (bytes_read != (int) page_read_bytes) {
         return false;
