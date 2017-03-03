@@ -55,5 +55,4 @@ void sup_page_insert(struct hash *hash_table, struct sup_page *page);
 bool sup_page_is_accessed(struct hash * hash_table, void *addr);
 bool sup_page_is_dirty(struct hash * hash_table, void *addr);
 
-
 #endif /* vm/page.h */
