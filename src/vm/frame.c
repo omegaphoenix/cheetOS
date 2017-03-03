@@ -45,9 +45,18 @@ struct frame_table_entry *get_frame(void) {
     return fte;
 }
 
-void evict(struct frame_table_entry *fte) {
+struct frame_table_entry *choose_frame_to_evict(void) {
+    return NULL;
+}
+
+void evict(void) {
+    struct frame_table_entry *fte_to_evict = choose_frame_to_evict();
+    evict_frame(fte_to_evict);
+}
+
+void evict_frame(struct frame_table_entry *fte) {
     ASSERT(fte->pin_count == 0);
-    /* Write data. */
+    /* TODO: Write data. */
 
     /* Free memory. */
     free_frame(fte);
