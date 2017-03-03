@@ -162,7 +162,7 @@ static void page_fault(struct intr_frame *f) {
         if (page != NULL) {
             /* Obtain frame to store page. */
             struct frame_table_entry *fte = get_frame();
-            pin(fte);
+            fte->spte = page;
 
             /* Fetch data into the frame. */
             success = fetch_data_to_frame(page, fte);
@@ -177,7 +177,7 @@ static void page_fault(struct intr_frame *f) {
             void *addr = pg_round_down(fault_addr);
             struct sup_page *page = sup_page_zero_create(addr, true);
             struct frame_table_entry *fte = get_frame();
-            pin(fte);
+            fte->spte = page;
             success = fetch_data_to_frame(page, fte);
             unpin(fte);
             if (!success) {
