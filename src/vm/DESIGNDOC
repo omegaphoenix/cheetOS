@@ -217,10 +217,18 @@ None. Shares data structures with supplemental page table (see A1).
 >> memory subsystem.  Explain how the page fault and eviction
 >> processes differ between swap pages and other pages.
 
+Mmap files behave like other virtual pages, with the following exceptions:
+(a) The mapped pages must be consecutive. Before mmapping files, we check that
+there is available space to load the files to consecutive pages.
+(d) On eviction, the file is the backing store. Evicted mmap pages that have 
+been modified are written back to the file instead to to the swap disk as other
+pages are.
+(c) On a page fault, data is loaded in from the file rather than from swap.
+
 >> C3: Explain how you determine whether a new file mapping overlaps
 >> any existing segment.
 
-We check the virtual address, upage = addr + N * PGSIZE, where addr is the 
+We check the virtual address upage = addr + N * PGSIZE, where addr is the 
 designated address to which to map and N = 0, 1, 2... up until and including
 the largest upage that is less than addr + length_of_the_file. For each upage,
 we check that there is not already an entry in the supplemental page table
