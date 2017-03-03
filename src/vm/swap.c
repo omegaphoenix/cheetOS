@@ -11,14 +11,12 @@ static struct lock swap_lock;
 
 /* Acquire's the swap lock so that there isn't concurrent writing to swap */
 void acquire_swap_lock(void) {
-    if (!lock_held_by_current_thread(&swap_lock))
-        lock_acquire(&swap_lock);
+    lock_acquire(&swap_lock);
 }
 
 /* Release the swap's lock to allow others to write into it */
 void release_swap_lock(void) {
-    if (lock_held_by_current_thread(&swap_lock))
-        lock_release(&swap_lock);
+    lock_release(&swap_lock);
 }
 
 /* Initialize the swap table. Populating the blocks and
@@ -49,8 +47,8 @@ void swap_table_free(void) {
     bitmap_destroy(global_swap.swap_bitmap);
 }
 
-/* This will take in an entry of a page table, and then create
-   a frame and insert it into the swap table */
+/* This will take in an entry of a page table,
+   and insert it into the swap table */
 size_t swap_table_out(struct sup_page *evicted_page) {
 
     size_t swap_idx;
@@ -60,7 +58,6 @@ size_t swap_table_out(struct sup_page *evicted_page) {
 
     /* Start using physical address */
     uint8_t *kpage = (uint8_t *) fte->frame;
-    uint8_t *upage = (uint8_t *) evicted_page->addr;
 
     acquire_swap_lock();
 
@@ -68,6 +65,11 @@ size_t swap_table_out(struct sup_page *evicted_page) {
                                     SWAP_BITMAP_START,
                                     SINGLE_BIT,
                                     SWAP_EMPTY);
+
+    if (swap_idx == BITMAP_ERROR) {
+        release_swap_lock();
+        PANIC("Swap is full!");
+    }
 
     /* Read into each sector of a swap slot at idx */
     /* Recall that this writes in BLOCK_SECTOR_SIZE amounts at a time */
