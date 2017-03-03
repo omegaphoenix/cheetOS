@@ -216,7 +216,6 @@ static bool is_stack_access(void *addr, void *esp) {
     }
     int size = PHYS_BASE - addr;
     if (size > MAX_STACK) {
-        printf("explode\n");
         sys_exit(-1);
     }
     return true;
