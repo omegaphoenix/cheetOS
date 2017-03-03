@@ -171,16 +171,12 @@ void *get_third_arg(struct intr_frame *f) {
 /*! Acquire file locks. Need two because bochs might have files and their
     static variables go out of memory. */
 void acquire_file_lock(void) {
-    /* TODO, remove this check later */
-    if (!lock_held_by_current_thread(&filesys_lock))
-        lock_acquire(&filesys_lock);
+    lock_acquire(&filesys_lock);
 }
 
 /*! Release file locks. See comment in acquire_file_lock. */
 void release_file_lock(void) {
-    /* TODO, remove this check later */
-    if (lock_held_by_current_thread(&filesys_lock))
-        lock_release(&filesys_lock);
+    lock_release(&filesys_lock);
 }
 
 /*! Terminates Pintos. Should be seldom used due to loss of information on
@@ -310,7 +306,7 @@ int sys_filesize(int fd) {
 /*! Read *size* bytes from file open as fd into buffer. Return the number of
     bytes actually read, 0 at end of file, or -1 if file could not be read. */
 int sys_read(int fd, void *buffer, unsigned size) {
-    if (!valid_read_addr(buffer) || !valid_read_addr(buffer + size)) {
+    if (!valid_write_addr(buffer) || !valid_write_addr(buffer + size)) {
         sys_exit(ERR);
     }
     int bytes_read = 0;
@@ -576,10 +572,25 @@ static int get_user(const uint8_t *uaddr) {
 
 /*! Writes BYTE to user address UDST.
     UDST must be below PHYS_BASE.
-    Returns true if successful, false if a segfault occurred. */
+    Returns true if successful, false if a segfault occurred.
+    If written, we will write back to previous byte. */
 static bool put_user (uint8_t *udst, uint8_t byte) {
+    int prev_byte = get_user(udst);
+
+    if (prev_byte == -1) {
+        return false;
+    }
+
     int error_code;
     asm ("movl $1f, %0; movb %b2, %1; 1:"
          : "=&a" (error_code), "=m" (*udst) : "q" (byte));
-    return error_code != ERR;
+
+    bool can_write = (error_code != ERR);
+    if (can_write) {
+        /* Assuming this can be written already */
+        asm ("movl $1f, %0; movb %b2, %1; 1:"
+         : "=&a" (error_code), "=m" (*udst) : "q" (prev_byte));
+    }
+
+    return can_write;
 }
