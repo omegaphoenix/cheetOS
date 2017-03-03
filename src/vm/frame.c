@@ -44,7 +44,7 @@ static void *fte_create(void *frame, struct thread *owner) {
     fte->frame = frame;
     fte->owner = owner;
     fte->pin_count = 0;
-    fte->upage = NULL;
+    fte->spte = NULL;
 
     return fte;
 }
@@ -108,37 +108,25 @@ void evict(void) {
 void evict_frame(struct frame_table_entry *fte) {
     ASSERT(fte->pin_count == 0);
     struct thread *owner = fte->owner;
-    struct sup_page *page = thread_sup_page_get(&owner->sup_page, fte->upage);
+    struct sup_page *page = thread_sup_page_get(&owner->sup_page, fte->spte->addr);
+
     ASSERT(page != NULL);
 
-    /* If mapped, maybe write to file */
-    if (page->is_mmap) {
-        /* If dirty, write to file */
-        if (sup_page_is_dirty(owner, page->addr)) {
-            /* If mmapped, write to file */
-            if (page->is_mmap) {
-                struct file *file = page->file_stats->file;
-                ASSERT(file != NULL);
-                off_t offset = page->file_stats->offset;
-                off_t read_bytes = page->file_stats->read_bytes;
+    /* If dirty, maybe write */
+    if (sup_page_is_dirty(owner, page->addr)) {
+        /* If mmapped, write to file */
+        if (page->is_mmap) {
+            struct file *file = page->file_stats->file;
+            ASSERT(file != NULL);
+            off_t offset = page->file_stats->offset;
+            off_t read_bytes = page->file_stats->read_bytes;
 
-                acquire_file_lock();
-                file_write_at(file, page->addr, read_bytes, offset);
-                release_file_lock();
-            }
-            /* Otherwise, write to swap */
-            else {
-                page->status = SWAP_PAGE;
-                page->swap_position = swap_table_out(page);
-            }
+            acquire_file_lock();
+            file_write_at(file, page->addr, read_bytes, offset);
+            release_file_lock();
         }
-        /* If not dirty, no need to save */
-    }
-
-    /* Otherwise, write to swap */
-    else if (page->status == FILE_PAGE) {
-        if (sup_page_is_dirty(owner, fte->upage)) {
-
+        /* Otherwise, write to swap */
+        else if (page->status == FILE_PAGE) {
             /* Write to swap */
             page->swap_position = swap_table_out(page);
             page->status = SWAP_PAGE;
@@ -162,7 +150,7 @@ void evict_frame(struct frame_table_entry *fte) {
 
 /*! Free memory after safety checks. */
 void free_frame(struct frame_table_entry *fte) {
-    fte->upage = NULL;
+    fte->spte = NULL;
     /* TODO: Might want to remove. */
     try_remove(&fte->frame_table_elem);
     /* Safety checks. */

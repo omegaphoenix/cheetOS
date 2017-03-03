@@ -59,7 +59,6 @@ size_t swap_table_out(struct sup_page *evicted_page) {
     /* Start using physical address */
     uint8_t *kpage = (uint8_t *) fte->frame;
 
-    acquire_swap_lock();
 
     swap_idx = bitmap_scan_and_flip(global_swap.swap_bitmap,
                                     SWAP_BITMAP_START,
@@ -67,7 +66,6 @@ size_t swap_table_out(struct sup_page *evicted_page) {
                                     SWAP_EMPTY);
 
     if (swap_idx == BITMAP_ERROR) {
-        release_swap_lock();
         PANIC("Swap is full!");
     }
 
@@ -79,7 +77,6 @@ size_t swap_table_out(struct sup_page *evicted_page) {
                     block_offset,
                     kpage + cnt_sector * BLOCK_SECTOR_SIZE);
     }
-    release_swap_lock();
 
     return swap_idx;
 }
@@ -105,7 +102,6 @@ bool swap_table_in(struct sup_page *dest_page, struct frame_table_entry *fte) {
         return false;
     }
 
-    acquire_swap_lock();
 
     /* Free the slot */
     bitmap_flip(global_swap.swap_bitmap, swap_idx);
@@ -118,7 +114,6 @@ bool swap_table_in(struct sup_page *dest_page, struct frame_table_entry *fte) {
                     block_offset,
                     kpage + cnt_sector * BLOCK_SECTOR_SIZE);
     }
-    release_swap_lock();
 
     return true;
 }

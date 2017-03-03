@@ -11,7 +11,7 @@
 /*! Entry for frame table. */
 struct frame_table_entry {
     void *frame;                /*!< Address of frame (kernel virtual address). */
-    void *upage;                /*!< User virtual address. */
+    struct sup_page *spte;      /*!< Supplementary Page Table */
     struct thread *owner;       /*!< Process that is using the frame. */
     int pin_count;              /*!< Should not evict pinned pages. */
     struct list_elem frame_table_elem; /*!< Use list for LRU. */
