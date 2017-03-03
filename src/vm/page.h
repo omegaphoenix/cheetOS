@@ -58,7 +58,9 @@ bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *a
 bool sup_page_delete(struct hash *hash_table, void *addr);
 void sup_page_insert(struct hash *hash_table, struct sup_page *page);
 
-bool sup_page_is_accessed(struct hash * hash_table, void *addr);
-bool sup_page_is_dirty(struct hash * hash_table, void *addr);
+bool sup_page_is_accessed(struct thread *owner, void *addr);
+void sup_page_set_accessed(struct thread *owner, void *addr, bool value);
+bool sup_page_is_dirty(struct thread *owner, void *addr);
+void sup_page_set_dirty(struct thread *owner, void *addr, bool value);
 
 #endif /* vm/page.h */

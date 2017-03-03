@@ -167,7 +167,7 @@ bool sup_page_delete(struct hash * hash_table, void *addr) {
 }
 
 /*! Retrieves a supplemental page from the hash table via address */
-struct sup_page *thread_sup_page_get(struct hash * hash_table, void *addr) {
+struct sup_page *thread_sup_page_get(struct hash *hash_table, void *addr) {
     struct sup_page temp_page;
     struct sup_page *return_page = NULL;
     struct hash_elem *temp_elem = NULL;
@@ -188,13 +188,21 @@ void sup_page_insert(struct hash *hash_table, struct sup_page *page) {
 }
 
 /*! Returns true if page has been accessed. Does not account for aliases. */
-bool sup_page_is_accessed(struct hash * hash_table, void *addr) {
-    return pagedir_is_accessed(thread_current()->pagedir, addr);
+bool sup_page_is_accessed(struct thread *owner, void *addr) {
+    return pagedir_is_accessed(owner->pagedir, addr);
+}
+
+void sup_page_set_accessed(struct thread *owner, void *addr, bool value) {
+    pagedir_set_accessed(owner->pagedir, addr, value);
 }
 
 /*! Returns true if page has been written to. Does not account for aliases. */
-bool sup_page_is_dirty(struct hash * hash_table, void *addr) {
-    return pagedir_is_dirty(thread_current()->pagedir, addr);
+bool sup_page_is_dirty(struct thread *owner, void *addr) {
+    return pagedir_is_dirty(owner->pagedir, addr);
+}
+
+void sup_page_set_dirty(struct thread *owner, void *addr, bool value) {
+    pagedir_set_dirty(owner->pagedir, addr, value);
 }
 
 /*! Copy data to the frame table. */

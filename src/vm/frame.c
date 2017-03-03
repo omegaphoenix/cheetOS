@@ -16,6 +16,8 @@ static struct list_elem *clock_hand;
 
 static struct lock frame_lock;
 
+static void increment_clock_hand(void);
+
 /* Acquire frame lock. */
 void acquire_frame_lock(void) {
     lock_acquire(&frame_lock);
@@ -65,31 +67,45 @@ struct frame_table_entry *get_frame(void) {
     return fte;
 }
 
-/*! Choose a frame entry to be evicted. */
-struct frame_table_entry *choose_frame_to_evict(void) {
-    /* TODO: Implement more advanced algorithm. */
-    ASSERT(!list_empty(&frame_table));
+static void increment_clock_hand(void) {
     if (clock_hand == NULL || clock_hand == list_end(&frame_table)) {
         clock_hand = list_begin(&frame_table);
     }
     else {
         clock_hand = list_next(clock_hand);
     }
-    struct list_elem *e = list_begin(&frame_table);
+}
+
+/*! Choose a frame entry to be evicted based on clock algorithm. */
+struct frame_table_entry *choose_frame_to_evict(void) {
+    ASSERT(!list_empty(&frame_table));
     struct frame_table_entry *fte =
-        list_entry(e, struct frame_table_entry, frame_table_elem);
+        list_entry(clock_hand, struct frame_table_entry, frame_table_elem);
+    struct thread *owner = fte->owner;
+    struct sup_page *page = thread_sup_page_get(&owner->sup_page, fte->upage);
+    while (sup_page_is_accessed(fte->owner, page->addr)
+            || fte->pin_count > 0) {
+        sup_page_set_accessed(fte->owner, page->addr, false);
+        increment_clock_hand();
+        fte = list_entry(clock_hand, struct frame_table_entry,
+                frame_table_elem);
+        page = thread_sup_page_get(&owner->sup_page, fte->upage);
+        owner = fte->owner;
+    }
+    increment_clock_hand();
     return fte;
 }
 
 /*! Wrapper to choose a frame and evict it. */
 void evict(void) {
+    acquire_frame_lock();
     struct frame_table_entry *fte_to_evict = choose_frame_to_evict();
     evict_frame(fte_to_evict);
+    release_frame_lock();
 }
 
 /*! Evict the specified frame. */
 void evict_frame(struct frame_table_entry *fte) {
-    acquire_frame_lock();
     ASSERT(fte->pin_count == 0);
     struct thread *owner = fte->owner;
     struct sup_page *page = thread_sup_page_get(&owner->sup_page, fte->upage);
@@ -98,7 +114,7 @@ void evict_frame(struct frame_table_entry *fte) {
     /* If mapped, maybe write to file */
     if (page->is_mmap) {
         /* If dirty, write to file */
-        if (sup_page_is_dirty(&owner->sup_page, fte->upage)) {
+        if (sup_page_is_dirty(owner, page->addr)) {
             /* If mmapped, write to file */
             if (page->is_mmap) {
                 struct file *file = page->file_stats->file;
@@ -121,7 +137,7 @@ void evict_frame(struct frame_table_entry *fte) {
 
     /* Otherwise, write to swap */
     else if (page->status == FILE_PAGE) {
-        if (sup_page_is_dirty(&owner->sup_page, fte->upage)) {
+        if (sup_page_is_dirty(owner, fte->upage)) {
 
             /* Write to swap */
             page->swap_position = swap_table_out(page);
@@ -136,7 +152,6 @@ void evict_frame(struct frame_table_entry *fte) {
     pagedir_set_accessed(owner->pagedir, page->addr, false);
     pagedir_set_dirty(owner->pagedir, page->addr, false);
     page->fte = NULL;
-    release_frame_lock();
 
     /* Remove from frame table */
     list_remove(&fte->frame_table_elem);
