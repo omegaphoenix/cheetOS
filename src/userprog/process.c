@@ -541,6 +541,7 @@ static bool setup_stack(void **esp) {
     if (kpage != NULL) {
         uint8_t *addr = ((uint8_t *) PHYS_BASE) - PGSIZE;
         struct sup_page *page = sup_page_zero_create(addr, true);
+        kpage_fte->spte = page;
         success = fetch_data_to_frame(page, kpage_fte);
         if (success) {
             *esp = PHYS_BASE;
