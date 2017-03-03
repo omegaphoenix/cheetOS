@@ -519,12 +519,11 @@ void sys_munmap (mapid_t mapping) {
         /* Write dirty pages back to the file */
         /* For now, write all of them. */
         page = thread_sup_page_get(&cur->sup_page, upage);
-        file = page->file_stats->file;
 
-        page = thread_sup_page_get(&cur->sup_page, upage);
         if (page == NULL) {
             break;
         }
+        file = page->file_stats->file;
 
         offset = page->file_stats->offset;
 
@@ -541,7 +540,8 @@ void sys_munmap (mapid_t mapping) {
 
         upage += PGSIZE;
     }
-    file_close(file);
+    if (file != NULL)
+        file_close(file);
     release_file_lock();
 
     /* Remove entry from list of mmap files */
