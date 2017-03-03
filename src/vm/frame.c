@@ -62,7 +62,12 @@ struct frame_table_entry *get_frame(void) {
     struct frame_table_entry *fte = fte_create(frame, thread_current());
 
     /* Push frame on back of list */
-    list_push_back(&frame_table, &fte->frame_table_elem);
+    if (clock_hand == NULL) {
+        list_push_back(&frame_table, &fte->frame_table_elem);
+    }
+    else {
+        list_insert(clock_hand, &fte->frame_table_elem);
+    }
     pin(fte);
     return fte;
 }
