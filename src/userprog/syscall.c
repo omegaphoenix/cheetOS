@@ -506,7 +506,7 @@ void sys_munmap (mapid_t mapping) {
     void *upage = mmap->addr;
     struct sup_page *page;
 
-    acquire_file_lock();
+    //acquire_file_lock();
 
     struct file *file = NULL;
     off_t offset;
@@ -521,16 +521,20 @@ void sys_munmap (mapid_t mapping) {
         if (page == NULL) {
             break;
         }
+
         file = page->file_stats->file;
 
         offset = page->file_stats->offset;
 
         read_bytes = page->file_stats->read_bytes;
         zero_bytes = page->file_stats->zero_bytes;
-
+/*
         if (sup_page_is_dirty(cur, upage)) {
             file_write_at(file, upage, read_bytes, offset);
         }
+*/
+	evict_frame(page->fte);
+
         /* Delete page */
         sup_page_delete(&cur->sup_page, upage);
         ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
@@ -539,7 +543,7 @@ void sys_munmap (mapid_t mapping) {
     }
     if (file != NULL)
         file_close(file);
-    release_file_lock();
+    //release_file_lock();
 
     /* Remove entry from list of mmap files */
     remove_mmap(cur, mapping);
