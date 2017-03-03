@@ -84,6 +84,7 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     page->file_stats->zero_bytes = zero_bytes;
 
     /* Default is_mmap to false; set this flag in sys_mmap(). */
+    sup_page_set_dirty(thread_current(), page->addr, false);
     page->is_mmap = false;
 
     /* Insert into table. */

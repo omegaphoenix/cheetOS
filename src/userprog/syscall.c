@@ -483,7 +483,7 @@ mapid_t sys_mmap (int fd, void *addr) {
 
         /* Flag indicates that when evicted, write back to file */
         page->is_mmap = true;
-	page->status = FILE_PAGE;
+        page->status = FILE_PAGE;
 
         read_bytes -= page_read_bytes;
         upage += PGSIZE;

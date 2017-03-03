@@ -75,6 +75,8 @@ struct frame_table_entry *get_frame(void) {
     return fte;
 }
 
+/*! Move clock hand (next element to evict) to the next frame in the
+    list. If we reach the end of the list, wrap around to the beginning. */
 static void increment_clock_hand(void) {
     if (clock_hand == NULL || clock_hand == list_end(&frame_table)) {
         clock_hand = list_begin(&frame_table);
