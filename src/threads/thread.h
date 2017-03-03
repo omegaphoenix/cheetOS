@@ -173,6 +173,7 @@ struct thread {
     struct hash sup_page;              /*!< Supplemental Page Table. */
     struct list mappings;              /*!< Memory mapped files. */
     int num_mappings;                  /*!< Number of mappings (including unmapped). */
+    uint8_t *esp;                      /*!< esp to pass to page_fault */
 #endif
 
     /*! Owned by thread.c. */

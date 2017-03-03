@@ -69,6 +69,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
         return;
     }
     int syscall_no = *((int *) f->esp);
+    thread_current()->esp = f->esp;
 
     /* Make the appropriate system call */
     switch (syscall_no) {
@@ -170,12 +171,16 @@ void *get_third_arg(struct intr_frame *f) {
 /*! Acquire file locks. Need two because bochs might have files and their
     static variables go out of memory. */
 void acquire_file_lock(void) {
-    lock_acquire(&filesys_lock);
+    /* TODO, remove this check later */
+    if (!lock_held_by_current_thread(&filesys_lock))
+        lock_acquire(&filesys_lock);
 }
 
 /*! Release file locks. See comment in acquire_file_lock. */
 void release_file_lock(void) {
-    lock_release(&filesys_lock);
+    /* TODO, remove this check later */
+    if (lock_held_by_current_thread(&filesys_lock))
+        lock_release(&filesys_lock);
 }
 
 /*! Terminates Pintos. Should be seldom used due to loss of information on

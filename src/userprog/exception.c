@@ -19,6 +19,9 @@ static long long page_fault_cnt;
 
 static void kill(struct intr_frame *);
 static void page_fault(struct intr_frame *);
+#ifdef VM
+static bool is_stack_access(void *addr, void *esp);
+#endif
 
 /*! Registers handlers for interrupts that can be caused by user programs.
 
@@ -152,18 +155,34 @@ static void page_fault(struct intr_frame *f) {
         struct thread *cur = thread_current();
         /* Locate page that faulted in supplemental page table. */
         struct sup_page *page = thread_sup_page_get(&cur->sup_page, fault_addr);
-        if (page == NULL) {
-            sys_exit(-1);
+        uint8_t *esp = f->esp;
+        if (f->cs == SEL_KCSEG) {
+            esp = cur->esp;
         }
-        /* Obtain frame to store page. */
-        struct frame_table_entry *fte = get_frame();
-        pin(fte);
+        if (page != NULL) {
+            /* Obtain frame to store page. */
+            struct frame_table_entry *fte = get_frame();
+            pin(fte);
 
-        /* Fetch data into the frame. */
-        success = fetch_data_to_frame(page, fte);
-        unpin(fte);
-        if (!success) {
-            free_frame(fte);
+            /* Fetch data into the frame. */
+            success = fetch_data_to_frame(page, fte);
+            unpin(fte);
+            if (!success) {
+                free_frame(fte);
+            }
+        }
+        /* Page not in supplemental page table. */
+        else if (is_stack_access(fault_addr, esp)) {
+            /* Allocate additional pages as stack grows. */
+            void *addr = pg_round_down(fault_addr);
+            struct sup_page *page = sup_page_zero_create(addr, true);
+            struct frame_table_entry *fte = get_frame();
+            pin(fte);
+            success = fetch_data_to_frame(page, fte);
+            unpin(fte);
+            if (!success) {
+                free_frame(fte);
+            }
         }
     }
     /* To implement virtual memory, delete the rest of the function
@@ -188,3 +207,17 @@ static void page_fault(struct intr_frame *f) {
     }
 }
 
+#ifdef VM
+/*! Return true addr appears to be a stack address. */
+static bool is_stack_access(void *addr, void *esp) {
+    /* Buggy if user program write to stack below stack pointer. */
+    if (!((addr >= (void *) (esp - 32)) && (addr < PHYS_BASE))) {
+        return false;
+    }
+    int size = PHYS_BASE - addr;
+    if (size > MAX_STACK) {
+        sys_exit(-1);
+    }
+    return true;
+}
+#endif
