@@ -163,6 +163,7 @@ struct thread {
 
 #ifdef VM
     struct hash sup_page;              /*!< Supplemental Page Table. */
+    uint8_t *esp;                      /*!< esp to pass to page_fault */
 #endif
 
     /*! Owned by thread.c. */

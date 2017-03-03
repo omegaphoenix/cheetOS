@@ -63,6 +63,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
         return;
     }
     int syscall_no = *((int *) f->esp);
+    thread_current()->esp = f->esp;
 
     /* Make the appropriate system call */
     switch (syscall_no) {

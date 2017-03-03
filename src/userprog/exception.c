@@ -155,6 +155,10 @@ static void page_fault(struct intr_frame *f) {
         struct thread *cur = thread_current();
         /* Locate page that faulted in supplemental page table. */
         struct sup_page *page = thread_sup_page_get(&cur->sup_page, fault_addr);
+        uint8_t *esp = f->esp;
+        if (f->cs == SEL_KCSEG) {
+            esp = cur->esp;
+        }
         if (page != NULL) {
             /* Obtain frame to store page. */
             struct frame_table_entry *fte = get_frame();
@@ -168,7 +172,7 @@ static void page_fault(struct intr_frame *f) {
             }
         }
         /* Page not in supplemental page table. */
-        else if (is_stack_access(fault_addr, f->esp)) {
+        else if (is_stack_access(fault_addr, esp)) {
             /* Allocate additional pages as stack grows. */
             void *addr = pg_round_down(fault_addr);
             struct sup_page *page = sup_page_zero_create(addr, true);
@@ -206,11 +210,15 @@ static void page_fault(struct intr_frame *f) {
 #ifdef VM
 /*! Return true addr appears to be a stack address. */
 static bool is_stack_access(void *addr, void *esp) {
-    /* Buggy if user program write to stack below stack pinter. */
+    /* Buggy if user program write to stack below stack pointer. */
+    if (!((addr >= (void *) (esp - 32)) && (addr < PHYS_BASE))) {
+        return false;
+    }
     int size = PHYS_BASE - addr;
     if (size > MAX_STACK) {
+        printf("explode\n");
         sys_exit(-1);
     }
-    return (addr >= esp - 32) && (addr < PHYS_BASE);
+    return true;
 }
 #endif
