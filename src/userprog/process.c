@@ -40,41 +40,18 @@ tid_t process_execute(const char *cmdline) {
     char *save_ptr, *token;
     int argc = 0;
 
-#ifdef VM
-    struct frame_table_entry *cmdline_copy_fte;
-    struct frame_table_entry *cmdline_copy2_fte;
-    /* Make a copy of CMDLINE.
-       Otherwise there's a race between the caller and load(). */
-    cmdline_copy_fte = get_frame();
-    cmdline_copy = cmdline_copy_fte->frame;
-#else
     cmdline_copy = palloc_get_page(PAL_ZERO);
-#endif
     if (cmdline_copy == NULL) {
-#ifdef VM
-        unpin(cmdline_copy_fte);
-#endif
         return TID_ERROR;
     }
     strlcpy(cmdline_copy, cmdline, PGSIZE);
 
     /* Get FILE_NAME from CMDLINE */
-#ifdef VM
-    cmdline_copy2_fte = get_frame();
-    cmdline_copy2 = cmdline_copy2_fte->frame;
-    if (cmdline_copy2 == NULL) {
-        unpin(cmdline_copy_fte);
-        unpin(cmdline_copy2_fte);
-        free_frame(cmdline_copy_fte);
-        return TID_ERROR;
-    }
-#else
     cmdline_copy2 = palloc_get_page(PAL_ZERO);
     if (cmdline_copy2 == NULL) {
         palloc_free_page(cmdline_copy);
         return TID_ERROR;
     }
-#endif
     strlcpy(cmdline_copy2, cmdline, PGSIZE);
     file_name = cmdline_copy2; /* initialize */
 
@@ -96,19 +73,11 @@ tid_t process_execute(const char *cmdline) {
 
     struct thread *kid = get_child_thread(tid);
     sema_down(&kid->wait_sema);
-#ifdef VM
-    unpin(cmdline_copy2_fte);
-    free_frame(cmdline_copy2_fte);
-    if (tid == TID_ERROR) {
-        unpin(cmdline_copy_fte);
-        free_frame(cmdline_copy_fte);
-    }
-#else
+
     palloc_free_page(cmdline_copy2);
     if (tid == TID_ERROR) {
         palloc_free_page(cmdline_copy);
     }
-#endif
     return tid;
 }
 
@@ -584,7 +553,6 @@ static bool setup_stack(void **esp) {
     kpage = palloc_get_page(PAL_USER | PAL_ZERO);
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-        unpin(kpage_fte);
         if (success) {
             *esp = PHYS_BASE;
         }

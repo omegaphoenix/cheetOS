@@ -164,7 +164,6 @@ static void page_fault(struct intr_frame *f) {
             struct frame_table_entry *fte = get_frame();
             /* Fetch data into the frame. */
             success = fetch_data_to_frame(page, fte);
-            unpin(fte);
             if (!success) {
                 free_frame(fte);
             }
@@ -176,7 +175,6 @@ static void page_fault(struct intr_frame *f) {
             struct sup_page *page = sup_page_zero_create(addr, true);
             struct frame_table_entry *fte = get_frame();
             success = fetch_data_to_frame(page, fte);
-            unpin(fte);
             if (!success) {
                 free_frame(fte);
             }

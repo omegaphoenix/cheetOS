@@ -2,6 +2,7 @@
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "userprog/pagedir.h"
@@ -25,18 +26,18 @@ void release_frame_lock(void) {
     lock_release(&frame_lock);
 }
 void frame_table_init(void) {
-    list_init(&frame_table);
     clock_hand = NULL;
+    list_init(&frame_table);
+    lock_init(&frame_lock);
 }
 
 /*! Create a new frame table entry. */
 static void *fte_create(void *frame, struct thread *owner) {
     struct frame_table_entry *fte;
 
-    fte = palloc_get_page(PAL_USER | PAL_ZERO);
-    while (fte == NULL) {
-        evict();
-        fte = palloc_get_page(PAL_USER | PAL_ZERO);
+    fte = malloc(sizeof(struct frame_table_entry));
+    if (fte == NULL) {
+        PANIC("Not enough memory to create frame_table_entry!");
     }
     fte->frame = frame;
     fte->owner = owner;
@@ -60,7 +61,6 @@ struct frame_table_entry *get_frame(void) {
 
     /* Push frame on back of list */
     list_push_back(&frame_table, &fte->frame_table_elem);
-
     pin(fte);
     return fte;
 }
@@ -95,26 +95,38 @@ void evict_frame(struct frame_table_entry *fte) {
     struct sup_page *page = thread_sup_page_get(&owner->sup_page, fte->upage);
     ASSERT(page != NULL);
 
-    /* If possible, write to file */
-    if (page->status == FILE_PAGE) {
+    /* If mapped, maybe write to file */
+    if (page->is_mmap) {
         /* If dirty, write to file */
         if (sup_page_is_dirty(&owner->sup_page, fte->upage)) {
-            struct file *file = page->file_stats->file;
-            ASSERT(file != NULL);
-            off_t offset = page->file_stats->offset;
-            off_t read_bytes = page->file_stats->read_bytes;
+            /* If mmapped, write to file */
+            if (page->is_mmap) {
+                struct file *file = page->file_stats->file;
+                ASSERT(file != NULL);
+                off_t offset = page->file_stats->offset;
+                off_t read_bytes = page->file_stats->read_bytes;
 
-            acquire_file_lock();
-            file_write_at(file, page->addr, read_bytes, offset);
-            release_file_lock();
+                acquire_file_lock();
+                file_write_at(file, page->addr, read_bytes, offset);
+                release_file_lock();
+            }
+            /* Otherwise, write to swap */
+            else {
+                page->status = SWAP_PAGE;
+                page->swap_position = swap_table_out(page);
+            }
         }
-        /* If not dirty, it's already in file */
+        /* If not dirty, no need to save */
     }
 
     /* Otherwise, write to swap */
-    else if (page->status == SWAP_PAGE) {
-        /* Write to swap */
-        page->swap_position = swap_table_out(page);
+    else if (page->status == FILE_PAGE) {
+        if (sup_page_is_dirty(&owner->sup_page, fte->upage)) {
+
+            /* Write to swap */
+            page->swap_position = swap_table_out(page);
+            page->status = SWAP_PAGE;
+        }
     }
 
     /* If ZERO_PAGE, no need to save */
@@ -124,14 +136,13 @@ void evict_frame(struct frame_table_entry *fte) {
     pagedir_set_accessed(owner->pagedir, page->addr, false);
     pagedir_set_dirty(owner->pagedir, page->addr, false);
     page->fte = NULL;
+    release_frame_lock();
 
     /* Remove from frame table */
     list_remove(&fte->frame_table_elem);
 
     /* Free memory. */
     free_frame(fte);
-
-    release_frame_lock();
 }
 
 /*! Free memory after safety checks. */
@@ -145,7 +156,7 @@ void free_frame(struct frame_table_entry *fte) {
     ASSERT(fte->pin_count == 0); /* Should be unpinned. */
 
     palloc_free_page(fte->frame);
-    palloc_free_page(fte);
+    free(fte);
     fte = NULL;
 }
 
