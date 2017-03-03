@@ -121,7 +121,7 @@ bool swap_table_in(struct sup_page *dest_page, struct frame_table_entry *fte) {
                     block_offset,
                     kpage + cnt_sector * BLOCK_SECTOR_SIZE);
     }
-
+    dest_page->status = FILE_PAGE;
     release_swap_lock();
     return true;
 }
