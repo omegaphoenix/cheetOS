@@ -51,7 +51,6 @@ void swap_table_free(void) {
 /* This will take in an entry of a page table,
    and insert it into the swap table */
 size_t swap_table_out(struct sup_page *evicted_page) {
-
     acquire_swap_lock();
     size_t swap_idx;
     int cnt_sector;
