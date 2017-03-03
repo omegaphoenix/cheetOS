@@ -107,6 +107,13 @@ A global lock is acquired before a frame is created and released afterwards.
 >> B2: When a frame is required but none is free, some frame must be
 >> evicted.  Describe your code for choosing a frame to evict.
 
+We use the clock algorithm. We have a linked list of frames. If we
+don't have enough space to palloc a new frame, we evict a frame.
+We have a clock_hand pointer to point to a node in the linked list and
+this iterates through the linked list and back to the beginning and
+checks if each frame is accessed. If it is not accessed, we can evict
+the frame. If it is accssed, we set the accessed bit to zero.
+
 >> B3: When a process P obtains a frame that was previously used by a
 >> process Q, how do you adjust the page table (and any other data
 >> structures) to reflect the frame Q no longer has?
