@@ -131,25 +131,25 @@ void evict_frame(struct frame_table_entry *fte) {
 
     ASSERT(page != NULL);
 
-    /* If dirty, maybe write */
-    if (sup_page_is_dirty(owner, page->addr)) {
-        /* If mmapped, write to file */
-        if (page->is_mmap) {
+    /* If mmapped, write to file */
+    if (page->is_mmap) {
+        /* If dirty, maybe write */
+        if (sup_page_is_dirty(owner, page->addr)) {
             struct file *file = page->file_stats->file;
             ASSERT(file != NULL);
             off_t offset = page->file_stats->offset;
-            off_t read_bytes = page->file_stats->read_bytes;
 
             acquire_file_lock();
-            file_write_at(file, page->addr, read_bytes, offset);
+            file_write_at(file, page->addr, PGSIZE, offset);
             release_file_lock();
         }
-        /* Otherwise, write to swap */
-        else if (page->status == FILE_PAGE) {
-            /* Write to swap */
-            page->swap_position = swap_table_out(page);
-            page->status = SWAP_PAGE;
-        }
+    }
+    /* Otherwise, write to swap */
+    else if (page->status == FILE_PAGE ||
+            sup_page_is_dirty(owner, page->addr)) {
+        /* Write to swap */
+        page->swap_position = swap_table_out(page);
+        page->status = SWAP_PAGE;
     }
 
     /* If ZERO_PAGE, no need to save */
