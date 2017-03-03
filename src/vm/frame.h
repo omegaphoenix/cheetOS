@@ -29,4 +29,7 @@ void free_frame(struct frame_table_entry *fte);
 void pin(struct frame_table_entry *fte);
 void unpin(struct frame_table_entry *fte);
 
+void acquire_frame_lock(void);
+void release_frame_lock(void);
+
 #endif /* vm/frame.h */
