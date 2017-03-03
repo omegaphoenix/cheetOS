@@ -85,23 +85,31 @@ void evict_frame(struct frame_table_entry *fte) {
     struct sup_page *page = thread_sup_page_get(&owner->sup_page, fte->upage);
     ASSERT(page != NULL);
 
-    /* If possible, write to file */
+    /* If data is from file, write to file */
     if (page->status == FILE_PAGE) {
-        /* If dirty, write to file */
+        /* If dirty, write to backing */
         if (sup_page_is_dirty(&owner->sup_page, fte->upage)) {
-            struct file *file = page->file_stats->file;
-            ASSERT(file != NULL);
-            off_t offset = page->file_stats->offset;
-            off_t read_bytes = page->file_stats->read_bytes;
+            /* If mmapped, write to file */
+            if (page->is_mmap) {
+                struct file *file = page->file_stats->file;
+                ASSERT(file != NULL);
+                off_t offset = page->file_stats->offset;
+                off_t read_bytes = page->file_stats->read_bytes;
 
-            acquire_file_lock();
-            file_write_at(file, page->addr, read_bytes, offset);
-            release_file_lock();
+                acquire_file_lock();
+                file_write_at(file, page->addr, read_bytes, offset);
+                release_file_lock();
+            }
+            /* Otherwise, write to swap */
+            else {
+                page->status = SWAP_PAGE;
+                page->swap_position = swap_table_out(page);
+            }
         }
-        /* If not dirty, it's already in file */
+        /* If not dirty, no need to save */
     }
 
-    /* Otherwise, write to swap */
+    /* Otherwise, write to swap. This includes stack pages. */
     else if (page->status == SWAP_PAGE) {
         /* Write to swap */
         page->swap_position = swap_table_out(page);
