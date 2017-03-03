@@ -245,10 +245,13 @@ already exist.
 >> implementation either does or does not share much of the code for
 >> the two situations.
 
-The two pages are represented almost identically in our supplemental page table.
-Both are of status FILE_PAGE and store their source files in file_stats.
+The two pages are represented almost identically in our supplemental page table
+and share code for creating supplemental page table entries, fetching data,
+writing data to file/swap, and reclaiming pages. We had a separate
+implementation for munmap (it does not reuse code for writing pages to files)
+because we check additional variables to determine how many consecutive pages
+to write.
 
-TODO: maybe we should refactor so that they share code for loading/writing...
 
 
 			   SURVEY QUESTIONS
