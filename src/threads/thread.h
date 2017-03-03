@@ -21,7 +21,8 @@ struct sys_file {
 
 /* Memory mapped files. This is for a linked list of mmapped files in each thread. */
 struct mmap_file {
-    struct sup_page *page; 
+    void *addr;         /*!< Virtual address to which file is mapped. */
+    int fd;             /*!< Mapped file. */
     int mapping;        /*!< Unique mmap ID. */
     struct list_elem mmap_elem;
 };
@@ -235,8 +236,8 @@ void close_fd(struct thread *cur, int fd);
 bool is_valid_mapping(int mapping);
 bool is_existing_mapping(struct thread *cur, int mapping);
 int next_mapping(struct thread *cur);
-int add_mmap(struct thread *cur, struct sup_page *page, int mapping);
-struct sup_page *get_mmap(struct thread *cur, int mapping);
+int add_mmap(struct thread *cur, void *addr, int fd, int mapping);
+struct mmap_file *get_mmap(struct thread *cur, int mapping);
 void remove_mmap(struct thread *cur, int mapping);
 
 void add_sleep_thread(struct thread *);

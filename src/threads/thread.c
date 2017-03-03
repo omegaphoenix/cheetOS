@@ -710,15 +710,16 @@ int next_mapping(struct thread *cur) {
 }
 
 /* Add new mapping to list. Returns mapping or -1 on failure. */
-int add_mmap(struct thread *cur, struct sup_page *page, int mapping) {
+int add_mmap(struct thread *cur, void *addr, int fd, int mapping) {
     /* Initialize file */
     struct mmap_file *new_mapping = calloc(1, sizeof(struct mmap_file));
     /* Not enough memory. */
     if (new_mapping == NULL) {
         return ERR;
     }
-    new_mapping->page = page;
+    new_mapping->addr = addr;
     new_mapping->mapping = mapping;
+    new_mapping->fd = fd;
 
     if (is_valid_mapping(mapping) && !is_existing_mapping(cur, mapping)) {
         list_push_back(&cur->mappings, &new_mapping->mmap_elem);
@@ -730,13 +731,13 @@ int add_mmap(struct thread *cur, struct sup_page *page, int mapping) {
 }
 
 /* Returns page of mapped memory. */
-struct sup_page *get_mmap(struct thread *cur, int mapping) {
+struct mmap_file *get_mmap(struct thread *cur, int mapping) {
     struct list_elem *e;
     for (e = list_begin(&cur->mappings); e != list_end(&cur->mappings);
          e = list_next(e)) {
         struct mmap_file *cur_mmap = list_entry(e, struct mmap_file, mmap_elem);
         if (cur_mmap->mapping == mapping) {
-            return cur_mmap->page;
+            return cur_mmap;
         }
     }
 

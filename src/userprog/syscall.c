@@ -444,17 +444,14 @@ mapid_t sys_mmap (int fd, void *addr) {
 
     /* Cannot map FD 0 or FD 1 */
     if (fd == 0 || fd == 1) {
-        printf("ERROR: cannot mmap fd0 or 1\n");
         return -1;
     }
     /* File must be not NULL and file must have length > 0 */
     if (open_file == NULL || file_length(open_file) == 0) {
-        printf("ERROR: file is null or has length zero\n");
         return -1;
     }
     /* ADDR must not be 0 and ADDR must be page aligned */
     if (addr == 0 || pg_ofs(addr) != 0) {
-        printf("ERROR: address is 0 or address is not page aligned!\n");
         return -1;
     }
 
@@ -479,12 +476,12 @@ mapid_t sys_mmap (int fd, void *addr) {
         ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
         struct sup_page *page = sup_page_file_create(open_file, offset, upage,
                 page_read_bytes, page_zero_bytes, writable);
+        printf("wrote page with %d read_bytes and offset %d\n", page_read_bytes, offset);
         if (page == NULL) {
             return false;
         }
         /* Flag indicates that when evicted, write back to file */
         page->is_mmap = true;
-
         read_bytes -= page_read_bytes;
         upage += PGSIZE;
         offset += PGSIZE;
@@ -492,26 +489,58 @@ mapid_t sys_mmap (int fd, void *addr) {
 
     /* Add mapping to thread's mappings list and return unique mapping id */
     int mapping = next_mapping(cur);
-    return add_mmap(cur, addr, mapping);
+    return add_mmap(cur, addr, fd, mapping);
 }
 
 void sys_munmap (mapid_t mapping) {
     /* TODO: finish this function */
     struct thread *cur = thread_current();
 
-    struct sup_page *mmap_file = get_mmap(cur, mapping);
-    if (mmap_file == NULL) {
+    struct mmap_file *mmap = get_mmap(cur, mapping);
+    if (mmap == NULL) {
+        printf("no mmap file found!\n");
         sys_exit(ERR);
     }
+    void *upage = mmap->addr;
+    int fd = mmap->fd;
+    if (!is_existing_fd(cur, fd)) {
+        printf("fd does not exist");
+    }
+    struct sup_page *page;
+    struct file *file;
+    off_t offset;
+    off_t read_bytes;
+    off_t zero_bytes = 0;
 
-    /* Get file lock */
     acquire_file_lock();
-    /* Write dirty pages back to the file */
+    ASSERT(is_existing_fd(cur, fd));
+
+    while (zero_bytes == 0) {
+        /* Write dirty pages back to the file */
+        /* For now, write all of them. */
+        
+        page = thread_sup_page_get(&cur->sup_page, upage);
+        ASSERT(page != NULL);
+
+        file = page->file_stats->file;
+        ASSERT(file != NULL);
+
+        offset = page->file_stats->offset;
+        read_bytes = page->file_stats->read_bytes;
+        zero_bytes = page->file_stats->zero_bytes;
+        
+        printf("attempt to write back %d bytes at offset %d\n", read_bytes, offset);
+        off_t written_bytes = file_write_at(file, upage, read_bytes, offset);
+
+        /* Delete page */
+        sup_page_delete(&cur->sup_page, upage);
+        ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
+        //printf("removed page at %x\n", upage);
+
+        upage += PGSIZE;
+    }
 
     release_file_lock();
-    
-    /* Remove pages from page table */
-
 
     /* Remove entry from list of mmap files */
     remove_mmap(cur, mapping);
