@@ -8,17 +8,17 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Justin Leong <jleong@caltech.edu>
+John Li <jzli@caltech.edu>
+Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment: 0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL: https://github.com/omegaphoenix/cheetOS
    commit ...
 
 ---- PRELIMINARIES ----
@@ -30,6 +30,15 @@ FirstName LastName <email@domain.example>
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
 
+http://cs.stackexchange.com/questions/24011/clock-page-replacement-algorithm-already-existing-pages
+
+https://en.wikipedia.org/wiki/Page_replacement_algorithm#Clock
+
+http://csl.skku.edu/uploads/CSE3008F09/project3.pdf
+
+https://piazza-resources.s3.amazonaws.com/h81s2czg90kwa/hdx5ok0hlxg435/8task3.pdf?AWSAccessKeyId=AKIAIEDNRLJ4AZKBW6HA&Expires=1488281661&Signature=YZl1f6mlBLwr1DGO8p%2Be%2BmIYcnU%3D
+
+
 ---- LOGISTICS ----
 
 These questions will help us to keep track of the difficulty level of
@@ -39,8 +48,16 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
+  Justin Leong:
+  John Li:
+  Christina Lin:
+
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+
+  Justin Leong:
+  John Li:
+  Christina Lin:
 
 Note that this design document is a bit long.  Most of the questions can be
 answered pretty briefly.  Don't feel a need to write a long answer if it is
@@ -69,6 +86,8 @@ not required by the question.
 >> A4: When two user processes both need a new frame at the same time,
 >> how are races avoided?
 
+A global lock is acquired before a frame is created and released afterwards.
+
 ---- RATIONALE ----
 
 >> A5: Why did you choose the data structure(s) that you did for
@@ -87,6 +106,13 @@ not required by the question.
 
 >> B2: When a frame is required but none is free, some frame must be
 >> evicted.  Describe your code for choosing a frame to evict.
+
+We use the clock algorithm. We have a linked list of frames. If we
+don't have enough space to palloc a new frame, we evict a frame.
+We have a clock_hand pointer to point to a node in the linked list and
+this iterates through the linked list and back to the beginning and
+checks if each frame is accessed. If it is not accessed, we can evict
+the frame. If it is accssed, we set the accessed bit to zero.
 
 >> B3: When a process P obtains a frame that was previously used by a
 >> process Q, how do you adjust the page table (and any other data
@@ -145,6 +171,14 @@ not required by the question.
 >> C3: Explain how you determine whether a new file mapping overlaps
 >> any existing segment.
 
+We check the virtual address, upage = addr + N * PGSIZE, where addr is the 
+designated address to which to map and N = 0, 1, 2... up until and including
+the largest upage that is less than addr + length_of_the_file. For each upage,
+we check that there is not already an entry in the supplemental page table
+corresponding to the address. In other words, we determine which consecutive
+pages need to be allocated to the new mapping and verify that these pages do not
+already exist.
+
 ---- RATIONALE ----
 
 >> C4: Mappings created with "mmap" have similar semantics to those of
@@ -153,6 +187,12 @@ not required by the question.
 >> that much of their implementation can be shared.  Explain why your
 >> implementation either does or does not share much of the code for
 >> the two situations.
+
+The two pages are represented almost identically in our supplemental page table.
+Both are of status FILE_PAGE and store their source files in file_stats.
+
+TODO: maybe we should refactor so that they share code for loading/writing...
+
 
 			   SURVEY QUESTIONS
 			   ================

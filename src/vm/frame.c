@@ -51,27 +51,30 @@ static void *fte_create(void *frame, struct thread *owner) {
 
 /*! Create new frame and frame table entry. */
 struct frame_table_entry *get_frame(void) {
+    acquire_frame_lock();
     /* Allocate page frame*/
     void *frame = palloc_get_page(PAL_USER | PAL_ZERO);
     while (frame == NULL) {
+        release_frame_lock();
         evict();
+        acquire_frame_lock();
         frame = palloc_get_page(PAL_USER | PAL_ZERO);
     }
 
     /* Obtain unused frame */
     struct frame_table_entry *fte = fte_create(frame, thread_current());
 
-    /* Push frame on back of list */
     if (clock_hand == NULL) {
+        /* Push frame on back of list. */
         list_push_back(&frame_table, &fte->frame_table_elem);
     }
     else {
-
-        /* ERrors in here somehow. Something fails here and we call page fault. */
+        /* Insert before the clock_hand. */
         list_insert(clock_hand, &fte->frame_table_elem);
 
     }
     pin(fte);
+    release_frame_lock();
     return fte;
 }
 
