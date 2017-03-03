@@ -241,6 +241,9 @@ static bool get_file_page(struct sup_page *page,
         struct frame_table_entry *fte) {
     /* Get physical address. */
     uint8_t *kpage = (uint8_t *) fte->frame;
+    if (kpage == NULL) {
+        return false;
+    }
 
     /* Get variables. */
     bool writable = page->writable;
@@ -254,10 +257,6 @@ static bool get_file_page(struct sup_page *page,
 
     ASSERT (page_read_bytes <= PGSIZE);
     ASSERT (page_read_bytes + page_zero_bytes == PGSIZE);
-
-    if (kpage == NULL) {
-        return false;
-    }
 
     /* Read file. */
     acquire_file_lock();
