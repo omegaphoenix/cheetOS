@@ -52,8 +52,12 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
 
     /* Copy over page data. */
     struct sup_page *page = palloc_get_page(PAL_ZERO);
+    if (page == NULL) {
+        sys_exit(-1);
+    }
     struct file_info *file_stats = palloc_get_page(PAL_ZERO);
-    if (page == NULL || file_stats == NULL) {
+    if (file_stats == NULL) {
+        palloc_free_page(page);
         sys_exit(-1);
     }
 
@@ -75,6 +79,34 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     page->file_stats->offset = ofs;
     page->file_stats->read_bytes = read_bytes;
     page->file_stats->zero_bytes = zero_bytes;
+
+    /* Insert into table. */
+    struct thread *cur = thread_current();
+    sup_page_insert(&cur->sup_page, page);
+    return page;
+}
+
+/*! Create a suplemental page of zeros. */
+struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable) {
+    /* Copy over page data. */
+    struct sup_page *page = palloc_get_page(PAL_ZERO);
+    if (page == NULL) {
+        sys_exit(-1);
+    }
+    page->addr = upage;
+    page->status = ZERO_PAGE;
+    page->page_no = pg_no(upage);
+    page->writable = writable;
+
+    /* Copy over file data. */
+    page->file_stats = palloc_get_page(PAL_ZERO);
+    if (page->file_stats == NULL) {
+        sys_exit(-1);
+    }
+    page->file_stats->file = NULL;
+    page->file_stats->offset = 0;
+    page->file_stats->read_bytes = 0;
+    page->file_stats->zero_bytes = PGSIZE;
 
     /* Insert into table. */
     struct thread *cur = thread_current();
@@ -250,15 +282,27 @@ static bool get_file_page(struct sup_page *page,
 /*! Load the a page of zeros into memory. */
 static bool get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte) {
-    /*
+    /* Get physical address. */
     uint8_t *kpage = (uint8_t *) fte->frame;
-    page->kpage = kpage;
-    if (kpage == NULL) {
+
+    /* Get variables. */
+    bool writable = page->writable;
+    uint8_t *upage = (uint8_t *) page->addr;
+
+    /* Get file variables set during load_segment. */
+    size_t page_read_bytes = page->file_stats->read_bytes;
+    size_t page_zero_bytes = page->file_stats->zero_bytes;
+
+    ASSERT (page_read_bytes == 0);
+    ASSERT (page_zero_bytes == PGSIZE);
+
+    /* Zero out bytes. */
+    memset(kpage + page_read_bytes, 0, page_zero_bytes);
+
+    /* Add the page to the process's address space. */
+    if (!install_page(upage, kpage, writable)) {
         return false;
     }
-    ASSERT(page->file_stats->zero_bytes == PGSIZE);
-    memset(kpage, 0, PGSIZE);
+
     return true;
-    */
-    return get_file_page(page, fte);
 }

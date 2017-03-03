@@ -12,6 +12,7 @@
 #include "threads/thread.h"
 #include "vm/frame.h"
 
+#define MAX_STACK 8 * 1024 * 1024 /*!< Maximum stack size in bytes. */
 #define NOT_SWAP -1
 
 enum page_status {
@@ -45,6 +46,7 @@ void thread_sup_page_table_init(struct thread *t);
 void thread_sup_page_table_delete(struct thread *t);
 struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     uint8_t *upage, size_t read_bytes, size_t zero_bytes, bool writable);
+struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable);
 void sup_page_table_delete(struct hash *hash_table);
 bool fetch_data_to_frame(struct sup_page *page,
     struct frame_table_entry *fte);
