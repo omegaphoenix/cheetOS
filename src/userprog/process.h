@@ -3,8 +3,8 @@
 
 #define ARG_SIZE 4
 
-#include "threads/thread.h"
 #include <stdbool.h>
+#include "threads/thread.h"
 
 bool install_page(void *upage, void *kpage, bool writable); 
 tid_t process_execute(const char *args);
