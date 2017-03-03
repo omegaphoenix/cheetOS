@@ -4,9 +4,12 @@
 #include "threads/thread.h"
 
 static struct list frame_table;
+/* Points to list_elem that is to be checked for eviction. */
+static struct list_elem *clock_hand;
 
 void frame_table_init(void) {
     list_init(&frame_table);
+    clock_hand = NULL;
 }
 
 /*! Create a new frame table entry. */
@@ -48,6 +51,13 @@ struct frame_table_entry *get_frame(void) {
 /*! Choose a frame entry to be evicted. */
 struct frame_table_entry *choose_frame_to_evict(void) {
     /* TODO: Implement more advanced algorithm. */
+    ASSERT(!list_empty(&frame_table));
+    if (clock_hand == NULL || clock_hand == list_end(&frame_table)) {
+        clock_hand = list_begin(&frame_table);
+    }
+    else {
+        clock_hand = list_next(clock_hand);
+    }
     struct list_elem *e = list_begin(&frame_table);
     struct frame_table_entry *fte =
         list_entry(e, struct frame_table_entry, frame_table_elem);
@@ -88,6 +98,7 @@ void free_frame(struct frame_table_entry *fte) {
 void pin(struct frame_table_entry *fte) {
     fte->pin_count++;
 }
+
 /*! Unpin to indicate that frame can be freed. */
 void unpin(struct frame_table_entry *fte) {
     ASSERT(fte->pin_count > 0);
