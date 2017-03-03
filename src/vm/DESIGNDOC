@@ -72,6 +72,35 @@ not required by the question.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+enum page_status {
+    SWAP_PAGE,
+    FILE_PAGE,
+    ZERO_PAGE
+};
+On a page fault, indicates whether the missing data is in swap, in a file, or
+just a page of zeroes.
+
+struct file_info {
+    struct file *file;
+    off_t offset;
+    size_t read_bytes;
+    size_t zero_bytes;
+};
+Keeps track of information for loading files.
+
+struct sup_page {
+    void *addr;                           /*!< Address to the virtual page. */
+    struct frame_table_entry *fte;        /*!< Frame table entry. */
+    enum page_status status;              /*!< Current status of page. */
+    int swap_position;                    /*!< Swap position if in swap. -1 otherwise */
+    uintptr_t page_no;                    /*!< Page number. */
+    struct hash_elem sup_page_table_elem; /*!< Elem for supplemental page table. */
+    bool writable;                        /*!< Whether page is writable. */
+    struct file_info *file_stats;         /*!< Keep track of file info. */
+    bool is_mmap;                         /*!< Page is part of mapped memory */
+};
+Represents an entry in the supplemental page table.
+
 ---- ALGORITHMS ----
 
 >> A2: In a few paragraphs, describe your code for locating the frame,
@@ -101,6 +130,24 @@ A global lock is acquired before a frame is created and released afterwards.
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+
+static struct list frame_table;
+Frame table that is shared by all processes.
+
+static struct lock frame_lock;
+Lock for the frame table.
+
+static struct list_elem *clock_hand;
+Used in eviction polity; points to list_elem that is to be checked for eviction.
+
+struct frame_table_entry {
+    void *frame;                /*!< Address of frame (kernel virtual address). */
+    struct sup_page *spte;      /*!< Supplementary Page Table */
+    struct thread *owner;       /*!< Process that is using the frame. */
+    int pin_count;              /*!< Should not evict pinned pages. */
+    struct list_elem frame_table_elem; /*!< Use list for LRU. */
+};
+Represents an entry in the frame table.
 
 ---- ALGORITHMS ----
 
@@ -161,6 +208,8 @@ the frame. If it is accssed, we set the accessed bit to zero.
 >> C1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+
+None. Shares data structures with supplemental page table (see A1).
 
 ---- ALGORITHMS ----
 
