@@ -12,7 +12,7 @@ Justin Leong <jleong@caltech.edu>
 John Li <jzli@caltech.edu>
 Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment: 0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
@@ -29,6 +29,15 @@ Christina Lin <cylin@caltech.edu>
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
+
+http://cs.stackexchange.com/questions/24011/clock-page-replacement-algorithm-already-existing-pages
+
+https://en.wikipedia.org/wiki/Page_replacement_algorithm#Clock
+
+http://csl.skku.edu/uploads/CSE3008F09/project3.pdf
+
+https://piazza-resources.s3.amazonaws.com/h81s2czg90kwa/hdx5ok0hlxg435/8task3.pdf?AWSAccessKeyId=AKIAIEDNRLJ4AZKBW6HA&Expires=1488281661&Signature=YZl1f6mlBLwr1DGO8p%2Be%2BmIYcnU%3D
+
 
 ---- LOGISTICS ----
 
@@ -76,6 +85,8 @@ not required by the question.
 
 >> A4: When two user processes both need a new frame at the same time,
 >> how are races avoided?
+
+A global lock is acquired before a frame is created and released afterwards.
 
 ---- RATIONALE ----
 
