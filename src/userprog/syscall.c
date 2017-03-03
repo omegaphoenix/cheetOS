@@ -448,22 +448,22 @@ mapid_t sys_mmap (int fd, void *addr) {
 
     /* Cannot map FD 0 or FD 1 */
     if (fd == 0 || fd == 1) {
-        return -1;
+        return ERR;
     }
     /* File must be not NULL and file must have length > 0 */
     if (open_file == NULL || file_length(open_file) == 0) {
-        return -1;
+        return ERR;
     }
     /* ADDR must not be 0 and ADDR must be page aligned */
     if (addr == 0 || pg_ofs(addr) != 0) {
-        return -1;
+        return ERR;
     }
 
     /* Page range cannot overlap with other pages in use */
     void *upage = addr;
     while (upage < addr + file_length(open_file)) {
         if (thread_sup_page_get(&cur->sup_page, upage) != NULL) {
-            return -1;
+            return ERR;
         }
         upage += PGSIZE;
     }
@@ -506,7 +506,7 @@ void sys_munmap (mapid_t mapping) {
     }
     void *upage = mmap->addr;
     struct sup_page *page;
-    struct file *file;
+    struct file *file = NULL;
     off_t offset;
     off_t read_bytes;
     off_t zero_bytes = 0;
@@ -516,9 +516,11 @@ void sys_munmap (mapid_t mapping) {
     while (zero_bytes == 0) {
         /* Write dirty pages back to the file */
         /* For now, write all of them. */
-        
+
         page = thread_sup_page_get(&cur->sup_page, upage);
-        ASSERT(page != NULL);
+        if (page == NULL) {
+            break;
+        }
 
         file = page->file_stats->file;
         ASSERT(file != NULL);
@@ -531,10 +533,10 @@ void sys_munmap (mapid_t mapping) {
             read_bytes = 1;
             //char *buf = "hello this is a test";
             //printf("attempt to write back %d bytes at offset %d\n", read_bytes, offset);
-            off_t written_bytes = file_write_at(file, upage, read_bytes, offset);
+            file_write_at(file, upage, read_bytes, offset);
             //printf("actually wrote %d bytes\n", written_bytes);
             //printf("I think I wrote %s\n", buf);
-        
+
         }
 
         /* Delete page */
