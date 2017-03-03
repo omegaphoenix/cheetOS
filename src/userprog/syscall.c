@@ -476,7 +476,7 @@ mapid_t sys_mmap (int fd, void *addr) {
         ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
         struct sup_page *page = sup_page_file_create(open_file, offset, upage,
                 page_read_bytes, page_zero_bytes, writable);
-        printf("wrote page with %d read_bytes and offset %d\n", page_read_bytes, offset);
+        //printf("wrote page with %d read_bytes and offset %d\n", page_read_bytes, offset);
         if (page == NULL) {
             return false;
         }
@@ -493,7 +493,6 @@ mapid_t sys_mmap (int fd, void *addr) {
 }
 
 void sys_munmap (mapid_t mapping) {
-    /* TODO: finish this function */
     struct thread *cur = thread_current();
 
     struct mmap_file *mmap = get_mmap(cur, mapping);
@@ -502,10 +501,6 @@ void sys_munmap (mapid_t mapping) {
         sys_exit(ERR);
     }
     void *upage = mmap->addr;
-    int fd = mmap->fd;
-    if (!is_existing_fd(cur, fd)) {
-        printf("fd does not exist");
-    }
     struct sup_page *page;
     struct file *file;
     off_t offset;
@@ -513,7 +508,6 @@ void sys_munmap (mapid_t mapping) {
     off_t zero_bytes = 0;
 
     acquire_file_lock();
-    ASSERT(is_existing_fd(cur, fd));
 
     while (zero_bytes == 0) {
         /* Write dirty pages back to the file */
@@ -528,9 +522,16 @@ void sys_munmap (mapid_t mapping) {
         offset = page->file_stats->offset;
         read_bytes = page->file_stats->read_bytes;
         zero_bytes = page->file_stats->zero_bytes;
+
+        if (sup_page_is_dirty(&cur->sup_page, upage)) {
+            read_bytes = 1;
+            //char *buf = "hello this is a test";
+            //printf("attempt to write back %d bytes at offset %d\n", read_bytes, offset);
+            off_t written_bytes = file_write_at(file, upage, read_bytes, offset);
+            //printf("actually wrote %d bytes\n", written_bytes);
+            //printf("I think I wrote %s\n", buf);
         
-        printf("attempt to write back %d bytes at offset %d\n", read_bytes, offset);
-        off_t written_bytes = file_write_at(file, upage, read_bytes, offset);
+        }
 
         /* Delete page */
         sup_page_delete(&cur->sup_page, upage);

@@ -120,6 +120,9 @@ bool sup_page_delete(struct hash * hash_table, void *addr) {
         ASSERT(deleted_elem != NULL);
         ASSERT(thread_sup_page_get(hash_table, addr) == NULL);
 
+	/* Free the element */
+        sup_page_free(deleted_elem, NULL);
+
         return true;
     }
     return false;
