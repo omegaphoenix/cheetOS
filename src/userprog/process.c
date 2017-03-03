@@ -578,6 +578,7 @@ static bool setup_stack(void **esp) {
 #endif
         }
     }
+
     return success;
 }
 
