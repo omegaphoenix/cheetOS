@@ -480,12 +480,15 @@ mapid_t sys_mmap (int fd, void *addr) {
         ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
         struct sup_page *page = sup_page_file_create(open_file, offset, upage,
                 page_read_bytes, page_zero_bytes, writable);
-        //printf("wrote page with %d read_bytes and offset %d\n", page_read_bytes, offset);
+
         if (page == NULL) {
-            return false;
+            return ERR;
         }
+
         /* Flag indicates that when evicted, write back to file */
         page->is_mmap = true;
+	page->status = FILE_PAGE;
+
         read_bytes -= page_read_bytes;
         upage += PGSIZE;
         offset += PGSIZE;
@@ -517,7 +520,6 @@ void sys_munmap (mapid_t mapping) {
 
     while (zero_bytes == 0) {
         /* Write dirty pages back to the file */
-        /* For now, write all of them. */
         page = thread_sup_page_get(&cur->sup_page, upage);
 
         if (page == NULL) {
@@ -536,7 +538,6 @@ void sys_munmap (mapid_t mapping) {
         /* Delete page */
         sup_page_delete(&cur->sup_page, upage);
         ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
-        //printf("removed page at %x\n", upage);
 
         upage += PGSIZE;
     }
