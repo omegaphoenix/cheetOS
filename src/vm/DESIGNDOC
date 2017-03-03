@@ -8,9 +8,9 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Justin Leong <jleong@caltech.edu>
+John Li <jzli@caltech.edu>
+Christina Lin <cylin@caltech.edu>
 
 >> Specify how many late tokens you are using on this assignment:  
 
@@ -18,7 +18,7 @@ FirstName LastName <email@domain.example>
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL: https://github.com/omegaphoenix/cheetOS
    commit ...
 
 ---- PRELIMINARIES ----
@@ -39,8 +39,16 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
+  Justin Leong:
+  John Li:
+  Christina Lin:
+
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+
+  Justin Leong:
+  John Li:
+  Christina Lin:
 
 Note that this design document is a bit long.  Most of the questions can be
 answered pretty briefly.  Don't feel a need to write a long answer if it is
