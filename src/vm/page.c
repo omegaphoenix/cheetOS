@@ -80,6 +80,9 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     page->file_stats->read_bytes = read_bytes;
     page->file_stats->zero_bytes = zero_bytes;
 
+    /* Default is_mmap to false; set this flag in sys_mmap(). */
+    page->is_mmap = false;
+
     /* Insert into table. */
     struct thread *cur = thread_current();
     sup_page_insert(&cur->sup_page, page);

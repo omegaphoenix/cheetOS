@@ -39,6 +39,7 @@ struct sup_page {
     struct hash_elem sup_page_table_elem; /*!< Elem for supplemental page table. */
     bool writable;                        /*!< Whether page is writable. */
     struct file_info *file_stats;         /*!< Keep track of file info. */
+    bool is_mmap;                         /*!< Page is part of mapped memory */
 };
 
 /* Initializes supplemental page hash table */

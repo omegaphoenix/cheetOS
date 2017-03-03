@@ -12,6 +12,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
+#include "vm/page.h"
 
 /* Protect filesys calls. */
 static struct lock filesys_lock;
@@ -38,6 +39,9 @@ int sys_write(int fd, const void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 void sys_close(int fd);
+/* Memory mapping */
+mapid_t sys_mmap(int fd, void *addr);
+void sys_munmap(mapid_t mapping);
 
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
@@ -56,6 +60,8 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     unsigned int *size, *initial_size, *position;
     char **cmd_line;
     char **file;
+    void **addr;
+    mapid_t *mapping;
 
     /* Get the system call number */
     if (f == NULL || !valid_read_addr(f->esp)) {
@@ -125,6 +131,15 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             fd = (int *) get_first_arg(f);
             sys_close(*fd);
             break;
+        case SYS_MMAP:
+            fd = (int *) get_first_arg(f);
+            addr = (void **) get_second_arg(f);
+            f->eax = sys_mmap(*fd, *addr);
+            break;
+        case SYS_MUNMAP:
+            mapping = (mapid_t *) get_first_arg(f);
+            sys_munmap(*mapping);
+            break;
         default:
             printf("Unimplemented system call number\n");
             sys_exit(ERR);
@@ -179,6 +194,15 @@ void sys_exit(int status) {
     struct thread *cur = thread_current();
     printf("%s: exit(%d)\n", cur->name, status);
     cur->exit_status = status;
+
+    /* Free all mappings. */
+    struct list_elem *f;
+    while (!list_empty(&cur->mappings)) {
+        f = list_begin(&cur->mappings);
+        struct mmap_file *mmap =
+            list_entry(f, struct mmap_file, mmap_elem);
+        sys_munmap(mmap->mapping);
+    }
 
     /* Free all file buffers. */
     struct list_elem *e;
@@ -413,6 +437,121 @@ void sys_close(int fd) {
     /* Delete file from thread */
     close_fd(cur, fd);
     release_file_lock();
+}
+
+/*! Maps the file open as FD into the process's virtual address space.
+    The entire file is mapped as consecutive pages starting at ADDR. 
+    Returns mapping id that is unique within the process, or -1 on failure. */
+mapid_t sys_mmap (int fd, void *addr) {
+    struct thread *cur = thread_current();
+    struct file *open_file = file_reopen(get_fd(cur, fd));
+
+    /* Cannot map FD 0 or FD 1 */
+    if (fd == 0 || fd == 1) {
+        return ERR;
+    }
+    /* File must be not NULL and file must have length > 0 */
+    if (open_file == NULL || file_length(open_file) == 0) {
+        return ERR;
+    }
+    /* ADDR must not be 0 and ADDR must be page aligned */
+    if (addr == 0 || pg_ofs(addr) != 0) {
+        return ERR;
+    }
+
+    /* Page range cannot overlap with other pages in use */
+    void *upage = addr;
+    while (upage < addr + file_length(open_file)) {
+        if (thread_sup_page_get(&cur->sup_page, upage) != NULL) {
+            return ERR;
+        }
+        upage += PGSIZE;
+    }
+
+    /* Load file to virtual address */
+    upage = addr;
+    uint32_t read_bytes = file_length(open_file);
+    off_t offset = 0;
+    bool writable = true; /* TODO: fix this */
+    while (read_bytes > 0) {
+        size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+        size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+        ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
+        struct sup_page *page = sup_page_file_create(open_file, offset, upage,
+                page_read_bytes, page_zero_bytes, writable);
+        //printf("wrote page with %d read_bytes and offset %d\n", page_read_bytes, offset);
+        if (page == NULL) {
+            return false;
+        }
+        /* Flag indicates that when evicted, write back to file */
+        page->is_mmap = true;
+        read_bytes -= page_read_bytes;
+        upage += PGSIZE;
+        offset += PGSIZE;
+    }
+
+    /* Add mapping to thread's mappings list and return unique mapping id */
+    int mapping = next_mapping(cur);
+    return add_mmap(cur, addr, fd, mapping);
+}
+
+void sys_munmap (mapid_t mapping) {
+    struct thread *cur = thread_current();
+
+    struct mmap_file *mmap = get_mmap(cur, mapping);
+    if (mmap == NULL) {
+        printf("no mmap file found!\n");
+        sys_exit(ERR);
+    }
+    void *upage = mmap->addr;
+    struct sup_page *page;
+    struct file *file = NULL;
+    off_t offset;
+    off_t read_bytes;
+    off_t zero_bytes = 0;
+
+    acquire_file_lock();
+
+    while (zero_bytes == 0) {
+        /* Write dirty pages back to the file */
+        /* For now, write all of them. */
+
+        page = thread_sup_page_get(&cur->sup_page, upage);
+        if (page == NULL) {
+            break;
+        }
+
+        file = page->file_stats->file;
+        ASSERT(file != NULL);
+
+        offset = page->file_stats->offset;
+        read_bytes = page->file_stats->read_bytes;
+        zero_bytes = page->file_stats->zero_bytes;
+
+        if (sup_page_is_dirty(&cur->sup_page, upage)) {
+            read_bytes = 1;
+            //char *buf = "hello this is a test";
+            //printf("attempt to write back %d bytes at offset %d\n", read_bytes, offset);
+            file_write_at(file, upage, read_bytes, offset);
+            //printf("actually wrote %d bytes\n", written_bytes);
+            //printf("I think I wrote %s\n", buf);
+
+        }
+
+        /* Delete page */
+        sup_page_delete(&cur->sup_page, upage);
+        ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
+        //printf("removed page at %x\n", upage);
+
+        upage += PGSIZE;
+    }
+    file_close(file);
+    release_file_lock();
+
+    /* Remove entry from list of mmap files */
+    remove_mmap(cur, mapping);
+
 }
 
 /* Returns true if addr is valid for reading */
