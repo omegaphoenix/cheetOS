@@ -51,13 +51,10 @@ static void *fte_create(void *frame, struct thread *owner) {
 
 /*! Create new frame and frame table entry. */
 struct frame_table_entry *get_frame(void) {
-    acquire_frame_lock();
     /* Allocate page frame*/
     void *frame = palloc_get_page(PAL_USER | PAL_ZERO);
     while (frame == NULL) {
-        release_frame_lock();
         evict();
-        acquire_frame_lock();
         frame = palloc_get_page(PAL_USER | PAL_ZERO);
     }
 
@@ -74,7 +71,6 @@ struct frame_table_entry *get_frame(void) {
 
     }
     pin(fte);
-    release_frame_lock();
     return fte;
 }
 
