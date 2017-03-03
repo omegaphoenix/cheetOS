@@ -506,37 +506,33 @@ void sys_munmap (mapid_t mapping) {
     }
     void *upage = mmap->addr;
     struct sup_page *page;
+    acquire_file_lock();
+
     struct file *file;
+
     off_t offset;
     off_t read_bytes;
     off_t zero_bytes = 0;
 
-    acquire_file_lock();
 
     while (zero_bytes == 0) {
         /* Write dirty pages back to the file */
         /* For now, write all of them. */
-        
         page = thread_sup_page_get(&cur->sup_page, upage);
+        file = page->file_stats->file;
         ASSERT(page != NULL);
 
-        file = page->file_stats->file;
-        ASSERT(file != NULL);
 
         offset = page->file_stats->offset;
+
         read_bytes = page->file_stats->read_bytes;
         zero_bytes = page->file_stats->zero_bytes;
 
         if (sup_page_is_dirty(&cur->sup_page, upage)) {
-            read_bytes = 1;
             //char *buf = "hello this is a test";
-            //printf("attempt to write back %d bytes at offset %d\n", read_bytes, offset);
             off_t written_bytes = file_write_at(file, upage, read_bytes, offset);
-            //printf("actually wrote %d bytes\n", written_bytes);
-            //printf("I think I wrote %s\n", buf);
         
         }
-
         /* Delete page */
         sup_page_delete(&cur->sup_page, upage);
         ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
