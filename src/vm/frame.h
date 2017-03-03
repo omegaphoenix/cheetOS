@@ -11,6 +11,7 @@
 /*! Entry for frame table. */
 struct frame_table_entry {
     void *frame;                /*!< Address of frame (kernel virtual address). */
+    void *upage;                /*!< User virtual address. */
     struct thread *owner;       /*!< Process that is using the frame. */
     int pin_count;              /*!< Should not evict pinned pages. */
     struct list_elem frame_table_elem; /*!< Use list for LRU. */
@@ -18,6 +19,7 @@ struct frame_table_entry {
 
 void frame_table_init(void);
 struct frame_table_entry *get_frame(void);
+void evict(struct frame_table_entry *fte);
 void free_frame(struct frame_table_entry *fte);
 
 void pin(struct frame_table_entry *fte);

@@ -51,6 +51,9 @@ tid_t process_execute(const char *cmdline) {
     cmdline_copy = palloc_get_page(PAL_ZERO);
 #endif
     if (cmdline_copy == NULL) {
+#ifdef VM
+        unpin(cmdline_copy_fte);
+#endif
         return TID_ERROR;
     }
     strlcpy(cmdline_copy, cmdline, PGSIZE);
@@ -60,6 +63,8 @@ tid_t process_execute(const char *cmdline) {
     cmdline_copy2_fte = get_frame();
     cmdline_copy2 = cmdline_copy2_fte->frame;
     if (cmdline_copy2 == NULL) {
+        unpin(cmdline_copy_fte);
+        unpin(cmdline_copy2_fte);
         free_frame(cmdline_copy_fte);
         return TID_ERROR;
     }
@@ -92,8 +97,10 @@ tid_t process_execute(const char *cmdline) {
     struct thread *kid = get_child_thread(tid);
     sema_down(&kid->wait_sema);
 #ifdef VM
+    unpin(cmdline_copy2_fte);
     free_frame(cmdline_copy2_fte);
     if (tid == TID_ERROR) {
+        unpin(cmdline_copy_fte);
         free_frame(cmdline_copy_fte);
     }
 #else
@@ -567,6 +574,7 @@ static bool setup_stack(void **esp) {
 #endif
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+        unpin(kpage_fte);
         if (success) {
             *esp = PHYS_BASE;
         }
@@ -578,6 +586,10 @@ static bool setup_stack(void **esp) {
 #endif
         }
     }
+
+#ifdef VM
+    /* TODO: Set up one page for stack. */
+#endif
     return success;
 }
 

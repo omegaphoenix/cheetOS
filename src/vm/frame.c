@@ -21,6 +21,7 @@ static void *fte_create(void *frame, struct thread *owner) {
     fte->frame = frame;
     fte->owner = owner;
     fte->pin_count = 0;
+    fte->upage = NULL;
 
     return fte;
 }
@@ -40,11 +41,21 @@ struct frame_table_entry *get_frame(void) {
     /* Push frame on back of list */
     list_push_back(&frame_table, &fte->frame_table_elem);
 
+    pin(fte);
     return fte;
+}
+
+void evict(struct frame_table_entry *fte) {
+    ASSERT(fte->pin_count == 0);
+    /* Write data. */
+
+    /* Free memory. */
+    free_frame(fte);
 }
 
 /*! Free memory after safety checks. */
 void free_frame(struct frame_table_entry *fte) {
+    fte->upage = NULL;
     /* TODO: Might want to remove. */
     try_remove(&fte->frame_table_elem);
     /* Safety checks. */
