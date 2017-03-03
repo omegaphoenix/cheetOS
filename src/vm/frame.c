@@ -87,7 +87,9 @@ static void increment_clock_hand(void) {
 /*! Choose a frame entry to be evicted based on clock algorithm. */
 struct frame_table_entry *choose_frame_to_evict(void) {
     ASSERT(!list_empty(&frame_table));
-    increment_clock_hand();
+    if (clock_hand == NULL) {
+        increment_clock_hand();
+    }
     struct frame_table_entry *fte =
         list_entry(clock_hand, struct frame_table_entry, frame_table_elem);
     struct thread *owner = fte->owner;
@@ -107,6 +109,7 @@ struct frame_table_entry *choose_frame_to_evict(void) {
         owner = fte->owner;
 
     }
+    increment_clock_hand();
     return fte;
 }
 
@@ -155,9 +158,6 @@ void evict_frame(struct frame_table_entry *fte) {
     pagedir_set_dirty(owner->pagedir, page->addr, false);
     page->fte = NULL;
 
-    /* Remove from frame table */
-    list_remove(&fte->frame_table_elem);
-
     /* Free memory. */
     free_frame(fte);
 }
@@ -165,8 +165,8 @@ void evict_frame(struct frame_table_entry *fte) {
 /*! Free memory after safety checks. */
 void free_frame(struct frame_table_entry *fte) {
     fte->spte = NULL;
-    /* TODO: Might want to remove. */
-    try_remove(&fte->frame_table_elem);
+    /* Remove from frame table */
+    list_remove(&fte->frame_table_elem);
     /* Safety checks. */
     /* Check if list_elem was removed. */
     ASSERT(try_remove(&fte->frame_table_elem) == NULL);
