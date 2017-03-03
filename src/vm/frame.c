@@ -117,6 +117,9 @@ void evict_frame(struct frame_table_entry *fte) {
     pagedir_set_dirty(owner->pagedir, page->addr, false);
     page->fte = NULL;
 
+    /* Remove from frame table */
+    list_remove(&fte->frame_table_elem);
+
     /* Free memory. */
     free_frame(fte);
 
