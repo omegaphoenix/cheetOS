@@ -12,6 +12,8 @@
 #include "threads/thread.h"
 #include "vm/frame.h"
 
+#define NOT_SWAP -1
+
 enum page_status {
     SWAP_PAGE,
     FILE_PAGE,
@@ -29,8 +31,9 @@ struct file_info {
 /*! Pages for supplemental page table. */
 struct sup_page {
     void *addr;                           /*!< Address to the virtual page. */
-    void *kpage;                          /*!< Address to the physical page. */
+    struct frame_table_entry *fte;        /*!< Frame table entry. */
     enum page_status status;              /*!< Current status of page. */
+    int swap_position;                    /*!< Swap position if in swap. -1 otherwise */
     uintptr_t page_no;                    /*!< Page number. */
     struct hash_elem sup_page_table_elem; /*!< Elem for supplemental page table. */
     bool writable;                        /*!< Whether page is writable. */
