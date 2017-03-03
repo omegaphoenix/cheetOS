@@ -66,7 +66,10 @@ struct frame_table_entry *get_frame(void) {
         list_push_back(&frame_table, &fte->frame_table_elem);
     }
     else {
+
+        /* ERrors in here somehow. Something fails here and we call page fault. */
         list_insert(clock_hand, &fte->frame_table_elem);
+
     }
     pin(fte);
     return fte;
@@ -84,20 +87,26 @@ static void increment_clock_hand(void) {
 /*! Choose a frame entry to be evicted based on clock algorithm. */
 struct frame_table_entry *choose_frame_to_evict(void) {
     ASSERT(!list_empty(&frame_table));
+    increment_clock_hand();
     struct frame_table_entry *fte =
         list_entry(clock_hand, struct frame_table_entry, frame_table_elem);
     struct thread *owner = fte->owner;
     struct sup_page *page = fte->spte;
-    while (sup_page_is_accessed(owner, page->addr)
+    while (!is_user_vaddr(page->addr)
+            || sup_page_is_accessed(owner, page->addr)
             || fte->pin_count > 0) {
-        sup_page_set_accessed(fte->owner, page->addr, false);
+
+        if (is_user_vaddr(page->addr))
+            sup_page_set_accessed(fte->owner, page->addr, false);
+
         increment_clock_hand();
         fte = list_entry(clock_hand, struct frame_table_entry,
                 frame_table_elem);
+
         page = fte->spte;
         owner = fte->owner;
+
     }
-    increment_clock_hand();
     return fte;
 }
 
