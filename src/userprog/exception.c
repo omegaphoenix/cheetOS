@@ -162,7 +162,6 @@ static void page_fault(struct intr_frame *f) {
         if (page != NULL) {
             /* Obtain frame to store page. */
             struct frame_table_entry *fte = get_frame();
-            fte->spte = page;
             /* Fetch data into the frame. */
             success = fetch_data_to_frame(page, fte);
             if (!success) {

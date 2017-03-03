@@ -201,6 +201,7 @@ bool sup_page_is_dirty(struct hash * hash_table, void *addr) {
 bool fetch_data_to_frame(struct sup_page *page,
         struct frame_table_entry *fte) {
     bool success = false;
+    fte->upage = page->addr;
     switch (page->status) {
         case SWAP_PAGE:
             success = get_swap_page(page, fte);
