@@ -82,14 +82,14 @@ struct frame_table_entry *choose_frame_to_evict(void) {
     struct frame_table_entry *fte =
         list_entry(clock_hand, struct frame_table_entry, frame_table_elem);
     struct thread *owner = fte->owner;
-    struct sup_page *page = thread_sup_page_get(&owner->sup_page, fte->upage);
-    while (sup_page_is_accessed(fte->owner, page->addr)
+    struct sup_page *page = fte->spte;
+    while (sup_page_is_accessed(owner, page->addr)
             || fte->pin_count > 0) {
         sup_page_set_accessed(fte->owner, page->addr, false);
         increment_clock_hand();
         fte = list_entry(clock_hand, struct frame_table_entry,
                 frame_table_elem);
-        page = thread_sup_page_get(&owner->sup_page, fte->upage);
+        page = fte->spte;
         owner = fte->owner;
     }
     increment_clock_hand();
