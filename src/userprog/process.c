@@ -562,22 +562,29 @@ static bool setup_stack(void **esp) {
     struct frame_table_entry *kpage_fte;
     kpage_fte = get_frame();
     kpage = (uint8_t *) kpage_fte->frame;
+    if (kpage != NULL) {
+        uint8_t *addr = ((uint8_t *) PHYS_BASE) - PGSIZE;
+        struct sup_page *page = sup_page_zero_create(addr, true);
+        success = fetch_data_to_frame(page, kpage_fte);
+        if (success) {
+            *esp = PHYS_BASE;
+        }
+        else {
+            free_frame(kpage_fte);
+        }
+    }
 #else
     kpage = palloc_get_page(PAL_USER | PAL_ZERO);
-#endif
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
         if (success) {
             *esp = PHYS_BASE;
         }
         else {
-#ifdef VM
-            free_frame(kpage_fte);
-#else
             palloc_free_page(kpage);
-#endif
         }
     }
+#endif
 
     return success;
 }
