@@ -146,6 +146,16 @@ void sup_page_insert(struct hash *hash_table, struct sup_page *page) {
     hash_insert(hash_table, &page->sup_page_table_elem);
 }
 
+/*! Returns true if page has been accessed. Does not account for aliases. */
+bool sup_page_is_accessed(struct hash * hash_table, void *addr) {
+    return pagedir_is_accessed(thread_current()->pagedir, addr);
+}
+
+/*! Returns true if page has been written to. Does not account for aliases. */
+bool sup_page_is_dirty(struct hash * hash_table, void *addr) {
+    return pagedir_is_dirty(thread_current()->pagedir, addr);
+}
+
 /*! Copy data to the frame table. */
 bool fetch_data_to_frame(struct sup_page *page,
         struct frame_table_entry *fte) {
@@ -184,7 +194,7 @@ static bool install_page(void *upage, void *kpage, bool writable) {
 
     /* Verify that there's not already a page at that virtual
        address, then map our page there. */
-    return (pagedir_get_page(t->pagedir, upage) == NULL &&
+    return (pagedir_get_page(->pagedir, upage) == NULL &&
             pagedir_set_page(t->pagedir, upage, kpage, writable));
 }
 
