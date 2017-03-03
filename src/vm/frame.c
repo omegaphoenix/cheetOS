@@ -14,9 +14,9 @@ static void *fte_create(void *frame, struct thread *owner) {
     struct frame_table_entry *fte;
 
     fte = palloc_get_page(PAL_USER | PAL_ZERO);
-    if (fte == NULL) {
-        /* TODO: evict frame */
-        PANIC("store_frame: out of frames");
+    while (fte == NULL) {
+        evict();
+        fte = palloc_get_page(PAL_USER | PAL_ZERO);
     }
     fte->frame = frame;
     fte->owner = owner;
@@ -30,9 +30,9 @@ static void *fte_create(void *frame, struct thread *owner) {
 struct frame_table_entry *get_frame(void) {
     /* Allocate page frame*/
     void *frame = palloc_get_page(PAL_USER | PAL_ZERO);
-    if (frame == NULL) {
-        /* TODO: evict frame */
-        PANIC("store_frame: out of pages");
+    while (frame == NULL) {
+        evict();
+        frame = palloc_get_page(PAL_USER | PAL_ZERO);
     }
 
     /* Obtain unused frame */
@@ -45,15 +45,22 @@ struct frame_table_entry *get_frame(void) {
     return fte;
 }
 
+/*! Choose a frame entry to be evicted. */
 struct frame_table_entry *choose_frame_to_evict(void) {
-    return NULL;
+    /* TODO: Implement more advanced algorithm. */
+    struct list_elem *e = list_begin(&frame_table);
+    struct frame_table_entry *fte =
+        list_entry(e, struct frame_table_entry, frame_table_elem);
+    return fte;
 }
 
+/*! Wrapper to choose a frame and evict it. */
 void evict(void) {
     struct frame_table_entry *fte_to_evict = choose_frame_to_evict();
     evict_frame(fte_to_evict);
 }
 
+/*! Evict the specified frame. */
 void evict_frame(struct frame_table_entry *fte) {
     ASSERT(fte->pin_count == 0);
     /* TODO: Write data. */
