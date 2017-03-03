@@ -125,40 +125,42 @@ void evict(void) {
 
 /*! Evict the specified frame. */
 void evict_frame(struct frame_table_entry *fte) {
+    //printf("evict frame \n");
     ASSERT(fte->pin_count == 0);
     struct thread *owner = fte->owner;
     struct sup_page *page = thread_sup_page_get(&owner->sup_page, fte->spte->addr);
 
-    ASSERT(page != NULL);
+    /* Take care of data if some page still cares about this frame */
+    if (page != NULL) {
+        /* If mmapped, write to file */
+        if (page->is_mmap) {
+            /* If dirty, maybe write */
+            if (sup_page_is_dirty(owner, page->addr)) {
+                struct file *file = page->file_stats->file;
+                ASSERT(file != NULL);
+                off_t offset = page->file_stats->offset;
 
-    /* If mmapped, write to file */
-    if (page->is_mmap) {
-        /* If dirty, maybe write */
-        if (sup_page_is_dirty(owner, page->addr)) {
-            struct file *file = page->file_stats->file;
-            ASSERT(file != NULL);
-            off_t offset = page->file_stats->offset;
-
-            acquire_file_lock();
-            file_write_at(file, page->addr, PGSIZE, offset);
-            release_file_lock();
+                acquire_file_lock();
+                file_write_at(file, page->addr, PGSIZE, offset);
+                release_file_lock();
+            }
         }
-    }
-    /* Otherwise, write to swap */
-    else if (page->status == FILE_PAGE ||
-            sup_page_is_dirty(owner, page->addr)) {
-        /* Write to swap */
-        page->swap_position = swap_table_out(page);
-        page->status = SWAP_PAGE;
-    }
+        /* Otherwise, write to swap */
+        else if (page->status == FILE_PAGE ||
+                sup_page_is_dirty(owner, page->addr)) {
+            /* Write to swap */
+            page->swap_position = swap_table_out(page);
+            page->status = SWAP_PAGE;
+        }
 
-    /* If ZERO_PAGE, no need to save */
+        /* If ZERO_PAGE, no need to save */
 
-    /* Update supplemental page table and virtual page*/
-    pagedir_clear_page(owner->pagedir, page->addr);
-    pagedir_set_accessed(owner->pagedir, page->addr, false);
-    pagedir_set_dirty(owner->pagedir, page->addr, false);
-    page->fte = NULL;
+        /* Update supplemental page table and virtual page*/
+        pagedir_clear_page(owner->pagedir, page->addr);
+        pagedir_set_accessed(owner->pagedir, page->addr, false);
+        pagedir_set_dirty(owner->pagedir, page->addr, false);
+        page->fte = NULL;
+    }
 
     /* Free memory. */
     free_frame(fte);
