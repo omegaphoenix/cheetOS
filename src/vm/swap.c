@@ -22,6 +22,7 @@ void release_swap_lock(void) {
 /* Initialize the swap table. Populating the blocks and
    the bitmap. */
 void swap_table_init(void) {
+    lock_init(&swap_lock);
     /* Based on the number of slots, we want that number of bits */
     global_swap.swap_block = block_get_role(BLOCK_SWAP);
     int size = block_size(global_swap.swap_block);
@@ -50,16 +51,15 @@ void swap_table_free(void) {
 /* This will take in an entry of a page table,
    and insert it into the swap table */
 size_t swap_table_out(struct sup_page *evicted_page) {
-
+    acquire_swap_lock();
     size_t swap_idx;
     int cnt_sector;
-
+    evicted_page->status = SWAP_PAGE;
     struct frame_table_entry *fte = evicted_page->fte;
 
     /* Start using physical address */
     uint8_t *kpage = (uint8_t *) fte->frame;
 
-    acquire_swap_lock();
 
     swap_idx = bitmap_scan_and_flip(global_swap.swap_bitmap,
                                     SWAP_BITMAP_START,
@@ -74,7 +74,7 @@ size_t swap_table_out(struct sup_page *evicted_page) {
     /* Read into each sector of a swap slot at idx */
     /* Recall that this writes in BLOCK_SECTOR_SIZE amounts at a time */
     for (cnt_sector = 0; cnt_sector < SECTORS_PER_PAGE; cnt_sector++) {
-        int block_offset = swap_idx * SECTORS_PER_PAGE + cnt_sector;   
+        int block_offset = swap_idx * SECTORS_PER_PAGE + cnt_sector;
         block_write(global_swap.swap_block,
                     block_offset,
                     kpage + cnt_sector * BLOCK_SECTOR_SIZE);
@@ -88,10 +88,12 @@ size_t swap_table_out(struct sup_page *evicted_page) {
    It will also free up a space in the swap table. */
 bool swap_table_in(struct sup_page *dest_page, struct frame_table_entry *fte) {
 
+    acquire_swap_lock();
     int swap_idx = dest_page->swap_position;
     ASSERT(swap_idx > -1);
 
     if (bitmap_test(global_swap.swap_bitmap, swap_idx) != SWAP_OCCUPIED) {
+        release_swap_lock();
         return false;
     }
 
@@ -102,10 +104,10 @@ bool swap_table_in(struct sup_page *dest_page, struct frame_table_entry *fte) {
 
     if (!install_page(upage, kpage, dest_page->writable)) {
         free_frame(fte);
+        release_swap_lock();
         return false;
     }
 
-    acquire_swap_lock();
 
     /* Free the slot */
     bitmap_flip(global_swap.swap_bitmap, swap_idx);
@@ -113,13 +115,13 @@ bool swap_table_in(struct sup_page *dest_page, struct frame_table_entry *fte) {
     /* Read into each frame buffer from a swap slot at idx */
     /* Recall that this writes in BLOCK_SECTOR_SIZE amounts at a time */
     for (cnt_sector = 0; cnt_sector < SECTORS_PER_PAGE; cnt_sector++) {
-        int block_offset = swap_idx * SECTORS_PER_PAGE + cnt_sector;   
+        int block_offset = swap_idx * SECTORS_PER_PAGE + cnt_sector;
         block_read(global_swap.swap_block,
                     block_offset,
                     kpage + cnt_sector * BLOCK_SECTOR_SIZE);
     }
-    release_swap_lock();
 
+    release_swap_lock();
     return true;
 }
 

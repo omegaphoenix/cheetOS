@@ -33,9 +33,9 @@ static void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
 
     ASSERT(page_to_delete != NULL);
     /* First, free the file stats */
-    palloc_free_page(page_to_delete->file_stats);
+    free(page_to_delete->file_stats);
     /* Then free page_to_delete */
-    palloc_free_page(page_to_delete);
+    free(page_to_delete);
     page_to_delete = NULL;
 }
 
@@ -51,13 +51,16 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     ASSERT (read_bytes + zero_bytes == PGSIZE);
 
     /* Copy over page data. */
-    struct sup_page *page = palloc_get_page(PAL_ZERO);
+    struct sup_page *page = malloc(sizeof(struct sup_page));
     if (page == NULL) {
+        printf("Not enough space!\n");
         sys_exit(-1);
     }
-    struct file_info *file_stats = palloc_get_page(PAL_ZERO);
+    struct file_info *file_stats = malloc(sizeof(struct file_info));
     if (file_stats == NULL) {
-        palloc_free_page(page);
+        printf("Not enough space!\n");
+
+        free(page);
         sys_exit(-1);
     }
 
@@ -72,6 +75,7 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     page->writable = writable;
     page->fte = NULL;
     page->swap_position = NOT_SWAP; /* Not in swap yet */
+    page->loaded = false;
 
     /* Copy over file data. */
     page->file_stats = file_stats;
@@ -81,6 +85,7 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     page->file_stats->zero_bytes = zero_bytes;
 
     /* Default is_mmap to false; set this flag in sys_mmap(). */
+    sup_page_set_dirty(thread_current(), page->addr, false);
     page->is_mmap = false;
 
     /* Insert into table. */
@@ -92,7 +97,7 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
 /*! Create a suplemental page of zeros. */
 struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable) {
     /* Copy over page data. */
-    struct sup_page *page = palloc_get_page(PAL_ZERO);
+    struct sup_page *page = malloc(sizeof(struct sup_page));
     if (page == NULL) {
         sys_exit(-1);
     }
@@ -100,10 +105,12 @@ struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable) {
     page->status = ZERO_PAGE;
     page->page_no = pg_no(upage);
     page->writable = writable;
+    page->loaded = false;
 
     /* Copy over file data. */
-    page->file_stats = palloc_get_page(PAL_ZERO);
+    page->file_stats = malloc(sizeof(struct file_info));
     if (page->file_stats == NULL) {
+        free(page);
         sys_exit(-1);
     }
     page->file_stats->file = NULL;
@@ -163,7 +170,7 @@ bool sup_page_delete(struct hash * hash_table, void *addr) {
 }
 
 /*! Retrieves a supplemental page from the hash table via address */
-struct sup_page *thread_sup_page_get(struct hash * hash_table, void *addr) {
+struct sup_page *thread_sup_page_get(struct hash *hash_table, void *addr) {
     struct sup_page temp_page;
     struct sup_page *return_page = NULL;
     struct hash_elem *temp_elem = NULL;
@@ -184,19 +191,32 @@ void sup_page_insert(struct hash *hash_table, struct sup_page *page) {
 }
 
 /*! Returns true if page has been accessed. Does not account for aliases. */
-bool sup_page_is_accessed(struct hash * hash_table, void *addr) {
-    return pagedir_is_accessed(thread_current()->pagedir, addr);
+bool sup_page_is_accessed(struct thread *owner, void *addr) {
+    return pagedir_is_accessed(owner->pagedir, addr);
+}
+
+void sup_page_set_accessed(struct thread *owner, void *addr, bool value) {
+    pagedir_set_accessed(owner->pagedir, addr, value);
 }
 
 /*! Returns true if page has been written to. Does not account for aliases. */
-bool sup_page_is_dirty(struct hash * hash_table, void *addr) {
-    return pagedir_is_dirty(thread_current()->pagedir, addr);
+bool sup_page_is_dirty(struct thread *owner, void *addr) {
+    return pagedir_is_dirty(owner->pagedir, addr);
+}
+
+void sup_page_set_dirty(struct thread *owner, void *addr, bool value) {
+    pagedir_set_dirty(owner->pagedir, addr, value);
 }
 
 /*! Copy data to the frame table. */
 bool fetch_data_to_frame(struct sup_page *page,
         struct frame_table_entry *fte) {
     bool success = false;
+
+    if (page->loaded)
+        return page->loaded;
+
+    /* Loads a page */
     switch (page->status) {
         case SWAP_PAGE:
             success = get_swap_page(page, fte);
@@ -208,7 +228,10 @@ bool fetch_data_to_frame(struct sup_page *page,
             success = get_zero_page(page, fte);
             break;
     }
+
     page->fte = fte;
+    if (success)
+        page->loaded = true;
     return success;
 }
 
