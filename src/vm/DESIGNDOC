@@ -49,14 +49,14 @@ which parts.
    Make sure that each member's total time is listed.
 
   Justin Leong:
-  John Li:
+  John Li: Approximately 32-35 hours.
   Christina Lin:
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
   Justin Leong:
-  John Li:
+  John Li: Focused on Swap Table, Supplemental Page Table, and some Eviction.
   Christina Lin:
 
 Note that this design document is a bit long.  Most of the questions can be
@@ -162,6 +162,15 @@ struct frame_table_entry {
 };
 Represents an entry in the frame table.
 
+We also have a swap table:
+struct swap_table {
+    struct block *swap_block;
+    struct bitmap *swap_bitmap;
+};
+
+Bitmap is used to keep track of which spaces are occupied and which aren't.
+Block is used to write and to read into/out of swap.
+
 ---- ALGORITHMS ----
 
 >> B2: When a frame is required but none is free, some frame must be
@@ -198,6 +207,20 @@ address is also below PHYS_BASE and within MAX_STACK size.
 >> textbook for an explanation of the necessary conditions for
 >> deadlock.)
 
+We used locks for our frame table whenever frame table entries
+whenever we created them and/or inserted them into the table. These locks
+were kept for a very short period of time, to prevent threads from 
+having to wait from access to the table
+
+Furthermore, for frames that were currently being written, instead of
+using a lock, we would instead pin the frames. This allows threads
+to have access to the frame table, but would just not permit these
+frames to be evicted.
+
+We also never have a moment where thread A acquires lock C and waits for D thread B
+acquires lock D and waits for C. Our only nested lock is file lock nested in frame lock.
+Since there isn't one the other way around, there will not be deadlock.
+
 >> B6: A page fault in process P can cause another process Q's frame
 >> to be evicted.  How do you ensure that Q cannot access or modify
 >> the page during the eviction process?  How do you avoid a race
@@ -209,6 +232,11 @@ We acquire a file lock
 >> the file system or swap.  How do you ensure that a second process Q
 >> cannot interfere by e.g. attempting to evict the frame while it is
 >> still being read in?
+
+The moment we generate a frame, we pin that frame. Once we pin it,
+when we load that frame during the fault handler, we leave it pinned until
+the load has been completed. Then, we unpin. That way eviction doesn't
+occur during a frame write.
 
 >> B8: Explain how you handle access to paged-out pages that occur
 >> during system calls.  Do you use page faults to bring in pages (as
@@ -223,6 +251,16 @@ We acquire a file lock
 >> complicates synchronization and raises the possibility for deadlock
 >> but allows for high parallelism.  Explain where your design falls
 >> along this continuum and why you chose to design it this way.
+
+We mainly used three locks: frame table lock, file system lock, and 
+swap bitmap lock. If we acquire swap bitmap, we never need to acquire
+any more, so that prevents deadlock. If we acquire file_system lock,
+we never wait for any more locks, so that prevents deadlock.
+
+We believed that it would be good practice to have a lock associated
+with each global data structure. Since we had two (frame table and 
+swap table), we had two. File system lock is also not thread dependent
+so we continued using that lock as well.
 
 			 MEMORY MAPPED FILES
 			 ===================
