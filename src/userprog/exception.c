@@ -1,16 +1,27 @@
 #include "userprog/exception.h"
-#include "userprog/syscall.h"
 #include <inttypes.h>
 #include <stdio.h>
-#include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "userprog/gdt.h"
+#include "userprog/syscall.h"
+#ifdef VM
+#include "threads/pte.h"
+#include "threads/thread.h"
+#include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+#include "vm/frame.h"
+#include "vm/page.h"
+#endif
 
 /*! Number of page faults processed. */
 static long long page_fault_cnt;
 
 static void kill(struct intr_frame *);
 static void page_fault(struct intr_frame *);
+#ifdef VM
+static bool is_stack_access(void *addr, void *esp);
+#endif
 
 /*! Registers handlers for interrupts that can be caused by user programs.
 
@@ -70,7 +81,7 @@ static void kill(struct intr_frame *f) {
        the kernel.  Real Unix-like operating systems pass most
        exceptions back to the process via signals, but we don't
        implement them. */
-     
+
     /* The interrupt frame's code segment value tells us where the
        exception originated. */
     switch (f->cs) {
@@ -88,7 +99,7 @@ static void kill(struct intr_frame *f) {
            may cause kernel exceptions--but they shouldn't arrive
            here.)  Panic the kernel to make the point.  */
         intr_dump_frame(f);
-        PANIC("Kernel bug - unexpected interrupt in kernel"); 
+        PANIC("Kernel bug - unexpected interrupt in kernel");
 
     default:
         /* Some other code segment?  Shouldn't happen.  Panic the
@@ -135,24 +146,78 @@ static void page_fault(struct intr_frame *f) {
     write = (f->error_code & PF_W) != 0;
     user = (f->error_code & PF_U) != 0;
 
+    bool success = false;
+#ifdef VM
+    if (!is_user_vaddr(fault_addr)) {
+        sys_exit(-1);
+    }
+    if (not_present) {
+        struct thread *cur = thread_current();
+        /* Locate page that faulted in supplemental page table. */
+        struct sup_page *page = thread_sup_page_get(&cur->sup_page, fault_addr);
+        uint8_t *esp = f->esp;
+        if (f->cs == SEL_KCSEG) {
+            esp = cur->esp;
+        }
+        if (page != NULL) {
+            /* Obtain frame to store page. */
+            struct frame_table_entry *fte = get_frame();
+            fte->spte = page;
+
+            /* Fetch data into the frame. */
+            success = fetch_data_to_frame(page, fte);
+            unpin(fte);
+            if (!success) {
+                free_frame(fte);
+            }
+        }
+        /* Page not in supplemental page table. */
+        else if (is_stack_access(fault_addr, esp)) {
+            /* Allocate additional pages as stack grows. */
+            void *addr = pg_round_down(fault_addr);
+            struct sup_page *page = sup_page_zero_create(addr, true);
+            struct frame_table_entry *fte = get_frame();
+            fte->spte = page;
+            success = fetch_data_to_frame(page, fte);
+            unpin(fte);
+            if (!success) {
+                free_frame(fte);
+            }
+        }
+    }
     /* To implement virtual memory, delete the rest of the function
        body, and replace it with code that brings in the page to
        which fault_addr refers. */
+#endif
 
-    /* Kill process if user program faults */
-    if (user) {
-        printf("Page fault at %p: %s error %s page in %s context.\n",
+    /* Handle process if file doesn't load*/
+    if (!success) {
+        if (!user) {
+            f->eip = (void *) f->eax;
+            f->eax = -1;
+        }
+        else {
+            printf("Page fault at %p: %s error %s page in %s context.\n",
                fault_addr,
                not_present ? "not present" : "rights violation",
                write ? "writing" : "reading",
                user ? "user" : "kernel");
-        kill(f);
-    }
-    /* Handle if page fault is caused by kernel instruction */
-    else {
-        /* Copy eax into eip and set eax to -1. */
-        f->eip = (void *) f->eax;
-        f->eax = -1;
+            kill(f);
+        }
     }
 }
 
+#ifdef VM
+/*! Return true addr appears to be a stack address. */
+static bool is_stack_access(void *addr, void *esp) {
+    /* Buggy if user program write to stack below stack pointer. */
+    if (!((addr >= (void *) (esp - 32)) && (addr < PHYS_BASE))) {
+        return false;
+    }
+    int size = PHYS_BASE - addr;
+    if (size > MAX_STACK) {
+        sys_exit(-1);
+    }
+    return true;
+}
+#endif

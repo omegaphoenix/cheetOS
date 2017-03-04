@@ -10,12 +10,21 @@
 #include <list.h>
 #include <stdint.h>
 #include "synch.h"
+#include <hash.h>
 
 /* Open file. This is for a linked list of open files in each thread. */
 struct sys_file {
     struct file *file;
     int fd;
     struct list_elem file_elem;
+};
+
+/* Memory mapped files. This is for a linked list of mmapped files in each thread. */
+struct mmap_file {
+    void *addr;         /*!< Virtual address to which file is mapped. */
+    int fd;             /*!< Mapped file. */
+    int mapping;        /*!< Unique mmap ID. */
+    struct list_elem mmap_elem;
 };
 
 /*! Initial thread, the thread running init.c:main(). */
@@ -160,6 +169,13 @@ struct thread {
     /**@}*/
 #endif
 
+#ifdef VM
+    struct hash sup_page;              /*!< Supplemental Page Table. */
+    struct list mappings;              /*!< Memory mapped files. */
+    int num_mappings;                  /*!< Number of mappings (including unmapped). */
+    uint8_t *esp;                      /*!< esp to pass to page_fault */
+#endif
+
     /*! Owned by thread.c. */
     /**@{*/
     unsigned magic;                     /* Detects stack overflow. */
@@ -217,6 +233,13 @@ int next_fd(struct thread *cur);
 int add_open_file(struct thread *cur, struct file *file, int fd);
 struct file *get_fd(struct thread *cur, int fd);
 void close_fd(struct thread *cur, int fd);
+
+bool is_valid_mapping(int mapping);
+bool is_existing_mapping(struct thread *cur, int mapping);
+int next_mapping(struct thread *cur);
+int add_mmap(struct thread *cur, void *addr, int fd, int mapping);
+struct mmap_file *get_mmap(struct thread *cur, int mapping);
+void remove_mmap(struct thread *cur, int mapping);
 
 void add_sleep_thread(struct thread *);
 void sleep_threads(void);

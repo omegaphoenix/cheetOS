@@ -46,6 +46,13 @@
 
 #endif
 
+#ifdef VM
+
+#include "vm/frame.h"
+#include "vm/page.h"
+#include "vm/swap.h"
+#endif
+
 /*! Page directory with kernel mappings only. */
 uint32_t *init_page_dir;
 
@@ -84,7 +91,7 @@ int main(void) NO_RETURN;
 int main(void) {
     char **argv;
 
-    /* Clear BSS. */  
+    /* Clear BSS. */
     bss_init();
 
     /* Break command line into arguments and parse options. */
@@ -94,7 +101,7 @@ int main(void) {
     /* Initialize ourselves as a thread so we can use locks,
        then enable console locking. */
     thread_init();
-    console_init();  
+    console_init();
 
     /* Greet user. */
     printf("Pintos booting with %'"PRIu32" kB RAM...\n",
@@ -104,6 +111,9 @@ int main(void) {
     palloc_init(user_page_limit);
     malloc_init();
     paging_init();
+#ifdef VM
+    frame_table_init();
+#endif
 
     /* Segmentation. */
 #ifdef USERPROG
@@ -133,6 +143,10 @@ int main(void) {
     filesys_init(format_filesys);
 #endif
 
+#ifdef VM
+    swap_table_init();
+#endif
+
     printf("Boot complete.\n");
 
     /* Run actions specified on kernel command line. */
@@ -142,7 +156,7 @@ int main(void) {
     shutdown();
     thread_exit();
 }
-
+
 /*! Clear the "BSS", a segment that should be initialized to
     zeros.  It isn't actually stored on disk or zeroed by the
     kernel loader, so we have to zero it ourselves.

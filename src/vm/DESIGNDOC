@@ -8,17 +8,17 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Justin Leong <jleong@caltech.edu>
+John Li <jzli@caltech.edu>
+Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment: 0
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
-   Repository URL:  
+   Repository URL: https://github.com/omegaphoenix/cheetOS
    commit ...
 
 ---- PRELIMINARIES ----
@@ -30,6 +30,15 @@ FirstName LastName <email@domain.example>
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
 
+http://cs.stackexchange.com/questions/24011/clock-page-replacement-algorithm-already-existing-pages
+
+https://en.wikipedia.org/wiki/Page_replacement_algorithm#Clock
+
+http://csl.skku.edu/uploads/CSE3008F09/project3.pdf
+
+https://piazza-resources.s3.amazonaws.com/h81s2czg90kwa/hdx5ok0hlxg435/8task3.pdf?AWSAccessKeyId=AKIAIEDNRLJ4AZKBW6HA&Expires=1488281661&Signature=YZl1f6mlBLwr1DGO8p%2Be%2BmIYcnU%3D
+
+
 ---- LOGISTICS ----
 
 These questions will help us to keep track of the difficulty level of
@@ -39,8 +48,16 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
+  Justin Leong:
+  John Li: Approximately 32-35 hours.
+  Christina Lin:
+
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
+
+  Justin Leong:
+  John Li: Focused on Swap Table, Supplemental Page Table, and some Eviction.
+  Christina Lin:
 
 Note that this design document is a bit long.  Most of the questions can be
 answered pretty briefly.  Don't feel a need to write a long answer if it is
@@ -55,24 +72,68 @@ not required by the question.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+enum page_status {
+    SWAP_PAGE,
+    FILE_PAGE,
+    ZERO_PAGE
+};
+On a page fault, indicates whether the missing data is in swap, in a file, or
+just a page of zeroes.
+
+struct file_info {
+    struct file *file;
+    off_t offset;
+    size_t read_bytes;
+    size_t zero_bytes;
+};
+Keeps track of information for loading files.
+
+struct sup_page {
+    void *addr;                           /*!< Address to the virtual page. */
+    struct frame_table_entry *fte;        /*!< Frame table entry. */
+    enum page_status status;              /*!< Current status of page. */
+    int swap_position;                    /*!< Swap position if in swap. -1 otherwise */
+    uintptr_t page_no;                    /*!< Page number. */
+    struct hash_elem sup_page_table_elem; /*!< Elem for supplemental page table. */
+    bool writable;                        /*!< Whether page is writable. */
+    struct file_info *file_stats;         /*!< Keep track of file info. */
+    bool is_mmap;                         /*!< Page is part of mapped memory */
+};
+Represents an entry in the supplemental page table.
+
 ---- ALGORITHMS ----
 
 >> A2: In a few paragraphs, describe your code for locating the frame,
 >> if any, that contains the data of a given page.
 
+Each page has an entry in our supplemental page table (SPTE) that stores a
+pointer to the corresponding frame table entry (FTE) which holds a pointer
+to the frame. Thus, to get the frame for any page, we get the hash of the 
+[page number of] the virtual address, use the hash to find the SPTE, and 
+directly access SPTE->FTE->frame.
+
 >> A3: How does your code coordinate accessed and dirty bits between
 >> kernel and user virtual addresses that alias a single frame, or
 >> alternatively how do you avoid the issue?
+
+We avoid the issue by accessing data through user virtual addresses only.
 
 ---- SYNCHRONIZATION ----
 
 >> A4: When two user processes both need a new frame at the same time,
 >> how are races avoided?
 
+A global lock is acquired before a frame is created and released afterwards.
+
 ---- RATIONALE ----
 
 >> A5: Why did you choose the data structure(s) that you did for
 >> representing virtual-to-physical mappings?
+
+A hash table allows efficient and fast access to elements, which is the most
+common operation on the page table. (Lists are more efficient for insertion
+and deletion at specific positions and bitmaps can quickly find empty slots, but
+these are not important operations for the page table.)
 
 		       PAGING TO AND FROM DISK
 		       =======================
@@ -83,18 +144,61 @@ not required by the question.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+static struct list frame_table;
+Frame table that is shared by all processes.
+
+static struct lock frame_lock;
+Lock for the frame table.
+
+static struct list_elem *clock_hand;
+Used in eviction polity; points to list_elem that is to be checked for eviction.
+
+struct frame_table_entry {
+    void *frame;                /*!< Address of frame (kernel virtual address). */
+    struct sup_page *spte;      /*!< Supplementary Page Table */
+    struct thread *owner;       /*!< Process that is using the frame. */
+    int pin_count;              /*!< Should not evict pinned pages. */
+    struct list_elem frame_table_elem; /*!< Use list for LRU. */
+};
+Represents an entry in the frame table.
+
+We also have a swap table:
+struct swap_table {
+    struct block *swap_block;
+    struct bitmap *swap_bitmap;
+};
+
+Bitmap is used to keep track of which spaces are occupied and which aren't.
+Block is used to write and to read into/out of swap.
+
 ---- ALGORITHMS ----
 
 >> B2: When a frame is required but none is free, some frame must be
 >> evicted.  Describe your code for choosing a frame to evict.
 
+We use the clock algorithm. We have a linked list of frames. If we
+don't have enough space to palloc a new frame, we evict a frame.
+We have a clock_hand pointer to point to a node in the linked list and
+this iterates through the linked list and back to the beginning and
+checks if each frame is accessed. If it is not accessed, we can evict
+the frame. If it is accssed, we set the accessed bit to zero.
+
 >> B3: When a process P obtains a frame that was previously used by a
 >> process Q, how do you adjust the page table (and any other data
 >> structures) to reflect the frame Q no longer has?
 
+Before the frame is obtained by P, it is evicted and detached from Q. We write
+the data to file or swap if necessary, change page_status to reflect where the
+data was written, call pagedir_clear_page, clear the access and dirty bits, 
+and set the FTE pointer to NULL.
+
 >> B4: Explain your heuristic for deciding whether a page fault for an
 >> invalid virtual address should cause the stack to be extended into
 >> the page that faulted.
+
+We consider a faulty address to be a stack address if the address is within 32
+bytes of the stack pointer. Before extending the stack, we check that the
+address is also below PHYS_BASE and within MAX_STACK size.
 
 ---- SYNCHRONIZATION ----
 
@@ -103,21 +207,50 @@ not required by the question.
 >> textbook for an explanation of the necessary conditions for
 >> deadlock.)
 
+We used locks for our frame table whenever frame table entries
+whenever we created them and/or inserted them into the table. These locks
+were kept for a very short period of time, to prevent threads from 
+having to wait from access to the table
+
+Furthermore, for frames that were currently being written, instead of
+using a lock, we would instead pin the frames. This allows threads
+to have access to the frame table, but would just not permit these
+frames to be evicted.
+
+We also never have a moment where thread A acquires lock C and waits for D thread B
+acquires lock D and waits for C. Our only nested lock is file lock nested in frame lock.
+Since there isn't one the other way around, there will not be deadlock.
+
 >> B6: A page fault in process P can cause another process Q's frame
 >> to be evicted.  How do you ensure that Q cannot access or modify
 >> the page during the eviction process?  How do you avoid a race
 >> between P evicting Q's frame and Q faulting the page back in?
+
+We acquire a file lock
 
 >> B7: Suppose a page fault in process P causes a page to be read from
 >> the file system or swap.  How do you ensure that a second process Q
 >> cannot interfere by e.g. attempting to evict the frame while it is
 >> still being read in?
 
+The moment we generate a frame, we pin that frame. Once we pin it,
+when we load that frame during the fault handler, we leave it pinned until
+the load has been completed. Then, we unpin. That way eviction doesn't
+occur during a frame write.
+
 >> B8: Explain how you handle access to paged-out pages that occur
 >> during system calls.  Do you use page faults to bring in pages (as
 >> in user programs), or do you have a mechanism for "locking" frames
 >> into physical memory, or do you use some other design?  How do you
 >> gracefully handle attempted accesses to invalid virtual addresses?
+
+We use page faults to bring in pages which have been paged out. They
+call the get_frame() method to get a frame to store the data into and
+then use the supplemental page table to identify the location and load
+it.
+If it is an invalid user virtual address, we sys_exit or return an error
+in the system call before we go to the page fault handler in our validation
+method in syscalls.c.
 
 ---- RATIONALE ----
 
@@ -126,6 +259,16 @@ not required by the question.
 >> complicates synchronization and raises the possibility for deadlock
 >> but allows for high parallelism.  Explain where your design falls
 >> along this continuum and why you chose to design it this way.
+
+We mainly used three locks: frame table lock, file system lock, and 
+swap bitmap lock. If we acquire swap bitmap, we never need to acquire
+any more, so that prevents deadlock. If we acquire file_system lock,
+we never wait for any more locks, so that prevents deadlock.
+
+We believed that it would be good practice to have a lock associated
+with each global data structure. Since we had two (frame table and 
+swap table), we had two. File system lock is also not thread dependent
+so we continued using that lock as well.
 
 			 MEMORY MAPPED FILES
 			 ===================
@@ -136,14 +279,32 @@ not required by the question.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+None. Shares data structures with supplemental page table (see A1).
+
 ---- ALGORITHMS ----
 
 >> C2: Describe how memory mapped files integrate into your virtual
 >> memory subsystem.  Explain how the page fault and eviction
 >> processes differ between swap pages and other pages.
 
+Mmap files behave like other virtual pages, with the following exceptions:
+(a) The mapped pages must be consecutive. Before mmapping files, we check that
+there is available space to load the files to consecutive pages.
+(d) On eviction, the file is the backing store. Evicted mmap pages that have 
+been modified are written back to the file instead to to the swap disk as other
+pages are.
+(c) On a page fault, data is loaded in from the file rather than from swap.
+
 >> C3: Explain how you determine whether a new file mapping overlaps
 >> any existing segment.
+
+We check the virtual address upage = addr + N * PGSIZE, where addr is the 
+designated address to which to map and N = 0, 1, 2... up until and including
+the largest upage that is less than addr + length_of_the_file. For each upage,
+we check that there is not already an entry in the supplemental page table
+corresponding to the address. In other words, we determine which consecutive
+pages need to be allocated to the new mapping and verify that these pages do not
+already exist.
 
 ---- RATIONALE ----
 
@@ -153,6 +314,15 @@ not required by the question.
 >> that much of their implementation can be shared.  Explain why your
 >> implementation either does or does not share much of the code for
 >> the two situations.
+
+The two pages are represented almost identically in our supplemental page table
+and share code for creating supplemental page table entries, fetching data,
+writing data to file/swap, and reclaiming pages. We had a separate
+implementation for munmap (it does not reuse code for writing pages to files)
+because we check additional variables to determine how many consecutive pages
+to write.
+
+
 
 			   SURVEY QUESTIONS
 			   ================

@@ -7,6 +7,8 @@
 
 void syscall_init(void);
 void sys_exit(int status);
+void acquire_file_lock(void);
+void release_file_lock(void);
 
 #endif /* userprog/syscall.h */
 
