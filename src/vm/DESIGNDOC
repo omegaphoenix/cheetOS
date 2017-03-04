@@ -178,9 +178,18 @@ the frame. If it is accssed, we set the accessed bit to zero.
 >> process Q, how do you adjust the page table (and any other data
 >> structures) to reflect the frame Q no longer has?
 
+Before the frame is obtained by P, it is evicted and detached from Q. We write
+the data to file or swap if necessary, change page_status to reflect where the
+data was written, call pagedir_clear_page, clear the access and dirty bits, 
+and set the FTE pointer to NULL.
+
 >> B4: Explain your heuristic for deciding whether a page fault for an
 >> invalid virtual address should cause the stack to be extended into
 >> the page that faulted.
+
+We consider a faulty address to be a stack address if the address is within 32
+bytes of the stack pointer. Before extending the stack, we check that the
+address is also below PHYS_BASE and within MAX_STACK size.
 
 ---- SYNCHRONIZATION ----
 
@@ -193,6 +202,8 @@ the frame. If it is accssed, we set the accessed bit to zero.
 >> to be evicted.  How do you ensure that Q cannot access or modify
 >> the page during the eviction process?  How do you avoid a race
 >> between P evicting Q's frame and Q faulting the page back in?
+
+We acquire a file lock
 
 >> B7: Suppose a page fault in process P causes a page to be read from
 >> the file system or swap.  How do you ensure that a second process Q
