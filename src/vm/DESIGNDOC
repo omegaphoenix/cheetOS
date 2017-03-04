@@ -19,7 +19,7 @@ Christina Lin <cylin@caltech.edu>
    on Moodle.)
 
    Repository URL: https://github.com/omegaphoenix/cheetOS
-   commit ...
+   commit f7f7488f6b8223b73307fee72bc892b91687e259
 
 ---- PRELIMINARIES ----
 
@@ -48,16 +48,16 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-  Justin Leong:
+  Justin Leong: 34:15:51
   John Li: Approximately 32-35 hours.
-  Christina Lin:
+  Christina Lin: 31-32 hours
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
-  Justin Leong:
+  Justin Leong: Page Fault Handling, Clock Algorithm, Stack and Stack Growth
   John Li: Focused on Swap Table, Supplemental Page Table, and some Eviction.
-  Christina Lin:
+  Christina Lin: Frame table, memory mapping, eviction
 
 Note that this design document is a bit long.  Most of the questions can be
 answered pretty briefly.  Don't feel a need to write a long answer if it is
@@ -226,7 +226,10 @@ Since there isn't one the other way around, there will not be deadlock.
 >> the page during the eviction process?  How do you avoid a race
 >> between P evicting Q's frame and Q faulting the page back in?
 
-We acquire a file lock
+We acquire a frame lock to prevent it from being evicted again and we
+share this lock to prevent accesses at the same time. When a new page
+is created by Q faulting the page back in, it is blocked on the frame
+lock.
 
 >> B7: Suppose a page fault in process P causes a page to be read from
 >> the file system or swap.  How do you ensure that a second process Q
