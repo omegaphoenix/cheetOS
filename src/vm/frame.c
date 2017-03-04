@@ -51,18 +51,16 @@ static void *fte_create(void *frame, struct thread *owner) {
 /*! Create new frame and frame table entry. */
 struct frame_table_entry *get_frame(void) {
     /* Allocate page frame*/
-    acquire_frame_lock();
     void *frame = palloc_get_page(PAL_USER | PAL_ZERO);
     while (frame == NULL) {
-        release_frame_lock();
         evict();
-        acquire_frame_lock();
         frame = palloc_get_page(PAL_USER | PAL_ZERO);
     }
 
     /* Obtain unused frame */
     struct frame_table_entry *fte = fte_create(frame, thread_current());
 
+    acquire_frame_lock();
     if (clock_hand == NULL) {
         /* Push frame on back of list. */
         list_push_back(&frame_table, &fte->frame_table_elem);
