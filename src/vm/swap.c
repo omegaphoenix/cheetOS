@@ -54,7 +54,7 @@ size_t swap_table_out(struct sup_page *evicted_page) {
     acquire_swap_lock();
     size_t swap_idx;
     int cnt_sector;
-
+    evicted_page->status = SWAP_PAGE;
     struct frame_table_entry *fte = evicted_page->fte;
 
     /* Start using physical address */
@@ -120,7 +120,7 @@ bool swap_table_in(struct sup_page *dest_page, struct frame_table_entry *fte) {
                     block_offset,
                     kpage + cnt_sector * BLOCK_SECTOR_SIZE);
     }
-    dest_page->status = FILE_PAGE;
+
     release_swap_lock();
     return true;
 }

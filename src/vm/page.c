@@ -75,6 +75,7 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     page->writable = writable;
     page->fte = NULL;
     page->swap_position = NOT_SWAP; /* Not in swap yet */
+    page->loaded = false;
 
     /* Copy over file data. */
     page->file_stats = file_stats;
@@ -104,6 +105,7 @@ struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable) {
     page->status = ZERO_PAGE;
     page->page_no = pg_no(upage);
     page->writable = writable;
+    page->loaded = false;
 
     /* Copy over file data. */
     page->file_stats = malloc(sizeof(struct file_info));
@@ -210,6 +212,11 @@ void sup_page_set_dirty(struct thread *owner, void *addr, bool value) {
 bool fetch_data_to_frame(struct sup_page *page,
         struct frame_table_entry *fte) {
     bool success = false;
+
+    if (page->loaded)
+        return page->loaded;
+
+    /* Loads a page */
     switch (page->status) {
         case SWAP_PAGE:
             success = get_swap_page(page, fte);
@@ -221,7 +228,10 @@ bool fetch_data_to_frame(struct sup_page *page,
             success = get_zero_page(page, fte);
             break;
     }
+
     page->fte = fte;
+    if (success)
+        page->loaded = true;
     return success;
 }
 

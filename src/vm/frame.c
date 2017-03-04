@@ -45,16 +45,18 @@ static void *fte_create(void *frame, struct thread *owner) {
     fte->owner = owner;
     fte->pin_count = 0;
     fte->spte = NULL;
-
     return fte;
 }
 
 /*! Create new frame and frame table entry. */
 struct frame_table_entry *get_frame(void) {
     /* Allocate page frame*/
+    acquire_frame_lock();
     void *frame = palloc_get_page(PAL_USER | PAL_ZERO);
     while (frame == NULL) {
+        release_frame_lock();
         evict();
+        acquire_frame_lock();
         frame = palloc_get_page(PAL_USER | PAL_ZERO);
     }
 
@@ -71,6 +73,7 @@ struct frame_table_entry *get_frame(void) {
 
     }
     pin(fte);
+    release_frame_lock();
     return fte;
 }
 
@@ -130,10 +133,11 @@ void evict_frame(struct frame_table_entry *fte) {
 
     ASSERT(page != NULL);
 
-    /* If mmapped, write to file */
-    if (page->is_mmap) {
-        /* If dirty, maybe write */
-        if (sup_page_is_dirty(owner, page->addr)) {
+    /* We only evict dirty stuff */
+    if (sup_page_is_dirty(owner, page->addr) || page->status == SWAP_PAGE) {
+        /* If mmapped, write to file */
+        if (page->is_mmap) {
+            /* If dirty, maybe write */
             struct file *file = page->file_stats->file;
             ASSERT(file != NULL);
             off_t offset = page->file_stats->offset;
@@ -141,17 +145,16 @@ void evict_frame(struct frame_table_entry *fte) {
             acquire_file_lock();
             file_write_at(file, page->addr, PGSIZE, offset);
             release_file_lock();
+
+        }
+        /* Otherwise, write to swap */
+        else {
+            /* Write to swap */
+            page->swap_position = swap_table_out(page);
         }
     }
-    /* Otherwise, write to swap */
-    else if (page->status == FILE_PAGE ||
-            sup_page_is_dirty(owner, page->addr)) {
-        /* Write to swap */
-        page->swap_position = swap_table_out(page);
-        page->status = SWAP_PAGE;
-    }
-
-    /* If ZERO_PAGE, no need to save */
+    /* Page is no longer loaded */
+    page->loaded = false;
 
     /* Update supplemental page table and virtual page*/
     pagedir_clear_page(owner->pagedir, page->addr);

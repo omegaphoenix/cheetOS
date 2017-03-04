@@ -40,6 +40,7 @@ struct sup_page {
     bool writable;                        /*!< Whether page is writable. */
     struct file_info *file_stats;         /*!< Keep track of file info. */
     bool is_mmap;                         /*!< Page is part of mapped memory */
+    bool loaded;                       /*!< If file is already loaded... */
 };
 
 /* Initializes supplemental page hash table */
