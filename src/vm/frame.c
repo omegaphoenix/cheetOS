@@ -58,9 +58,9 @@ struct frame_table_entry *get_frame(void) {
     }
 
     /* Obtain unused frame */
+    acquire_frame_lock();
     struct frame_table_entry *fte = fte_create(frame, thread_current());
 
-    acquire_frame_lock();
     if (clock_hand == NULL) {
         /* Push frame on back of list. */
         list_push_back(&frame_table, &fte->frame_table_elem);
