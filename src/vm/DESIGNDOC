@@ -216,6 +216,14 @@ We acquire a file lock
 >> into physical memory, or do you use some other design?  How do you
 >> gracefully handle attempted accesses to invalid virtual addresses?
 
+We use page faults to bring in pages which have been paged out. They
+call the get_frame() method to get a frame to store the data into and
+then use the supplemental page table to identify the location and load
+it.
+If it is an invalid user virtual address, we sys_exit or return an error
+in the system call before we go to the page fault handler in our validation
+method in syscalls.c.
+
 ---- RATIONALE ----
 
 >> B9: A single lock for the whole VM system would make synchronization
