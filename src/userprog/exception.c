@@ -162,26 +162,24 @@ static void page_fault(struct intr_frame *f) {
         if (page != NULL) {
             /* Obtain frame to store page. */
             struct frame_table_entry *fte = get_frame();
-            fte->spte = page;
 
             /* Fetch data into the frame. */
             success = fetch_data_to_frame(page, fte);
-            unpin(fte);
             if (!success) {
                 free_frame(fte);
+                sup_page_delete_page(page);
             }
         }
         /* Page not in supplemental page table. */
         else if (is_stack_access(fault_addr, esp)) {
             /* Allocate additional pages as stack grows. */
             void *addr = pg_round_down(fault_addr);
-            struct sup_page *page = sup_page_zero_create(addr, true);
+            page = sup_page_zero_create(addr, true);
             struct frame_table_entry *fte = get_frame();
-            fte->spte = page;
             success = fetch_data_to_frame(page, fte);
-            unpin(fte);
             if (!success) {
                 free_frame(fte);
+                sup_page_delete_page(page);
             }
         }
     }

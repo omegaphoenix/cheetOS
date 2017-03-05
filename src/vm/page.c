@@ -142,9 +142,8 @@ bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *a
 }
 
 /*! Delete an entry from hash table using the address of the page */
-bool sup_page_delete(struct hash * hash_table, void *addr) {
+bool sup_page_delete(struct hash *hash_table, void *addr) {
     struct sup_page temp_page;
-    struct sup_page *page_to_delete = NULL;
     struct hash_elem *elem_to_delete = NULL;
     struct hash_elem *deleted_elem = NULL;
 
@@ -167,6 +166,15 @@ bool sup_page_delete(struct hash * hash_table, void *addr) {
         return true;
     }
     return false;
+}
+
+/*! Delete an entry from hash table using the address of the page */
+void sup_page_delete_page(struct sup_page *page) {
+    struct thread *cur = thread_current();
+    bool success = sup_page_delete(&cur->sup_page, page->addr);
+    if (!success) {
+        PANIC("sup_page_free failed\n");
+    }
 }
 
 /*! Retrieves a supplemental page from the hash table via address */
@@ -212,9 +220,9 @@ void sup_page_set_dirty(struct thread *owner, void *addr, bool value) {
 bool fetch_data_to_frame(struct sup_page *page,
         struct frame_table_entry *fte) {
     bool success = false;
-
-    if (page->loaded)
+    if (page->loaded) {
         return page->loaded;
+    }
 
     /* Loads a page */
     switch (page->status) {
@@ -230,8 +238,12 @@ bool fetch_data_to_frame(struct sup_page *page,
     }
 
     page->fte = fte;
-    if (success)
+    fte->spte = page;
+
+    if (success) {
         page->loaded = true;
+    }
+    unpin(fte);
     return success;
 }
 

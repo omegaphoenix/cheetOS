@@ -51,12 +51,13 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
 struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable);
 void sup_page_table_delete(struct hash *hash_table);
 bool fetch_data_to_frame(struct sup_page *page,
-    struct frame_table_entry *fte);
+        struct frame_table_entry *fte);
 
 struct sup_page *thread_sup_page_get(struct hash *hash_table, void *addr);
 unsigned sup_page_hash(const struct hash_elem *e, void *aux);
 bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux);
 bool sup_page_delete(struct hash *hash_table, void *addr);
+void sup_page_delete_page(struct sup_page *page);
 void sup_page_insert(struct hash *hash_table, struct sup_page *page);
 
 bool sup_page_is_accessed(struct thread *owner, void *addr);

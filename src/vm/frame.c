@@ -14,9 +14,16 @@ static struct list frame_table;
 /* Points to list_elem that is to be checked for eviction. */
 static struct list_elem *clock_hand;
 
+/* Handle locks. */
 static struct lock frame_lock;
 
+/* Eviction and helper methods. */
+static void evict_frame(struct frame_table_entry *fte);
 static void increment_clock_hand(void);
+static struct frame_table_entry *choose_frame_to_evict(void);
+static void evict(void);
+
+static void *fte_create(void *frame, struct thread *owner);
 
 /* Acquire frame lock. */
 void acquire_frame_lock(void) {
@@ -51,6 +58,7 @@ static void *fte_create(void *frame, struct thread *owner) {
 /*! Create new frame and frame table entry. */
 struct frame_table_entry *get_frame(void) {
     /* Allocate page frame*/
+    acquire_frame_lock();
     void *frame = palloc_get_page(PAL_USER | PAL_ZERO);
     while (frame == NULL) {
         evict();
@@ -58,7 +66,6 @@ struct frame_table_entry *get_frame(void) {
     }
 
     /* Obtain unused frame */
-    acquire_frame_lock();
     struct frame_table_entry *fte = fte_create(frame, thread_current());
 
     if (clock_hand == NULL) {
@@ -87,7 +94,7 @@ static void increment_clock_hand(void) {
 }
 
 /*! Choose a frame entry to be evicted based on clock algorithm. */
-struct frame_table_entry *choose_frame_to_evict(void) {
+static struct frame_table_entry *choose_frame_to_evict(void) {
     ASSERT(!list_empty(&frame_table));
     if (clock_hand == NULL) {
         increment_clock_hand();
@@ -116,15 +123,13 @@ struct frame_table_entry *choose_frame_to_evict(void) {
 }
 
 /*! Wrapper to choose a frame and evict it. */
-void evict(void) {
-    acquire_frame_lock();
+static void evict(void) {
     struct frame_table_entry *fte_to_evict = choose_frame_to_evict();
     evict_frame(fte_to_evict);
-    release_frame_lock();
 }
 
 /*! Evict the specified frame. */
-void evict_frame(struct frame_table_entry *fte) {
+static void evict_frame(struct frame_table_entry *fte) {
     ASSERT(fte->pin_count == 0);
     struct thread *owner = fte->owner;
     struct sup_page *page = thread_sup_page_get(&owner->sup_page, fte->spte->addr);
@@ -168,7 +173,8 @@ void evict_frame(struct frame_table_entry *fte) {
 void free_frame(struct frame_table_entry *fte) {
     fte->spte = NULL;
     /* Remove from frame table */
-    list_remove(&fte->frame_table_elem);
+    try_remove(&fte->frame_table_elem);
+
     /* Safety checks. */
     /* Check if list_elem was removed. */
     ASSERT(try_remove(&fte->frame_table_elem) == NULL);
