@@ -14,8 +14,14 @@ static struct list frame_table;
 /* Points to list_elem that is to be checked for eviction. */
 static struct list_elem *clock_hand;
 
-/* Handle locks. */
 static struct lock frame_lock;
+static struct lock eviction_lock;
+
+/* Handle locks. */
+static void acquire_frame_lock(void);
+static void release_frame_lock(void);
+static void acquire_eviction_lock(void);
+static void release_eviction_lock(void);
 
 /* Eviction and helper methods. */
 static void evict_frame(struct frame_table_entry *fte);
@@ -26,18 +32,30 @@ static void evict(void);
 static void *fte_create(void *frame, struct thread *owner);
 
 /* Acquire frame lock. */
-void acquire_frame_lock(void) {
+static void acquire_frame_lock(void) {
     lock_acquire(&frame_lock);
 }
 
 /* Release frame lock. */
-void release_frame_lock(void) {
+static void release_frame_lock(void) {
     lock_release(&frame_lock);
 }
+
+/* Acquire eviction lock. */
+static void acquire_eviction_lock(void) {
+    lock_acquire(&eviction_lock);
+}
+
+/* Release eviction lock. */
+static void release_eviction_lock(void) {
+    lock_release(&eviction_lock);
+}
+
 void frame_table_init(void) {
     clock_hand = NULL;
     list_init(&frame_table);
     lock_init(&frame_lock);
+    lock_init(&eviction_lock);
 }
 
 /*! Create a new frame table entry. */
@@ -58,16 +76,17 @@ static void *fte_create(void *frame, struct thread *owner) {
 /*! Create new frame and frame table entry. */
 struct frame_table_entry *get_frame(void) {
     /* Allocate page frame*/
-    acquire_frame_lock();
     void *frame = palloc_get_page(PAL_USER | PAL_ZERO);
-    while (frame == NULL) {
+    if (frame == NULL) {
         evict();
-        frame = palloc_get_page(PAL_USER | PAL_ZERO);
+        return get_frame();
     }
 
     /* Obtain unused frame */
     struct frame_table_entry *fte = fte_create(frame, thread_current());
+    pin(fte);
 
+    acquire_frame_lock();
     if (clock_hand == NULL) {
         /* Push frame on back of list. */
         list_push_back(&frame_table, &fte->frame_table_elem);
@@ -77,7 +96,6 @@ struct frame_table_entry *get_frame(void) {
         list_insert(clock_hand, &fte->frame_table_elem);
 
     }
-    pin(fte);
     release_frame_lock();
     return fte;
 }
@@ -107,8 +125,9 @@ static struct frame_table_entry *choose_frame_to_evict(void) {
             || sup_page_is_accessed(owner, page->addr)
             || fte->pin_count > 0) {
 
-        if (is_user_vaddr(page->addr))
+        if (is_user_vaddr(page->addr)) {
             sup_page_set_accessed(fte->owner, page->addr, false);
+        }
 
         increment_clock_hand();
         fte = list_entry(clock_hand, struct frame_table_entry,
@@ -124,8 +143,10 @@ static struct frame_table_entry *choose_frame_to_evict(void) {
 
 /*! Wrapper to choose a frame and evict it. */
 static void evict(void) {
+    acquire_eviction_lock();
     struct frame_table_entry *fte_to_evict = choose_frame_to_evict();
     evict_frame(fte_to_evict);
+    release_eviction_lock();
 }
 
 /*! Evict the specified frame. */
@@ -173,11 +194,13 @@ static void evict_frame(struct frame_table_entry *fte) {
 void free_frame(struct frame_table_entry *fte) {
     fte->spte = NULL;
     /* Remove from frame table */
+    acquire_frame_lock();
     try_remove(&fte->frame_table_elem);
 
     /* Safety checks. */
     /* Check if list_elem was removed. */
     ASSERT(try_remove(&fte->frame_table_elem) == NULL);
+    release_frame_lock();
     ASSERT(fte->pin_count == 0); /* Should be unpinned. */
 
     palloc_free_page(fte->frame);
