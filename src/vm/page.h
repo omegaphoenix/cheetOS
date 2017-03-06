@@ -50,8 +50,7 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     uint8_t *upage, size_t read_bytes, size_t zero_bytes, bool writable);
 struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable);
 void sup_page_table_delete(struct hash *hash_table);
-bool fetch_data_to_frame(struct sup_page *page,
-        struct frame_table_entry *fte);
+bool fetch_data_to_frame(struct sup_page *page);
 
 struct sup_page *thread_sup_page_get(struct hash *hash_table, void *addr);
 unsigned sup_page_hash(const struct hash_elem *e, void *aux);

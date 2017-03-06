@@ -217,10 +217,13 @@ void sup_page_set_dirty(struct thread *owner, void *addr, bool value) {
 }
 
 /*! Copy data to the frame table. */
-bool fetch_data_to_frame(struct sup_page *page,
-        struct frame_table_entry *fte) {
+bool fetch_data_to_frame(struct sup_page *page) {
+    acquire_load_lock();
+    struct frame_table_entry *fte = get_frame();
+    release_load_lock();
     bool success = false;
     if (page->loaded) {
+        release_load_lock();
         return page->loaded;
     }
 
@@ -243,6 +246,7 @@ bool fetch_data_to_frame(struct sup_page *page,
     if (success) {
         page->loaded = true;
     }
+    sup_page_set_accessed(fte->owner, page->addr, true);
     unpin(fte);
     return success;
 }

@@ -23,8 +23,6 @@ static void acquire_frame_lock(void);
 static void release_frame_lock(void);
 static void acquire_eviction_lock(void);
 static void release_eviction_lock(void);
-static void acquire_load_lock(void);
-static void release_load_lock(void);
 
 /* Eviction and helper methods. */
 static void evict_frame(struct frame_table_entry *fte);
@@ -55,12 +53,12 @@ static void release_eviction_lock(void) {
 }
 
 /* Acquire load lock. */
-static void acquire_load_lock(void) {
+void acquire_load_lock(void) {
     lock_acquire(&load_lock);
 }
 
 /* Release load lock. */
-static void release_load_lock(void) {
+void release_load_lock(void) {
     lock_release(&load_lock);
 }
 
@@ -80,9 +78,10 @@ static void *fte_create(void *frame, struct thread *owner) {
     if (fte == NULL) {
         PANIC("Not enough memory to create frame_table_entry!");
     }
+    fte->pin_count = 0;
+    pin(fte);
     fte->frame = frame;
     fte->owner = owner;
-    fte->pin_count = 0;
     fte->spte = NULL;
     return fte;
 }
@@ -90,7 +89,6 @@ static void *fte_create(void *frame, struct thread *owner) {
 /*! Create new frame and frame table entry. */
 struct frame_table_entry *get_frame(void) {
     /* Allocate page frame*/
-    acquire_load_lock();
     void *frame = palloc_get_page(PAL_USER | PAL_ZERO);
     while (frame == NULL) {
         evict();
@@ -98,8 +96,8 @@ struct frame_table_entry *get_frame(void) {
     }
 
     /* Obtain unused frame */
-    struct frame_table_entry *fte = fte_create(frame, thread_current());
-    pin(fte);
+    struct thread *cur = thread_current();
+    struct frame_table_entry *fte = fte_create(frame, cur);
 
     acquire_frame_lock();
     if (clock_hand == NULL) {
@@ -112,7 +110,6 @@ struct frame_table_entry *get_frame(void) {
 
     }
     release_frame_lock();
-    release_load_lock();
     return fte;
 }
 
@@ -162,6 +159,9 @@ static void evict(void) {
     acquire_eviction_lock();
     struct frame_table_entry *fte_to_evict = choose_frame_to_evict();
     evict_frame(fte_to_evict);
+
+    /* Free memory. */
+    free_frame(fte_to_evict);
     release_eviction_lock();
 }
 
@@ -171,7 +171,9 @@ static void evict_frame(struct frame_table_entry *fte) {
     struct thread *owner = fte->owner;
     struct sup_page *page = thread_sup_page_get(&owner->sup_page, fte->spte->addr);
 
-    ASSERT(page != NULL);
+    if (page == NULL) {
+        return;
+    }
 
     /* We only evict dirty stuff */
     if (sup_page_is_dirty(owner, page->addr) || page->status == SWAP_PAGE) {
@@ -201,9 +203,6 @@ static void evict_frame(struct frame_table_entry *fte) {
     pagedir_set_accessed(owner->pagedir, page->addr, false);
     pagedir_set_dirty(owner->pagedir, page->addr, false);
     page->fte = NULL;
-
-    /* Free memory. */
-    free_frame(fte);
 }
 
 /*! Free memory after safety checks. */
@@ -216,12 +215,12 @@ void free_frame(struct frame_table_entry *fte) {
     /* Safety checks. */
     /* Check if list_elem was removed. */
     ASSERT(try_remove(&fte->frame_table_elem) == NULL);
-    release_frame_lock();
     ASSERT(fte->pin_count == 0); /* Should be unpinned. */
 
     palloc_free_page(fte->frame);
     free(fte);
     fte = NULL;
+    release_frame_lock();
 }
 
 /*! Pin frame so it isn't swapped before use. */

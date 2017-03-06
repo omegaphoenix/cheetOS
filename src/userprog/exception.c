@@ -160,27 +160,14 @@ static void page_fault(struct intr_frame *f) {
             esp = cur->esp;
         }
         if (page != NULL) {
-            /* Obtain frame to store page. */
-            struct frame_table_entry *fte = get_frame();
-
-            /* Fetch data into the frame. */
-            success = fetch_data_to_frame(page, fte);
-            if (!success) {
-                free_frame(fte);
-                sup_page_delete_page(page);
-            }
+            success = fetch_data_to_frame(page);
         }
         /* Page not in supplemental page table. */
         else if (is_stack_access(fault_addr, esp)) {
             /* Allocate additional pages as stack grows. */
             void *addr = pg_round_down(fault_addr);
             page = sup_page_zero_create(addr, true);
-            struct frame_table_entry *fte = get_frame();
-            success = fetch_data_to_frame(page, fte);
-            if (!success) {
-                free_frame(fte);
-                sup_page_delete_page(page);
-            }
+            success = fetch_data_to_frame(page);
         }
     }
     /* To implement virtual memory, delete the rest of the function

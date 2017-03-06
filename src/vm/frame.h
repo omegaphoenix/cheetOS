@@ -22,6 +22,9 @@ struct frame_table_entry *get_frame(void);
 
 void free_frame(struct frame_table_entry *fte);
 
+void acquire_load_lock(void);
+void release_load_lock(void);
+
 void pin(struct frame_table_entry *fte);
 void unpin(struct frame_table_entry *fte);
 
