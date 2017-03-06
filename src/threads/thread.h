@@ -7,10 +7,10 @@
 #define THREADS_THREAD_H
 
 #include <debug.h>
+#include <hash.h>
 #include <list.h>
 #include <stdint.h>
 #include "synch.h"
-#include <hash.h>
 
 /* Open file. This is for a linked list of open files in each thread. */
 struct sys_file {
@@ -234,12 +234,14 @@ int add_open_file(struct thread *cur, struct file *file, int fd);
 struct file *get_fd(struct thread *cur, int fd);
 void close_fd(struct thread *cur, int fd);
 
+#ifdef VM
 bool is_valid_mapping(int mapping);
 bool is_existing_mapping(struct thread *cur, int mapping);
 int next_mapping(struct thread *cur);
 int add_mmap(struct thread *cur, void *addr, int fd, int mapping);
 struct mmap_file *get_mmap(struct thread *cur, int mapping);
 void remove_mmap(struct thread *cur, int mapping);
+#endif
 
 void add_sleep_thread(struct thread *);
 void sleep_threads(void);
