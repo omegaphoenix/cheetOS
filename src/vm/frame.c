@@ -16,12 +16,15 @@ static struct list_elem *clock_hand;
 
 static struct lock frame_lock;
 static struct lock eviction_lock;
+static struct lock load_lock;
 
 /* Handle locks. */
 static void acquire_frame_lock(void);
 static void release_frame_lock(void);
 static void acquire_eviction_lock(void);
 static void release_eviction_lock(void);
+static void acquire_load_lock(void);
+static void release_load_lock(void);
 
 /* Eviction and helper methods. */
 static void evict_frame(struct frame_table_entry *fte);
@@ -51,11 +54,22 @@ static void release_eviction_lock(void) {
     lock_release(&eviction_lock);
 }
 
+/* Acquire load lock. */
+static void acquire_load_lock(void) {
+    lock_acquire(&load_lock);
+}
+
+/* Release load lock. */
+static void release_load_lock(void) {
+    lock_release(&load_lock);
+}
+
 void frame_table_init(void) {
     clock_hand = NULL;
     list_init(&frame_table);
     lock_init(&frame_lock);
     lock_init(&eviction_lock);
+    lock_init(&load_lock);
 }
 
 /*! Create a new frame table entry. */
@@ -76,10 +90,11 @@ static void *fte_create(void *frame, struct thread *owner) {
 /*! Create new frame and frame table entry. */
 struct frame_table_entry *get_frame(void) {
     /* Allocate page frame*/
+    acquire_load_lock();
     void *frame = palloc_get_page(PAL_USER | PAL_ZERO);
-    if (frame == NULL) {
+    while (frame == NULL) {
         evict();
-        return get_frame();
+        frame = palloc_get_page(PAL_USER | PAL_ZERO);
     }
 
     /* Obtain unused frame */
@@ -97,6 +112,7 @@ struct frame_table_entry *get_frame(void) {
 
     }
     release_frame_lock();
+    release_load_lock();
     return fte;
 }
 
