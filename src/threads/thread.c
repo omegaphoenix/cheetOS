@@ -383,8 +383,10 @@ void thread_exit(void) {
     /* All file buffers should be freed in sys_exit. */
     ASSERT (list_empty(&cur->open_files));
 
+#ifdef VM
     /* All mappings should be freed in sys_exit too. */
     ASSERT (list_empty(&cur->mappings));
+#endif
 
     /* Let kids know that parent is dead so that their page is freed without
        waiting for the parent. Will be freed in thread_schedule_tail().*/
@@ -676,6 +678,7 @@ void close_fd(struct thread *cur, int fd) {
     }
 }
 
+#ifdef VM
 /* Returns true if mapping is >= 0. -1 is for failutres. */
 bool is_valid_mapping(int mapping) {
     return mapping >= 0;
@@ -760,6 +763,7 @@ void remove_mmap(struct thread *cur, int mapping) {
         }
     }
 }
+#endif
 
 
 /*! Idle thread.  Executes when no other thread is ready to run.
@@ -839,7 +843,6 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     list_init(&t->locks_acquired);
     list_init(&t->kids);
     list_init(&t->open_files);
-    list_init(&t->mappings);
     /* Block process_wait of parent until this process is ready to die. */
     sema_init(&t->wait_sema, 0);
     sema_init(&t->done_sema, 1);
@@ -847,8 +850,11 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->loaded = false;
     t->waited_on = false;
     t->num_files = 0;
-    t->num_mappings = 0;
     t->parent = NULL;
+#ifdef VM
+    list_init(&t->mappings);
+    t->num_mappings = 0;
+#endif
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */

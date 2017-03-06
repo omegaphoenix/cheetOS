@@ -12,7 +12,9 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
+#ifdef VM
 #include "vm/page.h"
+#endif
 
 /* Protect filesys calls. */
 static struct lock filesys_lock;
@@ -39,9 +41,12 @@ int sys_write(int fd, const void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 void sys_close(int fd);
+
+#ifdef VM
 /* Memory mapping */
 mapid_t sys_mmap(int fd, void *addr);
 void sys_munmap(mapid_t mapping);
+#endif
 
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
@@ -60,16 +65,18 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     unsigned int *size, *initial_size, *position;
     char **cmd_line;
     char **file;
-    void **addr;
-    mapid_t *mapping;
 
-    /* Get the system call number */
     if (f == NULL || !valid_read_addr(f->esp)) {
         sys_exit(ERR);
-        return;
     }
+    /* Get the system call number */
     int syscall_no = *((int *) f->esp);
+
+#ifdef VM
+    void **addr;
+    mapid_t *mapping;
     thread_current()->esp = f->esp;
+#endif
 
     /* Make the appropriate system call */
     switch (syscall_no) {
@@ -131,6 +138,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             fd = (int *) get_first_arg(f);
             sys_close(*fd);
             break;
+#ifdef VM
         case SYS_MMAP:
             fd = (int *) get_first_arg(f);
             addr = (void **) get_second_arg(f);
@@ -140,6 +148,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             mapping = (mapid_t *) get_first_arg(f);
             sys_munmap(*mapping);
             break;
+#endif
         default:
             printf("Unimplemented system call number\n");
             sys_exit(ERR);
@@ -191,6 +200,7 @@ void sys_exit(int status) {
     printf("%s: exit(%d)\n", cur->name, status);
     cur->exit_status = status;
 
+#ifdef VM
     /* Free all mappings. */
     struct list_elem *f;
     while (!list_empty(&cur->mappings)) {
@@ -199,6 +209,7 @@ void sys_exit(int status) {
             list_entry(f, struct mmap_file, mmap_elem);
         sys_munmap(mmap->mapping);
     }
+#endif
 
     /* Free all file buffers. */
     struct list_elem *e;
@@ -435,6 +446,7 @@ void sys_close(int fd) {
     release_file_lock();
 }
 
+#ifdef VM
 /*! Maps the file open as FD into the process's virtual address space.
     The entire file is mapped as consecutive pages starting at ADDR. 
     Returns mapping id that is unique within the process, or -1 on failure. */
@@ -545,6 +557,7 @@ void sys_munmap (mapid_t mapping) {
     remove_mmap(cur, mapping);
 
 }
+#endif
 
 /* Returns true if addr is valid for reading */
 static bool valid_read_addr(const void *addr) {
