@@ -15,6 +15,7 @@
 #include "threads/flags.h"
 #include "threads/init.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -47,7 +48,7 @@ tid_t process_execute(const char *cmdline) {
     strlcpy(cmdline_copy, cmdline, PGSIZE);
 
     /* Get FILE_NAME from CMDLINE */
-    cmdline_copy2 = palloc_get_page(PAL_ZERO);
+    cmdline_copy2 = malloc(strlen(cmdline) + 1);
     if (cmdline_copy2 == NULL) {
         palloc_free_page(cmdline_copy);
         return TID_ERROR;
@@ -74,7 +75,7 @@ tid_t process_execute(const char *cmdline) {
     struct thread *kid = get_child_thread(tid);
     sema_down(&kid->wait_sema);
 
-    palloc_free_page(cmdline_copy2);
+    free(cmdline_copy2);
     if (tid == TID_ERROR) {
         palloc_free_page(cmdline_copy);
     }
@@ -499,7 +500,7 @@ static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
             return false;
         }
 #else
-        uint8_t *kpage = palloc_get_page(PAL_USER);
+        uint8_t *kpage = palloc_get_page(PAL_ZERO);
         if (kpage == NULL) {
             return false;
         }
@@ -533,16 +534,15 @@ static bool setup_stack(void **esp) {
     uint8_t *kpage;
     bool success = false;
 
-
 #ifdef VM
-    uint8_t *addr = ((uint8_t *) PHYS_BASE) - PGSIZE;
-    struct sup_page *page = sup_page_zero_create(addr, true);
+    kpage = ((uint8_t *) PHYS_BASE) - PGSIZE;
+    struct sup_page *page = sup_page_zero_create(kpage, true);
     success = fetch_data_to_frame(page);
     if (success) {
         *esp = PHYS_BASE;
     }
 #else
-    kpage = palloc_get_page(PAL_USER | PAL_ZERO);
+    kpage = palloc_get_page(PAL_ZERO);
     if (kpage != NULL) {
         success = install_page(((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
         if (success) {
