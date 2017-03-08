@@ -19,6 +19,9 @@
 /* Protect filesys calls. */
 static struct lock filesys_lock;
 
+/* Keep track of user frame esp. */
+static void *esp;
+
 static void syscall_handler(struct intr_frame *);
 
 /* Helper functions */
@@ -76,6 +79,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     void **addr;
     mapid_t *mapping;
     thread_current()->esp = f->esp;
+    esp = f->esp;
 #endif
 
     /* Make the appropriate system call */
@@ -340,14 +344,25 @@ int sys_read(int fd, void *buffer, unsigned size) {
             size_t offset = temp_buff - pg_round_down(temp_buff);
             bool success = false;
             struct sup_page *page = thread_sup_page_get(&cur->sup_page, temp_buff - offset);
-            ASSERT(page != NULL);
-            if (page->loaded) {
-                pin(page->fte);
+
+            if (page == NULL) {
+                /* Handle stack access. */
+                if (is_stack_access(temp_buff, esp)) {
+                    page = sup_page_zero_create(temp_buff - offset, true);
+                    success = fetch_data_to_frame(page);
+                    page->status = SWAP_PAGE;
+                }
             }
             else {
-                success = fetch_data_to_frame(page);
-                ASSERT(success);
+                if (page->loaded) {
+                    pin(page->fte);
+                }
+                else {
+                    success = fetch_data_to_frame(page);
+                    ASSERT(success);
+                }
             }
+            ASSERT(page != NULL);
 
             /* Calculate how many bytes we can write for this page. */
             size_t read_bytes = offset + bytes_left;
@@ -428,16 +443,27 @@ int sys_write(int fd, void *buffer, unsigned size) {
         void *temp_buff = buffer;
         while (bytes_left > 0) {
             size_t offset = temp_buff - pg_round_down(temp_buff);
-            struct sup_page *page = thread_sup_page_get(&cur->sup_page, temp_buff - offset);
-            ASSERT(page != NULL);
             bool success = false;
-            if (page->loaded) {
-                pin(page->fte);
+            struct sup_page *page = thread_sup_page_get(&cur->sup_page, temp_buff - offset);
+
+            if (page == NULL) {
+                /* Handle stack access. */
+                if (is_stack_access(temp_buff, esp)) {
+                    page = sup_page_zero_create(temp_buff - offset, true);
+                    success = fetch_data_to_frame(page);
+                    page->status = SWAP_PAGE;
+                }
             }
             else {
-                success = fetch_data_to_frame(page);
-                ASSERT(success);
+                if (page->loaded) {
+                    pin(page->fte);
+                }
+                else {
+                    success = fetch_data_to_frame(page);
+                    ASSERT(success);
+                }
             }
+            ASSERT(page != NULL);
 
             struct file *open_file = get_fd(cur, fd);
             if (open_file == NULL) {
