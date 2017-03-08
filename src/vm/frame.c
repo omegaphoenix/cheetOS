@@ -136,14 +136,14 @@ static struct frame_table_entry *choose_frame_to_evict(void) {
     }
     struct frame_table_entry *fte =
         list_entry(clock_hand, struct frame_table_entry, frame_table_elem);
-    struct thread *owner = fte->owner;
     struct sup_page *page = fte->spte;
+
     while (!is_user_vaddr(page->addr)
-            || sup_page_is_accessed(owner, page->addr)
+            || sup_page_is_accessed(page)
             || fte->pin_count > 0) {
 
         if (is_user_vaddr(page->addr)) {
-            sup_page_set_accessed(fte->owner, page->addr, false);
+            sup_page_set_accessed(page, false);
         }
 
         increment_clock_hand();
@@ -151,9 +151,8 @@ static struct frame_table_entry *choose_frame_to_evict(void) {
                 frame_table_elem);
 
         page = fte->spte;
-        owner = fte->owner;
-
     }
+
     increment_clock_hand();
     return fte;
 }
@@ -180,7 +179,7 @@ static void evict_frame(struct frame_table_entry *fte) {
     }
 
     /* We only evict dirty stuff */
-    if (sup_page_is_dirty(owner, page->addr) || page->status == SWAP_PAGE) {
+    if (sup_page_is_dirty(page) || page->status == SWAP_PAGE) {
         /* If mmapped, write to file */
         if (page->is_mmap) {
             /* If dirty, maybe write */
@@ -202,10 +201,11 @@ static void evict_frame(struct frame_table_entry *fte) {
     /* Page is no longer loaded */
     page->loaded = false;
 
-    /* Update supplemental page table and virtual page*/
-    pagedir_clear_page(owner->pagedir, page->addr);
-    pagedir_set_accessed(owner->pagedir, page->addr, false);
-    pagedir_set_dirty(owner->pagedir, page->addr, false);
+    /* Update supplemental page table and virtual page. */
+    pagedir_clear_page(page->pagedir, page->addr);
+    pagedir_set_accessed(page->pagedir, page->addr, false);
+    pagedir_set_dirty(page->pagedir, page->addr, false);
+
     page->fte = NULL;
 }
 

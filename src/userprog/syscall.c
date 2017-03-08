@@ -654,7 +654,7 @@ void sys_munmap (mapid_t mapping) {
         read_bytes = page->file_stats->read_bytes;
         zero_bytes = page->file_stats->zero_bytes;
 
-        if (sup_page_is_dirty(cur, upage)) {
+        if (sup_page_is_dirty(page)) {
             file_write_at(file, upage, read_bytes, offset);
         }
         /* Delete page */
