@@ -333,7 +333,7 @@ static bool get_zero_page(struct sup_page *page,
     ASSERT (page_zero_bytes == PGSIZE);
 
     /* Zero out bytes. */
-    memset(kpage + page_read_bytes, 0, page_zero_bytes);
+    memset(kpage, 0, PGSIZE);
 
     /* Add the page to the process's address space. */
     if (!install_page(upage, kpage, writable)) {
@@ -345,7 +345,7 @@ static bool get_zero_page(struct sup_page *page,
 
 /*! Return true addr appears to be a stack address. */
 bool is_stack_access(void *addr, void *esp) {
-    /* Buggy if user program write to stack below stack pointer. */
+    /* Buggy if user program writes to stack below stack pointer. */
     if (!((addr >= (void *) (esp - 32)) && (addr < PHYS_BASE))) {
         return false;
     }
