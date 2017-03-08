@@ -89,7 +89,6 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
 
     /* Default is_mmap to false; set this flag in sys_mmap(). */
     page->is_mmap = false;
-    sup_page_set_dirty(page, false);
 
     /* Insert into table. */
     sup_page_insert(&cur->sup_page, page);
@@ -130,7 +129,6 @@ struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable) {
 
     /* Default is_mmap to false; set this flag in sys_mmap(). */
     page->is_mmap = false;
-    sup_page_set_dirty(page, false);
 
     /* Insert into table. */
     sup_page_insert(&cur->sup_page, page);
@@ -237,6 +235,7 @@ bool fetch_data_to_frame(struct sup_page *page) {
     acquire_load_lock();
     struct frame_table_entry *fte = get_frame();
     release_load_lock();
+
     bool success = false;
     if (page->loaded) {
         return page->loaded;
@@ -265,6 +264,7 @@ bool fetch_data_to_frame(struct sup_page *page) {
     if (success) {
         page->loaded = true;
     }
+    sup_page_set_dirty(page, false);
     sup_page_set_accessed(page, true);
     return success;
 }

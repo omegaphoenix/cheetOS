@@ -142,7 +142,7 @@ static struct frame_table_entry *choose_frame_to_evict(void) {
             || sup_page_is_accessed(page)
             || fte->pin_count > 0) {
 
-        if (is_user_vaddr(page->addr)) {
+        if (fte->pin_count == 0 && is_user_vaddr(page->addr)) {
             sup_page_set_accessed(page, false);
         }
 
@@ -182,6 +182,7 @@ static void evict_frame(struct frame_table_entry *fte) {
     if (sup_page_is_dirty(page) || page->status == SWAP_PAGE) {
         /* If mmapped, write to file */
         if (page->is_mmap) {
+            pin(fte);
             /* If dirty, maybe write */
             struct file *file = page->file_stats->file;
             ASSERT(file != NULL);
@@ -191,6 +192,7 @@ static void evict_frame(struct frame_table_entry *fte) {
             file_write_at(file, page->addr, PGSIZE, offset);
             release_file_lock();
 
+            unpin(fte);
         }
         /* Otherwise, write to swap */
         else {
@@ -203,8 +205,6 @@ static void evict_frame(struct frame_table_entry *fte) {
 
     /* Update supplemental page table and virtual page. */
     pagedir_clear_page(page->pagedir, page->addr);
-    pagedir_set_accessed(page->pagedir, page->addr, false);
-    pagedir_set_dirty(page->pagedir, page->addr, false);
 
     page->fte = NULL;
 }
