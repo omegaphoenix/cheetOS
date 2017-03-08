@@ -168,12 +168,20 @@ static void evict(void) {
     release_eviction_lock();
 }
 
+/*! Wrapper to evict frame. */
+void evict_chosen_frame(struct frame_table_entry *fte) {
+    acquire_eviction_lock();
+    evict_frame(fte);
+
+    /* Free memory. */
+    free_frame(fte);
+    release_eviction_lock();
+}
+
 /*! Evict the specified frame. */
 static void evict_frame(struct frame_table_entry *fte) {
     ASSERT(fte->pin_count == 0);
-    struct thread *owner = fte->owner;
-    struct sup_page *page = thread_sup_page_get(&owner->sup_page, fte->spte->addr);
-
+    struct sup_page *page = fte->spte;
     if (page == NULL) {
         return;
     }

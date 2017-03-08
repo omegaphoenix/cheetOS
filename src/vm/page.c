@@ -29,7 +29,8 @@ void thread_sup_page_table_init(struct thread *t) {
 
 /* Frees a sup_page element. */
 static void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
-    struct sup_page *page_to_delete = hash_entry(e, struct sup_page, sup_page_table_elem);
+    struct sup_page *page_to_delete = hash_entry(e, struct sup_page,
+            sup_page_table_elem);
 
     ASSERT(page_to_delete != NULL);
     /* First, free the file stats */

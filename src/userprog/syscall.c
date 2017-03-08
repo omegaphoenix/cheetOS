@@ -594,7 +594,7 @@ mapid_t sys_mmap (int fd, void *addr) {
     upage = addr;
     uint32_t read_bytes = file_length(open_file);
     off_t offset = 0;
-    bool writable = true; /* TODO: fix this */
+    bool writable = true;
     while (read_bytes > 0) {
         size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
         size_t page_zero_bytes = PGSIZE - page_read_bytes;
@@ -632,7 +632,6 @@ void sys_munmap (mapid_t mapping) {
     void *upage = mmap->addr;
     struct sup_page *page;
 
-    acquire_file_lock();
 
     struct file *file = NULL;
     off_t offset;
@@ -655,17 +654,24 @@ void sys_munmap (mapid_t mapping) {
         zero_bytes = page->file_stats->zero_bytes;
 
         if (sup_page_is_dirty(page)) {
+            acquire_file_lock();
             file_write_at(file, upage, read_bytes, offset);
+            release_file_lock();
         }
         /* Delete page */
+        if (page->loaded) {
+            evict_chosen_frame(page->fte);
+        }
         sup_page_delete(&cur->sup_page, upage);
         ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
 
         upage += PGSIZE;
     }
-    if (file != NULL)
+    if (file != NULL) {
+        acquire_file_lock();
         file_close(file);
-    release_file_lock();
+        release_file_lock();
+    }
 
     /* Remove entry from list of mmap files */
     remove_mmap(cur, mapping);
