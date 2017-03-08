@@ -3,6 +3,7 @@
 
 #include "cache.h"
 #include "devices/block.h"
+#include "threads/synch.h"
 #include "threads/malloc.h"
 
 static unsigned hash_sector_idx(const struct hash_elem *e, void *aux);
@@ -12,6 +13,7 @@ static void hash_cache_free(struct hash_elem *e, void *aux);
 /* Will initialize the global hash table. */
 void cache_table_init(void) {
     hash_init(&cache_sector_table, hash_sector_idx, hash_sector_less);
+    lock_init(&cache_lock);
 }
 
 /* Frees elements after they are removed from table */
