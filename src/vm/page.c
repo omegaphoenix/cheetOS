@@ -66,13 +66,14 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     }
 
     page->addr = upage;
+    ASSERT(pg_ofs(upage) == 0);
     if (read_bytes > 0) {
         page->status = FILE_PAGE;
     }
     else {
         page->status = ZERO_PAGE;
     }
-    page->page_no = pg_no(upage);
+    page->page_no = pg_no(page->addr);
     page->writable = writable;
     page->fte = NULL;
     page->swap_position = NOT_SWAP; /* Not in swap yet */
@@ -111,8 +112,9 @@ struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable) {
         sys_exit(-1);
     }
     page->addr = upage;
+    ASSERT(pg_ofs(upage) == 0);
     page->status = ZERO_PAGE;
-    page->page_no = pg_no(upage);
+    page->page_no = pg_no(page->addr);
     page->writable = writable;
     page->fte = NULL;
     page->swap_position = NOT_SWAP; /* Not in swap yet */
@@ -253,6 +255,10 @@ bool fetch_data_to_frame(struct sup_page *page) {
             break;
     }
 
+    uint32_t *pagedir = thread_current()->pagedir;
+    if (pagedir != NULL) {
+        page->pagedir = pagedir;
+    }
     page->fte = fte;
     fte->spte = page;
 
