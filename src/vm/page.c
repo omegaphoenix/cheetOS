@@ -172,7 +172,7 @@ bool sup_page_delete(struct hash *hash_table, void *addr) {
         ASSERT(deleted_elem != NULL);
         ASSERT(thread_sup_page_get(hash_table, addr) == NULL);
 
-	/* Free the element */
+        /* Free the element */
         sup_page_free(deleted_elem, NULL);
 
         return true;
@@ -233,9 +233,7 @@ void sup_page_set_dirty(struct sup_page *page, bool value) {
 /*! Copy data to the frame table. */
 bool fetch_data_to_frame(struct sup_page *page) {
     ASSERT(!page->loaded);
-    acquire_load_lock();
     struct frame_table_entry *fte = get_frame();
-    release_load_lock();
 
     bool success = false;
     if (page->loaded) {

@@ -56,16 +56,6 @@ static void release_eviction_lock(void) {
     lock_release(&eviction_lock);
 }
 
-/* Acquire load lock. */
-void acquire_load_lock(void) {
-    lock_acquire(&load_lock);
-}
-
-/* Release load lock. */
-void release_load_lock(void) {
-    lock_release(&load_lock);
-}
-
 void frame_table_init(void) {
     clock_hand = NULL;
     list_init(&frame_table);
@@ -192,12 +182,12 @@ static void evict_frame(struct frame_table_entry *fte) {
         if (page->is_mmap) {
             pin(fte);
             /* If dirty, maybe write */
-            struct file *file = page->file_stats->file;
+            acquire_file_lock();
+            struct file *file = file_reopen(page->file_stats->file);
             ASSERT(file != NULL);
             off_t offset = page->file_stats->offset;
-
-            acquire_file_lock();
             file_write_at(file, page->addr, PGSIZE, offset);
+            file_close(file);
             release_file_lock();
 
             unpin(fte);

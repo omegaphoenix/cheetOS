@@ -650,6 +650,7 @@ void sys_munmap (mapid_t mapping) {
         /* Delete page */
         if (page->loaded && page->fte != NULL) {
             ASSERT(page->is_mmap);
+            ASSERT(page->fte->pin_count == 0);
             evict_chosen_frame(page->fte);
         }
         sup_page_delete(&cur->sup_page, upage);
