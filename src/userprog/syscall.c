@@ -634,8 +634,6 @@ void sys_munmap (mapid_t mapping) {
 
 
     struct file *file = NULL;
-    off_t offset;
-    off_t read_bytes;
     off_t zero_bytes = 0;
 
 
@@ -647,30 +645,17 @@ void sys_munmap (mapid_t mapping) {
             break;
         }
         file = page->file_stats->file;
-
-        offset = page->file_stats->offset;
-
-        read_bytes = page->file_stats->read_bytes;
         zero_bytes = page->file_stats->zero_bytes;
 
-        if (sup_page_is_dirty(page)) {
-            acquire_file_lock();
-            file_write_at(file, upage, read_bytes, offset);
-            release_file_lock();
-        }
         /* Delete page */
-        if (page->loaded) {
+        if (page->loaded && page->fte != NULL) {
+            ASSERT(page->is_mmap);
             evict_chosen_frame(page->fte);
         }
         sup_page_delete(&cur->sup_page, upage);
         ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
 
         upage += PGSIZE;
-    }
-    if (file != NULL) {
-        acquire_file_lock();
-        file_close(file);
-        release_file_lock();
     }
 
     /* Remove entry from list of mmap files */
