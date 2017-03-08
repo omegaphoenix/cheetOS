@@ -538,6 +538,8 @@ static bool setup_stack(void **esp) {
     kpage = ((uint8_t *) PHYS_BASE) - PGSIZE;
     struct sup_page *page = sup_page_zero_create(kpage, true);
     success = fetch_data_to_frame(page);
+    page->status = SWAP_PAGE;
+    unpin(page->fte);
     if (success) {
         *esp = PHYS_BASE;
     }

@@ -37,7 +37,7 @@ bool sys_remove(const char *file);
 int sys_open(const char *file);
 int sys_filesize(int fd);
 int sys_read(int fd, void *buffer, unsigned size);
-int sys_write(int fd, const void *buffer, unsigned size);
+int sys_write(int fd, void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 void sys_close(int fd);
@@ -333,6 +333,50 @@ int sys_read(int fd, void *buffer, unsigned size) {
             bytes_read++;
         }
     } else if (is_existing_fd(cur, fd)) {
+#ifdef VM
+        size_t bytes_left = size;
+        void *temp_buff = buff;
+        while (bytes_left > 0) {
+            size_t offset = temp_buff - pg_round_down(temp_buff);
+            bool success = false;
+            struct sup_page *page = thread_sup_page_get(&cur->sup_page, temp_buff - offset);
+            ASSERT(page != NULL);
+            if (page->loaded) {
+                pin(page->fte);
+            }
+            else {
+                success = fetch_data_to_frame(page);
+                ASSERT(success);
+            }
+
+            /* Calculate how many bytes we can write for this page. */
+            size_t read_bytes = offset + bytes_left;
+            if (read_bytes > PGSIZE) {
+                read_bytes = PGSIZE - offset;
+            }
+            else {
+                read_bytes = bytes_left;
+            }
+
+            struct file *open_file = get_fd(cur, fd);
+            if (open_file == NULL) {
+                return ERR;
+            }
+
+            ASSERT(page->loaded);
+            /* File system call */
+            acquire_file_lock();
+            bytes_read += file_read(open_file, temp_buff, read_bytes);
+            release_file_lock();
+
+            /* Update remaining bytes. */
+            bytes_left -= read_bytes;
+            temp_buff += read_bytes;
+
+            /* Done with frame. */
+            unpin(page->fte);
+        }
+#else
         /* File system call */
         acquire_file_lock();
         struct file *open_file = get_fd(cur, fd);
@@ -343,6 +387,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
 
         bytes_read = file_read(open_file, buffer, size);
         release_file_lock();
+#endif
     } else {
         sys_exit(ERR);
     }
@@ -357,7 +402,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
     write as many bytes as possible up to end-of-file and return the actual
     number written, or 0 if no bytes could be written at all.
     Fd 1 writes to the console. */
-int sys_write(int fd, const void *buffer, unsigned size) {
+int sys_write(int fd, void *buffer, unsigned size) {
     if (!valid_read_addr(buffer) || !valid_read_addr(buffer + size)) {
         sys_exit(ERR);
     }
@@ -378,6 +423,50 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         putbuf(buffer + bytes_written, size - bytes_written);
         bytes_written = size;
     } else if (is_existing_fd(cur, fd)) {
+#ifdef VM
+        size_t bytes_left = size;
+        void *temp_buff = buffer;
+        while (bytes_left > 0) {
+            size_t offset = temp_buff - pg_round_down(temp_buff);
+            struct sup_page *page = thread_sup_page_get(&cur->sup_page, temp_buff - offset);
+            ASSERT(page != NULL);
+            bool success = false;
+            if (page->loaded) {
+                pin(page->fte);
+            }
+            else {
+                success = fetch_data_to_frame(page);
+                ASSERT(success);
+            }
+
+            struct file *open_file = get_fd(cur, fd);
+            if (open_file == NULL) {
+                sys_exit(ERR);
+            }
+
+            /* Calculate how many bytes we can write for this page. */
+            size_t write_bytes = offset + bytes_left;
+            if (write_bytes > PGSIZE) {
+                write_bytes = PGSIZE - offset;
+            }
+            else {
+                write_bytes = bytes_left;
+            }
+
+            ASSERT(page->loaded);
+            /* File system call */
+            acquire_file_lock();
+            bytes_written += file_write(open_file, temp_buff, write_bytes);
+            release_file_lock();
+
+            /* Update remaining bytes. */
+            bytes_left -= write_bytes;
+            temp_buff += write_bytes;
+
+            /* Done with frame. */
+            unpin(page->fte);
+        }
+#else
         acquire_file_lock();
         struct file *open_file = get_fd(cur, fd);
         if (open_file == NULL) {
@@ -388,6 +477,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         /* File system call */
         bytes_written = file_write(open_file, buffer, size);
         release_file_lock();
+#endif
     } else {
         sys_exit(ERR);
     }

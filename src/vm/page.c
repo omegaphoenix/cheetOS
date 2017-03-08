@@ -218,6 +218,7 @@ void sup_page_set_dirty(struct thread *owner, void *addr, bool value) {
 
 /*! Copy data to the frame table. */
 bool fetch_data_to_frame(struct sup_page *page) {
+    ASSERT(!page->loaded);
     acquire_load_lock();
     struct frame_table_entry *fte = get_frame();
     release_load_lock();
@@ -247,7 +248,6 @@ bool fetch_data_to_frame(struct sup_page *page) {
         page->loaded = true;
     }
     sup_page_set_accessed(fte->owner, page->addr, true);
-    unpin(fte);
     return success;
 }
 
@@ -341,5 +341,18 @@ static bool get_zero_page(struct sup_page *page,
         return false;
     }
 
+    return true;
+}
+
+/*! Return true addr appears to be a stack address. */
+bool is_stack_access(void *addr, void *esp) {
+    /* Buggy if user program write to stack below stack pointer. */
+    if (!((addr >= (void *) (esp - 32)) && (addr < PHYS_BASE))) {
+        return false;
+    }
+    int size = PHYS_BASE - addr;
+    if (size > MAX_STACK) {
+        sys_exit(-1);
+    }
     return true;
 }
