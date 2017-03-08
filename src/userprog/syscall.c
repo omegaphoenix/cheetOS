@@ -632,10 +632,7 @@ void sys_munmap (mapid_t mapping) {
     void *upage = mmap->addr;
     struct sup_page *page;
 
-
-    struct file *file = NULL;
     off_t zero_bytes = 0;
-
 
     while (zero_bytes == 0) {
         /* Write dirty pages back to the file */
@@ -644,7 +641,6 @@ void sys_munmap (mapid_t mapping) {
         if (page == NULL) {
             break;
         }
-        file = page->file_stats->file;
         zero_bytes = page->file_stats->zero_bytes;
 
         /* Delete page */

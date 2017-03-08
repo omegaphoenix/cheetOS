@@ -19,8 +19,6 @@ static struct list_elem *clock_hand;
 static struct lock frame_lock;
 /* Lock for eviction. */
 static struct lock eviction_lock;
-/* Lock for get_frame() call in page.c. */
-static struct lock load_lock;
 
 /* Handle locks. */
 static void acquire_frame_lock(void);
@@ -61,7 +59,6 @@ void frame_table_init(void) {
     list_init(&frame_table);
     lock_init(&frame_lock);
     lock_init(&eviction_lock);
-    lock_init(&load_lock);
 }
 
 /*! Create a new frame table entry. */
