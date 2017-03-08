@@ -10,12 +10,16 @@
 #include "vm/page.h"
 #include "vm/swap.h"
 
+/* Frame table. */
 static struct list frame_table;
 /* Points to list_elem that is to be checked for eviction. */
 static struct list_elem *clock_hand;
 
+/* Lock for changing frame table. */
 static struct lock frame_lock;
+/* Lock for eviction. */
 static struct lock eviction_lock;
+/* Lock for get_frame() call in page.c. */
 static struct lock load_lock;
 
 /* Handle locks. */

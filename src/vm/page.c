@@ -224,7 +224,6 @@ bool fetch_data_to_frame(struct sup_page *page) {
     release_load_lock();
     bool success = false;
     if (page->loaded) {
-        release_load_lock();
         return page->loaded;
     }
 
