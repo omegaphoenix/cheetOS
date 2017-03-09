@@ -13,6 +13,7 @@
 #include "vm/frame.h"
 #include "vm/swap.h"
 
+/* Lock for get_frame() call. */
 static struct lock load_lock;
 
 void acquire_load_lock(void);

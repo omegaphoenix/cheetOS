@@ -19,15 +19,15 @@ Christina Lin <cylin@caltech.edu>
    on Moodle.)
 
    Repository URL: https://github.com/omegaphoenix/cheetOS
-   commit: 255e51e015e1e3aafc2a48e265c2e4b6d61b55e9
-   tag: project5-2
+   commit: 
+   tag: project5-3
 
 ---- PRELIMINARIES ----
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please give them here.
 
-Please run the tests with bochs.  Two tests should fail.
+Please run the tests with bochs.  All tests should pass.
 
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
@@ -51,7 +51,7 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-  Justin Leong: Approximately 45:15:51
+  Justin Leong: Approximately 52:42:51
   John Li: Approximately 32-35 hours.
   Christina Lin: 31-32 hours
 
@@ -156,8 +156,6 @@ static struct list frame_table;
 static struct list_elem *clock_hand;
 Used in eviction polity; points to list_elem that is to be checked for eviction.
 
-/* Lock for changing frame table. */
-static struct lock frame_lock;
 /* Lock for eviction. */
 static struct lock eviction_lock;
 /* Lock for get_frame() call in page.c. */
@@ -168,7 +166,7 @@ struct frame_table_entry {
     struct sup_page *spte;      /*!< Supplementary Page Table */
     struct thread *owner;       /*!< Process that is using the frame. */
     int pin_count;              /*!< Should not evict pinned pages. */
-    struct list_elem frame_table_elem; /*!< Use list for LRU. */
+    struct list_elem frame_table_elem; /*!< Use list for Clock. */
 };
 Represents an entry in the frame table.
 
@@ -228,7 +226,7 @@ to have access to the frame table, but would just not permit these
 frames to be evicted.
 
 We also never have a moment where thread A acquires lock C and waits for D thread B
-acquires lock D and waits for C. Our only nested lock is file lock nested in frame lock.
+acquires lock D and waits for C. Our only nested lock is file lock nested in load lock.
 Since there isn't one the other way around, there will not be deadlock.
 
 >> B6: A page fault in process P can cause another process Q's frame
@@ -273,15 +271,15 @@ method in syscalls.c.
 >> but allows for high parallelism.  Explain where your design falls
 >> along this continuum and why you chose to design it this way.
 
-We mainly used five locks: frame table lock, load lock, evict lock, file system
-lock, and swap bitmap lock. If we acquire swap bitmap, we never need to acquire
+We mainly used four locks: load lock, evict lock, file system lock, and
+swap bitmap lock. If we acquire swap bitmap, we never need to acquire
 any more, so that prevents deadlock. If we acquire file_system lock,
 we never wait for any more locks, so that prevents deadlock.
 
 We believed that it would be good practice to have a lock associated
-with each global data structure. Since we had two (frame table and
-swap table), we had two. File system lock is also not thread dependent
-so we continued using that lock as well.
+with each global data structure. We had one for the swap table.
+File system lock is also not thread dependent so we continued using that
+lock as well.
 
 			 MEMORY MAPPED FILES
 			 ===================
