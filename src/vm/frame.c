@@ -15,14 +15,10 @@ static struct list frame_table;
 /* Points to list_elem that is to be checked for eviction. */
 static struct list_elem *clock_hand;
 
-/* Lock for changing frame table. */
-static struct lock frame_lock;
 /* Lock for eviction. */
 static struct lock eviction_lock;
 
 /* Handle locks. */
-static void acquire_frame_lock(void);
-static void release_frame_lock(void);
 static void acquire_eviction_lock(void);
 static void release_eviction_lock(void);
 
@@ -33,16 +29,6 @@ static struct frame_table_entry *choose_frame_to_evict(void);
 static void evict(void);
 
 static void *fte_create(void *frame, struct thread *owner);
-
-/* Acquire frame lock. */
-static void acquire_frame_lock(void) {
-    // lock_acquire(&frame_lock);
-}
-
-/* Release frame lock. */
-static void release_frame_lock(void) {
-    // lock_release(&frame_lock);
-}
 
 /* Acquire eviction lock. */
 static void acquire_eviction_lock(void) {
@@ -57,7 +43,6 @@ static void release_eviction_lock(void) {
 void frame_table_init(void) {
     clock_hand = NULL;
     list_init(&frame_table);
-    lock_init(&frame_lock);
     lock_init(&eviction_lock);
 }
 
@@ -90,7 +75,6 @@ struct frame_table_entry *get_frame(void) {
     struct thread *cur = thread_current();
     struct frame_table_entry *fte = fte_create(frame, cur);
 
-    acquire_frame_lock();
     if (clock_hand == NULL) {
         /* Push frame on back of list. */
         list_push_back(&frame_table, &fte->frame_table_elem);
@@ -100,7 +84,6 @@ struct frame_table_entry *get_frame(void) {
         list_insert(clock_hand, &fte->frame_table_elem);
 
     }
-    release_frame_lock();
     return fte;
 }
 
@@ -208,7 +191,6 @@ static void evict_frame(struct frame_table_entry *fte) {
 void free_frame(struct frame_table_entry *fte) {
     fte->spte = NULL;
     /* Remove from frame table */
-    acquire_frame_lock();
     try_remove(&fte->frame_table_elem);
 
     /* Safety checks. */
@@ -219,7 +201,6 @@ void free_frame(struct frame_table_entry *fte) {
     palloc_free_page(fte->frame);
     free(fte);
     fte = NULL;
-    release_frame_lock();
 }
 
 /*! Pin frame so it isn't swapped before use. */
