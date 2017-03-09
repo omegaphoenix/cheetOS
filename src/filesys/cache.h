@@ -29,9 +29,9 @@ enum access_status {
    easier lookup. We will use sector index as the key. */
 struct cache_sector {
     block_sector_t sector_idx;            /*! Sector index on filesys block */
-    access_status access_level;           /*! Sector access level */
+    enum access_status access_level;           /*! Sector access level */
     bool is_dirty;                        /*! Boolean if sector is dirty */
-    struct hash_elem cache_sector_elem;  /*! Makes it part of a hash table */
+    struct hash_elem cache_sector_elem;   /*! Makes it part of a hash table */
     uint8_t sector[BLOCK_SECTOR_SIZE];    /*! Each sector is 512 bytes. */
 };
 
@@ -40,7 +40,7 @@ void cache_table_init(void);
 void cache_table_free(void);
 
 /* cache_sector constructor/destructor. Also removal/insertion into hash table */
-struct cache_sector *cache_init(block_sector_t sector_idx);
+struct cache_sector *cache_init(block_sector_t sector_idx, void *data);
 void cache_free(block_sector_t sector_idx);
 
 /* Might use clock algorithm for this */
