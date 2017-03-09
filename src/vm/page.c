@@ -6,12 +6,17 @@
 #include "filesys/file.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
+#include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "userprog/syscall.h"
 #include "vm/frame.h"
 #include "vm/swap.h"
 
+static struct lock load_lock;
+
+void acquire_load_lock(void);
+void release_load_lock(void);
 static bool install_page(void *upage, void *kpage, bool writable);
 static bool get_swap_page(struct sup_page *page,
         struct frame_table_entry *fte);
@@ -20,6 +25,21 @@ static bool get_file_page(struct sup_page *page,
 static bool get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte);
 static void sup_page_free(struct hash_elem *e, void *aux);
+
+/* Initialize locks. */
+void sup_page_table_init(void) {
+    lock_init(&load_lock);
+}
+
+/* Acquire lock when getting frame. */
+void acquire_load_lock(void) {
+    lock_acquire(&load_lock);
+}
+
+/* Release lock when done getting frame. */
+void release_load_lock(void) {
+    lock_release(&load_lock);
+}
 
 /*! Initialize supplemental page table. */
 void thread_sup_page_table_init(struct thread *t) {
@@ -233,7 +253,9 @@ void sup_page_set_dirty(struct sup_page *page, bool value) {
 /*! Copy data to the frame table. */
 bool fetch_data_to_frame(struct sup_page *page) {
     ASSERT(!page->loaded);
+    acquire_load_lock();
     struct frame_table_entry *fte = get_frame();
+    release_load_lock();
 
     bool success = false;
     if (page->loaded) {

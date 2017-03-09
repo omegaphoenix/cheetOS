@@ -36,12 +36,12 @@ static void *fte_create(void *frame, struct thread *owner);
 
 /* Acquire frame lock. */
 static void acquire_frame_lock(void) {
-    lock_acquire(&frame_lock);
+    // lock_acquire(&frame_lock);
 }
 
 /* Release frame lock. */
 static void release_frame_lock(void) {
-    lock_release(&frame_lock);
+    // lock_release(&frame_lock);
 }
 
 /* Acquire eviction lock. */
