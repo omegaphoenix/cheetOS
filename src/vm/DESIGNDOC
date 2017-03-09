@@ -12,19 +12,22 @@ Justin Leong <jleong@caltech.edu>
 John Li <jzli@caltech.edu>
 Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment: 0
+>> Specify how many late tokens you are using on this assignment: 4
 
 >> What is the Git repository and commit hash for your submission?
    (You only need to include the commit-hash in the file you submit
    on Moodle.)
 
    Repository URL: https://github.com/omegaphoenix/cheetOS
-   commit f7f7488f6b8223b73307fee72bc892b91687e259
+   commit: 93efd898db431f601b410c6b50e3b312834c0fb4
+   tag: project5-3
 
 ---- PRELIMINARIES ----
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please give them here.
+
+Please run the tests with bochs.  All tests should pass.
 
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
@@ -48,7 +51,7 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-  Justin Leong: 34:15:51
+  Justin Leong: Approximately 52:42:51
   John Li: Approximately 32-35 hours.
   Christina Lin: 31-32 hours
 
@@ -98,6 +101,7 @@ struct sup_page {
     bool writable;                        /*!< Whether page is writable. */
     struct file_info *file_stats;         /*!< Keep track of file info. */
     bool is_mmap;                         /*!< Page is part of mapped memory */
+    bool loaded;                          /*!< If file is already loaded... */
 };
 Represents an entry in the supplemental page table.
 
@@ -108,8 +112,8 @@ Represents an entry in the supplemental page table.
 
 Each page has an entry in our supplemental page table (SPTE) that stores a
 pointer to the corresponding frame table entry (FTE) which holds a pointer
-to the frame. Thus, to get the frame for any page, we get the hash of the 
-[page number of] the virtual address, use the hash to find the SPTE, and 
+to the frame. Thus, to get the frame for any page, we get the hash of the
+[page number of] the virtual address, use the hash to find the SPTE, and
 directly access SPTE->FTE->frame.
 
 >> A3: How does your code coordinate accessed and dirty bits between
@@ -123,7 +127,8 @@ We avoid the issue by accessing data through user virtual addresses only.
 >> A4: When two user processes both need a new frame at the same time,
 >> how are races avoided?
 
-A global lock is acquired before a frame is created and released afterwards.
+A global load lock is acquired before a frame is created and released afterwards.
+This is in the frame.c file.
 
 ---- RATIONALE ----
 
@@ -144,21 +149,24 @@ these are not important operations for the page table.)
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+
+/* Frame table. */
 static struct list frame_table;
-Frame table that is shared by all processes.
-
-static struct lock frame_lock;
-Lock for the frame table.
-
+/* Points to list_elem that is to be checked for eviction. */
 static struct list_elem *clock_hand;
 Used in eviction polity; points to list_elem that is to be checked for eviction.
+
+/* Lock for eviction. */
+static struct lock eviction_lock;
+/* Lock for get_frame() call in page.c. */
+static struct lock load_lock;
 
 struct frame_table_entry {
     void *frame;                /*!< Address of frame (kernel virtual address). */
     struct sup_page *spte;      /*!< Supplementary Page Table */
     struct thread *owner;       /*!< Process that is using the frame. */
     int pin_count;              /*!< Should not evict pinned pages. */
-    struct list_elem frame_table_elem; /*!< Use list for LRU. */
+    struct list_elem frame_table_elem; /*!< Use list for Clock. */
 };
 Represents an entry in the frame table.
 
@@ -189,7 +197,7 @@ the frame. If it is accssed, we set the accessed bit to zero.
 
 Before the frame is obtained by P, it is evicted and detached from Q. We write
 the data to file or swap if necessary, change page_status to reflect where the
-data was written, call pagedir_clear_page, clear the access and dirty bits, 
+data was written, call pagedir_clear_page, clear the access and dirty bits,
 and set the FTE pointer to NULL.
 
 >> B4: Explain your heuristic for deciding whether a page fault for an
@@ -209,7 +217,7 @@ address is also below PHYS_BASE and within MAX_STACK size.
 
 We used locks for our frame table whenever frame table entries
 whenever we created them and/or inserted them into the table. These locks
-were kept for a very short period of time, to prevent threads from 
+were kept for a very short period of time, to prevent threads from
 having to wait from access to the table
 
 Furthermore, for frames that were currently being written, instead of
@@ -218,7 +226,7 @@ to have access to the frame table, but would just not permit these
 frames to be evicted.
 
 We also never have a moment where thread A acquires lock C and waits for D thread B
-acquires lock D and waits for C. Our only nested lock is file lock nested in frame lock.
+acquires lock D and waits for C. Our only nested lock is file lock nested in load lock.
 Since there isn't one the other way around, there will not be deadlock.
 
 >> B6: A page fault in process P can cause another process Q's frame
@@ -226,10 +234,10 @@ Since there isn't one the other way around, there will not be deadlock.
 >> the page during the eviction process?  How do you avoid a race
 >> between P evicting Q's frame and Q faulting the page back in?
 
-We acquire a frame lock to prevent it from being evicted again and we
-share this lock to prevent accesses at the same time. When a new page
-is created by Q faulting the page back in, it is blocked on the frame
-lock.
+We acquire a evict lock to prevent it from being evicted again and we
+have a load lock to prevent accesses at the same time. When a new page
+is created by Q faulting the page back in, it is blocked on the load
+lock because the eviction has both the evict and load lock.
 
 >> B7: Suppose a page fault in process P causes a page to be read from
 >> the file system or swap.  How do you ensure that a second process Q
@@ -263,15 +271,15 @@ method in syscalls.c.
 >> but allows for high parallelism.  Explain where your design falls
 >> along this continuum and why you chose to design it this way.
 
-We mainly used three locks: frame table lock, file system lock, and 
+We mainly used four locks: load lock, evict lock, file system lock, and
 swap bitmap lock. If we acquire swap bitmap, we never need to acquire
 any more, so that prevents deadlock. If we acquire file_system lock,
 we never wait for any more locks, so that prevents deadlock.
 
 We believed that it would be good practice to have a lock associated
-with each global data structure. Since we had two (frame table and 
-swap table), we had two. File system lock is also not thread dependent
-so we continued using that lock as well.
+with each global data structure. We had one for the swap table.
+File system lock is also not thread dependent so we continued using that
+lock as well.
 
 			 MEMORY MAPPED FILES
 			 ===================

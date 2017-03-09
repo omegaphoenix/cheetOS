@@ -113,6 +113,7 @@ int main(void) {
     paging_init();
 #ifdef VM
     frame_table_init();
+    sup_page_table_init();
 #endif
 
     /* Segmentation. */

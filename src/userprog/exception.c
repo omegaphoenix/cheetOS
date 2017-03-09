@@ -19,9 +19,6 @@ static long long page_fault_cnt;
 
 static void kill(struct intr_frame *);
 static void page_fault(struct intr_frame *);
-#ifdef VM
-static bool is_stack_access(void *addr, void *esp);
-#endif
 
 /*! Registers handlers for interrupts that can be caused by user programs.
 
@@ -161,6 +158,7 @@ static void page_fault(struct intr_frame *f) {
         }
         if (page != NULL) {
             success = fetch_data_to_frame(page);
+            unpin(page->fte);
         }
         /* Page not in supplemental page table. */
         else if (is_stack_access(fault_addr, esp)) {
@@ -168,6 +166,8 @@ static void page_fault(struct intr_frame *f) {
             void *addr = pg_round_down(fault_addr);
             page = sup_page_zero_create(addr, true);
             success = fetch_data_to_frame(page);
+            page->status = SWAP_PAGE;
+            unpin(page->fte);
         }
     }
     /* To implement virtual memory, delete the rest of the function
@@ -191,18 +191,3 @@ static void page_fault(struct intr_frame *f) {
         }
     }
 }
-
-#ifdef VM
-/*! Return true addr appears to be a stack address. */
-static bool is_stack_access(void *addr, void *esp) {
-    /* Buggy if user program write to stack below stack pointer. */
-    if (!((addr >= (void *) (esp - 32)) && (addr < PHYS_BASE))) {
-        return false;
-    }
-    int size = PHYS_BASE - addr;
-    if (size > MAX_STACK) {
-        sys_exit(-1);
-    }
-    return true;
-}
-#endif

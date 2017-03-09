@@ -14,16 +14,14 @@ struct frame_table_entry {
     struct sup_page *spte;      /*!< Supplementary Page Table */
     struct thread *owner;       /*!< Process that is using the frame. */
     int pin_count;              /*!< Should not evict pinned pages. */
-    struct list_elem frame_table_elem; /*!< Use list for LRU. */
+    struct list_elem frame_table_elem; /*!< Use list for Clock. */
 };
 
 void frame_table_init(void);
 struct frame_table_entry *get_frame(void);
 
+void evict_chosen_frame(struct frame_table_entry *fte);
 void free_frame(struct frame_table_entry *fte);
-
-void acquire_load_lock(void);
-void release_load_lock(void);
 
 void pin(struct frame_table_entry *fte);
 void unpin(struct frame_table_entry *fte);
