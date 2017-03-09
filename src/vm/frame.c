@@ -10,27 +10,40 @@
 #include "vm/page.h"
 #include "vm/swap.h"
 
+/* Frame table. */
 static struct list frame_table;
 /* Points to list_elem that is to be checked for eviction. */
 static struct list_elem *clock_hand;
 
-static struct lock frame_lock;
+/* Lock for eviction. */
+static struct lock eviction_lock;
 
+/* Handle locks. */
+static void acquire_eviction_lock(void);
+static void release_eviction_lock(void);
+
+/* Eviction and helper methods. */
+static void evict_frame(struct frame_table_entry *fte);
 static void increment_clock_hand(void);
+static struct frame_table_entry *choose_frame_to_evict(void);
+static void evict(void);
 
-/* Acquire frame lock. */
-void acquire_frame_lock(void) {
-    lock_acquire(&frame_lock);
+static void *fte_create(void *frame, struct thread *owner);
+
+/* Acquire eviction lock. */
+static void acquire_eviction_lock(void) {
+    lock_acquire(&eviction_lock);
 }
 
-/* Release frame lock. */
-void release_frame_lock(void) {
-    lock_release(&frame_lock);
+/* Release eviction lock. */
+static void release_eviction_lock(void) {
+    lock_release(&eviction_lock);
 }
+
 void frame_table_init(void) {
     clock_hand = NULL;
     list_init(&frame_table);
-    lock_init(&frame_lock);
+    lock_init(&eviction_lock);
 }
 
 /*! Create a new frame table entry. */
@@ -41,9 +54,10 @@ static void *fte_create(void *frame, struct thread *owner) {
     if (fte == NULL) {
         PANIC("Not enough memory to create frame_table_entry!");
     }
+    fte->pin_count = 0;
+    pin(fte);
     fte->frame = frame;
     fte->owner = owner;
-    fte->pin_count = 0;
     fte->spte = NULL;
     return fte;
 }
@@ -58,8 +72,8 @@ struct frame_table_entry *get_frame(void) {
     }
 
     /* Obtain unused frame */
-    acquire_frame_lock();
-    struct frame_table_entry *fte = fte_create(frame, thread_current());
+    struct thread *cur = thread_current();
+    struct frame_table_entry *fte = fte_create(frame, cur);
 
     if (clock_hand == NULL) {
         /* Push frame on back of list. */
@@ -70,8 +84,6 @@ struct frame_table_entry *get_frame(void) {
         list_insert(clock_hand, &fte->frame_table_elem);
 
     }
-    pin(fte);
-    release_frame_lock();
     return fte;
 }
 
@@ -87,63 +99,78 @@ static void increment_clock_hand(void) {
 }
 
 /*! Choose a frame entry to be evicted based on clock algorithm. */
-struct frame_table_entry *choose_frame_to_evict(void) {
+static struct frame_table_entry *choose_frame_to_evict(void) {
     ASSERT(!list_empty(&frame_table));
     if (clock_hand == NULL) {
         increment_clock_hand();
     }
     struct frame_table_entry *fte =
         list_entry(clock_hand, struct frame_table_entry, frame_table_elem);
-    struct thread *owner = fte->owner;
     struct sup_page *page = fte->spte;
+
     while (!is_user_vaddr(page->addr)
-            || sup_page_is_accessed(owner, page->addr)
+            || sup_page_is_accessed(page)
             || fte->pin_count > 0) {
 
-        if (is_user_vaddr(page->addr))
-            sup_page_set_accessed(fte->owner, page->addr, false);
+        if (fte->pin_count == 0 && is_user_vaddr(page->addr)) {
+            sup_page_set_accessed(page, false);
+        }
 
         increment_clock_hand();
         fte = list_entry(clock_hand, struct frame_table_entry,
                 frame_table_elem);
 
         page = fte->spte;
-        owner = fte->owner;
-
     }
+
     increment_clock_hand();
     return fte;
 }
 
 /*! Wrapper to choose a frame and evict it. */
-void evict(void) {
-    acquire_frame_lock();
+static void evict(void) {
+    acquire_eviction_lock();
     struct frame_table_entry *fte_to_evict = choose_frame_to_evict();
     evict_frame(fte_to_evict);
-    release_frame_lock();
+
+    /* Free memory. */
+    free_frame(fte_to_evict);
+    release_eviction_lock();
+}
+
+/*! Wrapper to evict frame. */
+void evict_chosen_frame(struct frame_table_entry *fte) {
+    acquire_eviction_lock();
+    evict_frame(fte);
+
+    /* Free memory. */
+    free_frame(fte);
+    release_eviction_lock();
 }
 
 /*! Evict the specified frame. */
-void evict_frame(struct frame_table_entry *fte) {
+static void evict_frame(struct frame_table_entry *fte) {
     ASSERT(fte->pin_count == 0);
-    struct thread *owner = fte->owner;
-    struct sup_page *page = thread_sup_page_get(&owner->sup_page, fte->spte->addr);
-
-    ASSERT(page != NULL);
+    struct sup_page *page = fte->spte;
+    if (page == NULL) {
+        return;
+    }
 
     /* We only evict dirty stuff */
-    if (sup_page_is_dirty(owner, page->addr) || page->status == SWAP_PAGE) {
+    if (sup_page_is_dirty(page) || page->status == SWAP_PAGE) {
         /* If mmapped, write to file */
         if (page->is_mmap) {
+            pin(fte);
             /* If dirty, maybe write */
-            struct file *file = page->file_stats->file;
+            acquire_file_lock();
+            struct file *file = file_reopen(page->file_stats->file);
             ASSERT(file != NULL);
             off_t offset = page->file_stats->offset;
-
-            acquire_file_lock();
             file_write_at(file, page->addr, PGSIZE, offset);
+            file_close(file);
             release_file_lock();
 
+            unpin(fte);
         }
         /* Otherwise, write to swap */
         else {
@@ -154,21 +181,18 @@ void evict_frame(struct frame_table_entry *fte) {
     /* Page is no longer loaded */
     page->loaded = false;
 
-    /* Update supplemental page table and virtual page*/
-    pagedir_clear_page(owner->pagedir, page->addr);
-    pagedir_set_accessed(owner->pagedir, page->addr, false);
-    pagedir_set_dirty(owner->pagedir, page->addr, false);
-    page->fte = NULL;
+    /* Update supplemental page table and virtual page. */
+    pagedir_clear_page(page->pagedir, page->addr);
 
-    /* Free memory. */
-    free_frame(fte);
+    page->fte = NULL;
 }
 
 /*! Free memory after safety checks. */
 void free_frame(struct frame_table_entry *fte) {
     fte->spte = NULL;
     /* Remove from frame table */
-    list_remove(&fte->frame_table_elem);
+    try_remove(&fte->frame_table_elem);
+
     /* Safety checks. */
     /* Check if list_elem was removed. */
     ASSERT(try_remove(&fte->frame_table_elem) == NULL);

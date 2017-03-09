@@ -12,7 +12,9 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
+#ifdef VM
 #include "vm/page.h"
+#endif
 
 /* Protect filesys calls. */
 static struct lock filesys_lock;
@@ -35,13 +37,16 @@ bool sys_remove(const char *file);
 int sys_open(const char *file);
 int sys_filesize(int fd);
 int sys_read(int fd, void *buffer, unsigned size);
-int sys_write(int fd, const void *buffer, unsigned size);
+int sys_write(int fd, void *buffer, unsigned size);
 void sys_seek(int fd, unsigned position);
 unsigned sys_tell(int fd);
 void sys_close(int fd);
+
+#ifdef VM
 /* Memory mapping */
 mapid_t sys_mmap(int fd, void *addr);
 void sys_munmap(mapid_t mapping);
+#endif
 
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
@@ -60,16 +65,18 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     unsigned int *size, *initial_size, *position;
     char **cmd_line;
     char **file;
-    void **addr;
-    mapid_t *mapping;
 
-    /* Get the system call number */
     if (f == NULL || !valid_read_addr(f->esp)) {
         sys_exit(ERR);
-        return;
     }
+    /* Get the system call number */
     int syscall_no = *((int *) f->esp);
+
+#ifdef VM
+    void **addr;
+    mapid_t *mapping;
     thread_current()->esp = f->esp;
+#endif
 
     /* Make the appropriate system call */
     switch (syscall_no) {
@@ -131,6 +138,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             fd = (int *) get_first_arg(f);
             sys_close(*fd);
             break;
+#ifdef VM
         case SYS_MMAP:
             fd = (int *) get_first_arg(f);
             addr = (void **) get_second_arg(f);
@@ -140,6 +148,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
             mapping = (mapid_t *) get_first_arg(f);
             sys_munmap(*mapping);
             break;
+#endif
         default:
             printf("Unimplemented system call number\n");
             sys_exit(ERR);
@@ -191,6 +200,7 @@ void sys_exit(int status) {
     printf("%s: exit(%d)\n", cur->name, status);
     cur->exit_status = status;
 
+#ifdef VM
     /* Free all mappings. */
     struct list_elem *f;
     while (!list_empty(&cur->mappings)) {
@@ -199,6 +209,7 @@ void sys_exit(int status) {
             list_entry(f, struct mmap_file, mmap_elem);
         sys_munmap(mmap->mapping);
     }
+#endif
 
     /* Free all file buffers. */
     struct list_elem *e;
@@ -309,7 +320,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
     if (!valid_write_addr(buffer) || !valid_write_addr(buffer + size)) {
         sys_exit(ERR);
     }
-    int bytes_read = 0;
+    size_t bytes_read = 0;
     /* Pointer to current position in buffer */
     char *buff = (char *) buffer;
     struct thread *cur = thread_current();
@@ -322,6 +333,61 @@ int sys_read(int fd, void *buffer, unsigned size) {
             bytes_read++;
         }
     } else if (is_existing_fd(cur, fd)) {
+#ifdef VM
+        size_t bytes_left = size;
+        void *temp_buff = buff;
+        while (bytes_left > 0) {
+            size_t offset = temp_buff - pg_round_down(temp_buff);
+            bool success = false;
+            struct sup_page *page = thread_sup_page_get(&cur->sup_page,
+                    temp_buff - offset);
+
+            if (page == NULL) {
+                /* Handle stack access. */
+                if (is_stack_access(temp_buff, cur->esp)) {
+                    page = sup_page_zero_create(temp_buff - offset, true);
+                    success = fetch_data_to_frame(page);
+                    page->status = SWAP_PAGE;
+                }
+            }
+            else {
+                if (page->loaded) {
+                    pin(page->fte);
+                }
+                else {
+                    success = fetch_data_to_frame(page);
+                }
+            }
+            ASSERT(success || (page != NULL && page->loaded));
+
+            /* Calculate how many bytes we can write for this page. */
+            size_t read_bytes = offset + bytes_left;
+            if (read_bytes > PGSIZE) {
+                read_bytes = PGSIZE - offset;
+            }
+            else {
+                read_bytes = bytes_left;
+            }
+
+            struct file *open_file = get_fd(cur, fd);
+            if (open_file == NULL) {
+                return ERR;
+            }
+
+            ASSERT(page->loaded);
+            /* File system call */
+            acquire_file_lock();
+            bytes_read += file_read(open_file, temp_buff, read_bytes);
+            release_file_lock();
+
+            /* Update remaining bytes. */
+            bytes_left -= read_bytes;
+            temp_buff += read_bytes;
+
+            /* Done with frame. */
+            unpin(page->fte);
+        }
+#else
         /* File system call */
         acquire_file_lock();
         struct file *open_file = get_fd(cur, fd);
@@ -332,6 +398,7 @@ int sys_read(int fd, void *buffer, unsigned size) {
 
         bytes_read = file_read(open_file, buffer, size);
         release_file_lock();
+#endif
     } else {
         sys_exit(ERR);
     }
@@ -346,13 +413,14 @@ int sys_read(int fd, void *buffer, unsigned size) {
     write as many bytes as possible up to end-of-file and return the actual
     number written, or 0 if no bytes could be written at all.
     Fd 1 writes to the console. */
-int sys_write(int fd, const void *buffer, unsigned size) {
+int sys_write(int fd, void *buffer, unsigned size) {
     if (!valid_read_addr(buffer) || !valid_read_addr(buffer + size)) {
         sys_exit(ERR);
     }
     int bytes_written = 0;
 
     struct thread *cur = thread_current();
+
     if (fd == STDOUT_FILENO) {
         /* Write to console */
         size_t block_size = MAX_BUF_WRI;
@@ -367,6 +435,62 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         putbuf(buffer + bytes_written, size - bytes_written);
         bytes_written = size;
     } else if (is_existing_fd(cur, fd)) {
+#ifdef VM
+        size_t bytes_left = size;
+        void *temp_buff = buffer;
+        while (bytes_left > 0) {
+            size_t offset = temp_buff - pg_round_down(temp_buff);
+            bool success = false;
+            struct sup_page *page = thread_sup_page_get(&cur->sup_page,
+                    temp_buff - offset);
+
+            if (page == NULL) {
+                /* Handle stack access. */
+                if (is_stack_access(temp_buff, cur->esp)) {
+                    page = sup_page_zero_create(temp_buff - offset, true);
+                    success = fetch_data_to_frame(page);
+                    page->status = SWAP_PAGE;
+                }
+            }
+            else {
+                if (page->loaded) {
+                    pin(page->fte);
+                }
+                else {
+                    success = fetch_data_to_frame(page);
+                    ASSERT(success);
+                }
+            }
+            ASSERT(success || (page != NULL && page->loaded));
+
+            struct file *open_file = get_fd(cur, fd);
+            if (open_file == NULL) {
+                sys_exit(ERR);
+            }
+
+            /* Calculate how many bytes we can write for this page. */
+            size_t write_bytes = offset + bytes_left;
+            if (write_bytes > PGSIZE) {
+                write_bytes = PGSIZE - offset;
+            }
+            else {
+                write_bytes = bytes_left;
+            }
+
+            ASSERT(page->loaded);
+            /* File system call */
+            acquire_file_lock();
+            bytes_written += file_write(open_file, temp_buff, write_bytes);
+            release_file_lock();
+
+            /* Update remaining bytes. */
+            bytes_left -= write_bytes;
+            temp_buff += write_bytes;
+
+            /* Done with frame. */
+            unpin(page->fte);
+        }
+#else
         acquire_file_lock();
         struct file *open_file = get_fd(cur, fd);
         if (open_file == NULL) {
@@ -377,6 +501,7 @@ int sys_write(int fd, const void *buffer, unsigned size) {
         /* File system call */
         bytes_written = file_write(open_file, buffer, size);
         release_file_lock();
+#endif
     } else {
         sys_exit(ERR);
     }
@@ -435,6 +560,7 @@ void sys_close(int fd) {
     release_file_lock();
 }
 
+#ifdef VM
 /*! Maps the file open as FD into the process's virtual address space.
     The entire file is mapped as consecutive pages starting at ADDR. 
     Returns mapping id that is unique within the process, or -1 on failure. */
@@ -468,7 +594,7 @@ mapid_t sys_mmap (int fd, void *addr) {
     upage = addr;
     uint32_t read_bytes = file_length(open_file);
     off_t offset = 0;
-    bool writable = true; /* TODO: fix this */
+    bool writable = true;
     while (read_bytes > 0) {
         size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
         size_t page_zero_bytes = PGSIZE - page_read_bytes;
@@ -506,13 +632,7 @@ void sys_munmap (mapid_t mapping) {
     void *upage = mmap->addr;
     struct sup_page *page;
 
-    acquire_file_lock();
-
-    struct file *file = NULL;
-    off_t offset;
-    off_t read_bytes;
     off_t zero_bytes = 0;
-
 
     while (zero_bytes == 0) {
         /* Write dirty pages back to the file */
@@ -521,30 +641,25 @@ void sys_munmap (mapid_t mapping) {
         if (page == NULL) {
             break;
         }
-        file = page->file_stats->file;
-
-        offset = page->file_stats->offset;
-
-        read_bytes = page->file_stats->read_bytes;
         zero_bytes = page->file_stats->zero_bytes;
 
-        if (sup_page_is_dirty(cur, upage)) {
-            file_write_at(file, upage, read_bytes, offset);
-        }
         /* Delete page */
+        if (page->loaded && page->fte != NULL) {
+            ASSERT(page->is_mmap);
+            ASSERT(page->fte->pin_count == 0);
+            evict_chosen_frame(page->fte);
+        }
         sup_page_delete(&cur->sup_page, upage);
         ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);
 
         upage += PGSIZE;
     }
-    if (file != NULL)
-        file_close(file);
-    release_file_lock();
 
     /* Remove entry from list of mmap files */
     remove_mmap(cur, mapping);
 
 }
+#endif
 
 /* Returns true if addr is valid for reading */
 static bool valid_read_addr(const void *addr) {

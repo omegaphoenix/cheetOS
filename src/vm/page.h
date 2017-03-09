@@ -40,8 +40,11 @@ struct sup_page {
     bool writable;                        /*!< Whether page is writable. */
     struct file_info *file_stats;         /*!< Keep track of file info. */
     bool is_mmap;                         /*!< Page is part of mapped memory */
-    bool loaded;                       /*!< If file is already loaded... */
+    bool loaded;                          /*!< If file is already loaded... */
+    uint32_t *pagedir;                    /*!< Page directory. */
 };
+
+void sup_page_table_init(void);
 
 /* Initializes supplemental page hash table */
 void thread_sup_page_table_init(struct thread *t);
@@ -50,18 +53,19 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     uint8_t *upage, size_t read_bytes, size_t zero_bytes, bool writable);
 struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable);
 void sup_page_table_delete(struct hash *hash_table);
-bool fetch_data_to_frame(struct sup_page *page,
-    struct frame_table_entry *fte);
+bool fetch_data_to_frame(struct sup_page *page);
 
 struct sup_page *thread_sup_page_get(struct hash *hash_table, void *addr);
 unsigned sup_page_hash(const struct hash_elem *e, void *aux);
 bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *aux);
 bool sup_page_delete(struct hash *hash_table, void *addr);
+void sup_page_delete_page(struct sup_page *page);
 void sup_page_insert(struct hash *hash_table, struct sup_page *page);
 
-bool sup_page_is_accessed(struct thread *owner, void *addr);
-void sup_page_set_accessed(struct thread *owner, void *addr, bool value);
-bool sup_page_is_dirty(struct thread *owner, void *addr);
-void sup_page_set_dirty(struct thread *owner, void *addr, bool value);
+bool sup_page_is_accessed(struct sup_page *page);
+void sup_page_set_accessed(struct sup_page *page, bool value);
+bool sup_page_is_dirty(struct sup_page *page);
+void sup_page_set_dirty(struct sup_page *page, bool value);
 
+bool is_stack_access(void *addr, void *esp);
 #endif /* vm/page.h */
