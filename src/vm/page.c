@@ -13,11 +13,6 @@
 #include "vm/frame.h"
 #include "vm/swap.h"
 
-/* Lock for get_frame() call. */
-static struct lock load_lock;
-
-void acquire_load_lock(void);
-void release_load_lock(void);
 static bool install_page(void *upage, void *kpage, bool writable);
 static bool get_swap_page(struct sup_page *page,
         struct frame_table_entry *fte);
@@ -26,21 +21,6 @@ static bool get_file_page(struct sup_page *page,
 static bool get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte);
 static void sup_page_free(struct hash_elem *e, void *aux);
-
-/* Initialize locks. */
-void sup_page_table_init(void) {
-    lock_init(&load_lock);
-}
-
-/* Acquire lock when getting frame. */
-void acquire_load_lock(void) {
-    lock_acquire(&load_lock);
-}
-
-/* Release lock when done getting frame. */
-void release_load_lock(void) {
-    lock_release(&load_lock);
-}
 
 /*! Initialize supplemental page table. */
 void thread_sup_page_table_init(struct thread *t) {
@@ -54,6 +34,11 @@ static void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
             sup_page_table_elem);
 
     ASSERT(page_to_delete != NULL);
+    struct frame_table_entry *fte = page_to_delete->fte;
+    ASSERT(fte == NULL || fte->pin_count == 0);
+    if (page_to_delete->loaded && fte != NULL) {
+        evict_chosen_frame(fte, true);
+    }
     /* First, free the file stats */
     free(page_to_delete->file_stats);
     /* Then free page_to_delete */
@@ -63,7 +48,9 @@ static void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
 
 /*! Frees a hash table */
 void thread_sup_page_table_delete(struct thread *t) {
+    acquire_eviction_lock();
     hash_destroy(&t->sup_page, sup_page_free);
+    release_eviction_lock();
 }
 
 /*! Create a suplemental page. */
@@ -176,6 +163,7 @@ bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *a
 
 /*! Delete an entry from hash table using the address of the page */
 bool sup_page_delete(struct hash *hash_table, void *addr) {
+    acquire_eviction_lock();
     struct sup_page temp_page;
     struct hash_elem *elem_to_delete = NULL;
     struct hash_elem *deleted_elem = NULL;
@@ -196,8 +184,10 @@ bool sup_page_delete(struct hash *hash_table, void *addr) {
         /* Free the element */
         sup_page_free(deleted_elem, NULL);
 
+        release_eviction_lock();
         return true;
     }
+    release_eviction_lock();
     return false;
 }
 
@@ -231,37 +221,17 @@ void sup_page_insert(struct hash *hash_table, struct sup_page *page) {
     hash_insert(hash_table, &page->sup_page_table_elem);
 }
 
-/*! Returns true if page has been accessed. Does not account for aliases. */
-bool sup_page_is_accessed(struct sup_page *page) {
-    return pagedir_is_accessed(page->pagedir, page->addr);
-}
-
-/*! Set pagedir accessed to value. */
-void sup_page_set_accessed(struct sup_page *page, bool value) {
-    pagedir_set_accessed(page->pagedir, page->addr, value);
-}
-
-/*! Returns true if page has been written to. Does not account for aliases. */
-bool sup_page_is_dirty(struct sup_page *page) {
-    return pagedir_is_dirty(page->pagedir, page->addr);
-}
-
-/*! Set pagedir dirty to value. */
-void sup_page_set_dirty(struct sup_page *page, bool value) {
-    pagedir_set_dirty(page->pagedir, page->addr, value);
-}
-
 /*! Copy data to the frame table. */
 bool fetch_data_to_frame(struct sup_page *page) {
     ASSERT(!page->loaded);
-    acquire_load_lock();
     struct frame_table_entry *fte = get_frame();
-    release_load_lock();
 
     bool success = false;
     if (page->loaded) {
         return page->loaded;
     }
+
+    pagedir_clear_page(page->pagedir, page->addr);
 
     /* Loads a page */
     switch (page->status) {
@@ -277,17 +247,18 @@ bool fetch_data_to_frame(struct sup_page *page) {
     }
 
     uint32_t *pagedir = thread_current()->pagedir;
-    if (pagedir != NULL) {
-        page->pagedir = pagedir;
-    }
+    ASSERT (pagedir != NULL);
+    page->pagedir = pagedir;
     page->fte = fte;
     fte->spte = page;
+    fte->addr = page->addr;
+    fte->pagedir = page->pagedir;
 
     if (success) {
         page->loaded = true;
     }
-    sup_page_set_dirty(page, false);
-    sup_page_set_accessed(page, true);
+    pagedir_set_dirty(pagedir, fte->addr, false);
+    pagedir_set_accessed(pagedir, fte->addr, true);
     return success;
 }
 
