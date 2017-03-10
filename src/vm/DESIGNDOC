@@ -127,8 +127,9 @@ We avoid the issue by accessing data through user virtual addresses only.
 >> A4: When two user processes both need a new frame at the same time,
 >> how are races avoided?
 
-A global load lock is acquired before a frame is created and released afterwards.
-This is in the frame.c file.
+A frame lock must be acquired before a new frame is inserted into the frame
+table and an eviction lock must be acquired before a frame is evicted or
+a page is deleted.
 
 ---- RATIONALE ----
 
@@ -226,7 +227,7 @@ to have access to the frame table, but would just not permit these
 frames to be evicted.
 
 We also never have a moment where thread A acquires lock C and waits for D thread B
-acquires lock D and waits for C. Our only nested lock is file lock nested in load lock.
+acquires lock D and waits for C. Our only nested lock is file lock nested in eviction lock.
 Since there isn't one the other way around, there will not be deadlock.
 
 >> B6: A page fault in process P can cause another process Q's frame
@@ -235,8 +236,8 @@ Since there isn't one the other way around, there will not be deadlock.
 >> between P evicting Q's frame and Q faulting the page back in?
 
 We acquire a evict lock to prevent it from being evicted again and we
-have a load lock to prevent accesses at the same time. When a new page
-is created by Q faulting the page back in, it is blocked on the load
+have a frame lock to prevent changes to the frame list at the same time. When a new page
+is created by Q faulting the page back in, it is blocked on the eviction
 lock because the eviction has both the evict and load lock.
 
 >> B7: Suppose a page fault in process P causes a page to be read from

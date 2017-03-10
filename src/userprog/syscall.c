@@ -648,7 +648,7 @@ void sys_munmap (mapid_t mapping) {
             ASSERT(page->fte != NULL);
             ASSERT(page->is_mmap);
             ASSERT(page->fte->pin_count == 0);
-            evict_chosen_frame(page->fte);
+            evict_chosen_frame(page->fte, false);
         }
         sup_page_delete(&cur->sup_page, upage);
         ASSERT(thread_sup_page_get(&cur->sup_page, upage) == NULL);

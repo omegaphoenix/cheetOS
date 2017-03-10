@@ -103,7 +103,7 @@ bool swap_table_in(struct sup_page *dest_page, struct frame_table_entry *fte) {
     uint8_t *upage = (uint8_t *) dest_page->addr;
 
     if (!install_page(upage, kpage, dest_page->writable)) {
-        evict_chosen_frame(fte);
+        evict_chosen_frame(fte, false);
         release_swap_lock();
         return false;
     }
@@ -116,8 +116,7 @@ bool swap_table_in(struct sup_page *dest_page, struct frame_table_entry *fte) {
     /* Recall that this writes in BLOCK_SECTOR_SIZE amounts at a time */
     for (cnt_sector = 0; cnt_sector < SECTORS_PER_PAGE; cnt_sector++) {
         int block_offset = swap_idx * SECTORS_PER_PAGE + cnt_sector;
-        block_read(global_swap.swap_block,
-                    block_offset,
+        block_read(global_swap.swap_block, block_offset,
                     kpage + cnt_sector * BLOCK_SECTOR_SIZE);
     }
 

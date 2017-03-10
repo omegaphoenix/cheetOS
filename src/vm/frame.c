@@ -160,8 +160,15 @@ static void evict(void) {
 }
 
 /*! Wrapper to evict frame. */
-void evict_chosen_frame(struct frame_table_entry *fte) {
-    acquire_eviction_lock();
+void evict_chosen_frame(struct frame_table_entry *fte, bool locked) {
+    if (!locked) {
+        acquire_eviction_lock();
+    }
+    else {
+        ASSERT(lock_held_by_current_thread(&eviction_lock));
+    }
+
+    /* Make sure clock hand isn't pointing to evicted frame. */
     if (&fte->frame_table_elem == clock_hand) {
         if (list_size(&frame_table) > 1) {
             increment_clock_hand();
@@ -170,38 +177,21 @@ void evict_chosen_frame(struct frame_table_entry *fte) {
             clock_hand = NULL;
         }
     }
+
     evict_frame(fte);
-
-    /* Free memory. */
     free_frame(fte);
-    release_eviction_lock();
-}
 
-/*! Wrapper to evict frame. */
-void evict_chosen_frame_no_lock(struct frame_table_entry *fte) {
-    ASSERT(lock_held_by_current_thread(&eviction_lock));
-    if (&fte->frame_table_elem == clock_hand) {
-        if (list_size(&frame_table) > 1) {
-            increment_clock_hand();
-        }
-        else {
-            clock_hand = NULL;
-        }
+    if (!locked) {
+        release_eviction_lock();
     }
-    evict_frame(fte);
-
-    /* Free memory. */
-    free_frame(fte);
 }
 
 /*! Evict the specified frame. */
 static void evict_frame(struct frame_table_entry *fte) {
     ASSERT(fte->pin_count == 0);
     struct sup_page *page = fte->spte;
-    if (page == NULL || fte->pagedir == NULL) {
-        return;
-    }
-    ASSERT (is_user_vaddr(page->addr));
+    ASSERT(page != NULL);
+    ASSERT(is_user_vaddr(page->addr));
 
     /* We only evict dirty stuff */
     if (pagedir_is_dirty(fte->pagedir, fte->addr) || page->status == SWAP_PAGE) {

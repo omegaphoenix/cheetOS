@@ -37,7 +37,7 @@ static void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
     struct frame_table_entry *fte = page_to_delete->fte;
     ASSERT(fte == NULL || fte->pin_count == 0);
     if (page_to_delete->loaded && fte != NULL) {
-        evict_chosen_frame_no_lock(fte);
+        evict_chosen_frame(fte, true);
     }
     /* First, free the file stats */
     free(page_to_delete->file_stats);
