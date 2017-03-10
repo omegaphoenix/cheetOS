@@ -19,6 +19,12 @@ struct frame_table_entry {
     struct list_elem frame_table_elem; /*!< Use list for Clock. */
 };
 
+/* Handle locks. */
+void acquire_frame_lock(void);
+void release_frame_lock(void);
+void acquire_eviction_lock(void);
+void release_eviction_lock(void);
+
 void frame_table_init(void);
 struct frame_table_entry *get_frame(void);
 

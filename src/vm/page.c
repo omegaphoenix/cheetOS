@@ -32,12 +32,12 @@ void sup_page_table_init(void) {
 
 /* Acquire lock when getting frame. */
 void acquire_load_lock(void) {
-    lock_acquire(&load_lock);
+    // lock_acquire(&load_lock);
 }
 
 /* Release lock when done getting frame. */
 void release_load_lock(void) {
-    lock_release(&load_lock);
+    // lock_release(&load_lock);
 }
 
 /*! Initialize supplemental page table. */
@@ -176,6 +176,7 @@ bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *a
 
 /*! Delete an entry from hash table using the address of the page */
 bool sup_page_delete(struct hash *hash_table, void *addr) {
+    acquire_eviction_lock();
     struct sup_page temp_page;
     struct hash_elem *elem_to_delete = NULL;
     struct hash_elem *deleted_elem = NULL;
@@ -196,8 +197,10 @@ bool sup_page_delete(struct hash *hash_table, void *addr) {
         /* Free the element */
         sup_page_free(deleted_elem, NULL);
 
+        release_eviction_lock();
         return true;
     }
+    release_eviction_lock();
     return false;
 }
 
@@ -242,6 +245,8 @@ bool fetch_data_to_frame(struct sup_page *page) {
     if (page->loaded) {
         return page->loaded;
     }
+
+    pagedir_clear_page(page->pagedir, page->addr);
 
     /* Loads a page */
     switch (page->status) {

@@ -156,10 +156,10 @@ static struct list frame_table;
 static struct list_elem *clock_hand;
 Used in eviction polity; points to list_elem that is to be checked for eviction.
 
+/* Lock for frame table. */
+static struct lock frame_lock;
 /* Lock for eviction. */
 static struct lock eviction_lock;
-/* Lock for get_frame() call in page.c. */
-static struct lock load_lock;
 
 struct frame_table_entry {
     void *frame;                /*!< Address of frame (kernel virtual address). */
@@ -271,13 +271,15 @@ method in syscalls.c.
 >> but allows for high parallelism.  Explain where your design falls
 >> along this continuum and why you chose to design it this way.
 
-We mainly used four locks: load lock, evict lock, file system lock, and
+We mainly used four locks: frame lock, evict lock, file system lock, and
 swap bitmap lock. If we acquire swap bitmap, we never need to acquire
 any more, so that prevents deadlock. If we acquire file_system lock,
 we never wait for any more locks, so that prevents deadlock.
 
 We believed that it would be good practice to have a lock associated
-with each global data structure. We had one for the swap table.
+with each global data structure. We had one for the swap table and one for the
+frame table.
+
 File system lock is also not thread dependent so we continued using that
 lock as well.
 
