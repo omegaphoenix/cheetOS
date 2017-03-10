@@ -15,7 +15,7 @@ static struct list frame_table;
 /* Points to list_elem that is to be checked for eviction. */
 static struct list_elem *clock_hand;
 
-/* Lock for frame. */
+/* Lock for frame table. */
 static struct lock frame_lock;
 /* Lock for eviction. */
 static struct lock eviction_lock;
@@ -162,8 +162,13 @@ static void evict(void) {
 /*! Wrapper to evict frame. */
 void evict_chosen_frame(struct frame_table_entry *fte) {
     acquire_eviction_lock();
-    if (&fte->frame_table_elem == clock_hand && list_size(&frame_table) > 1) {
-        increment_clock_hand();
+    while (&fte->frame_table_elem == clock_hand) {
+        if (list_size(&frame_table) > 1) {
+            increment_clock_hand();
+        }
+        else {
+            clock_hand = NULL;
+        }
     }
     evict_frame(fte);
 
