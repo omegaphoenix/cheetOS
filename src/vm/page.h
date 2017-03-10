@@ -44,11 +44,6 @@ struct sup_page {
     uint32_t *pagedir;                    /*!< Page directory. */
 };
 
-void sup_page_table_init(void);
-
-void acquire_load_lock(void);
-void release_load_lock(void);
-
 /* Initializes supplemental page hash table */
 void thread_sup_page_table_init(struct thread *t);
 void thread_sup_page_table_delete(struct thread *t);
