@@ -103,7 +103,7 @@ bool swap_table_in(struct sup_page *dest_page, struct frame_table_entry *fte) {
     uint8_t *upage = (uint8_t *) dest_page->addr;
 
     if (!install_page(upage, kpage, dest_page->writable)) {
-        free_frame(fte);
+        evict_chosen_frame(fte);
         release_swap_lock();
         return false;
     }

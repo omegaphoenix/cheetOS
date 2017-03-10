@@ -58,7 +58,9 @@ static void *fte_create(void *frame, struct thread *owner) {
     pin(fte);
     fte->frame = frame;
     fte->owner = owner;
+    fte->pagedir = NULL;
     fte->spte = NULL;
+    fte->addr = NULL;
     return fte;
 }
 
@@ -109,11 +111,11 @@ static struct frame_table_entry *choose_frame_to_evict(void) {
     struct sup_page *page = fte->spte;
 
     while (!is_user_vaddr(page->addr)
-            || sup_page_is_accessed(page)
+            || pagedir_is_accessed(fte->pagedir, fte->addr)
             || fte->pin_count > 0) {
 
         if (fte->pin_count == 0 && is_user_vaddr(page->addr)) {
-            sup_page_set_accessed(page, false);
+            pagedir_set_accessed(fte->pagedir, fte->addr, false);
         }
 
         increment_clock_hand();
@@ -155,19 +157,19 @@ static void evict_frame(struct frame_table_entry *fte) {
     if (page == NULL) {
         return;
     }
+    ASSERT (is_user_vaddr(page->addr));
 
     /* We only evict dirty stuff */
-    if (sup_page_is_dirty(page) || page->status == SWAP_PAGE) {
+    if (pagedir_is_dirty(fte->pagedir, fte->addr) || page->status == SWAP_PAGE) {
         /* If mmapped, write to file */
         if (page->is_mmap) {
             pin(fte);
             /* If dirty, maybe write */
-            acquire_file_lock();
-            struct file *file = file_reopen(page->file_stats->file);
+            struct file *file = page->file_stats->file;
             ASSERT(file != NULL);
             off_t offset = page->file_stats->offset;
+            acquire_file_lock();
             file_write_at(file, page->addr, PGSIZE, offset);
-            file_close(file);
             release_file_lock();
 
             unpin(fte);
@@ -182,7 +184,7 @@ static void evict_frame(struct frame_table_entry *fte) {
     page->loaded = false;
 
     /* Update supplemental page table and virtual page. */
-    pagedir_clear_page(page->pagedir, page->addr);
+    pagedir_clear_page(fte->pagedir, fte->addr);
 
     page->fte = NULL;
 }

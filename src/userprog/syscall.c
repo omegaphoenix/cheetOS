@@ -644,7 +644,8 @@ void sys_munmap (mapid_t mapping) {
         zero_bytes = page->file_stats->zero_bytes;
 
         /* Delete page */
-        if (page->loaded && page->fte != NULL) {
+        if (page->loaded) {
+            ASSERT(page->fte != NULL);
             ASSERT(page->is_mmap);
             ASSERT(page->fte->pin_count == 0);
             evict_chosen_frame(page->fte);

@@ -16,8 +16,6 @@
 /* Lock for get_frame() call. */
 static struct lock load_lock;
 
-void acquire_load_lock(void);
-void release_load_lock(void);
 static bool install_page(void *upage, void *kpage, bool writable);
 static bool get_swap_page(struct sup_page *page,
         struct frame_table_entry *fte);
@@ -54,6 +52,8 @@ static void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
             sup_page_table_elem);
 
     ASSERT(page_to_delete != NULL);
+    struct frame_table_entry *fte = page_to_delete->fte;
+    ASSERT(fte == NULL || fte->pin_count == 0);
     /* First, free the file stats */
     free(page_to_delete->file_stats);
     /* Then free page_to_delete */
@@ -231,26 +231,6 @@ void sup_page_insert(struct hash *hash_table, struct sup_page *page) {
     hash_insert(hash_table, &page->sup_page_table_elem);
 }
 
-/*! Returns true if page has been accessed. Does not account for aliases. */
-bool sup_page_is_accessed(struct sup_page *page) {
-    return pagedir_is_accessed(page->pagedir, page->addr);
-}
-
-/*! Set pagedir accessed to value. */
-void sup_page_set_accessed(struct sup_page *page, bool value) {
-    pagedir_set_accessed(page->pagedir, page->addr, value);
-}
-
-/*! Returns true if page has been written to. Does not account for aliases. */
-bool sup_page_is_dirty(struct sup_page *page) {
-    return pagedir_is_dirty(page->pagedir, page->addr);
-}
-
-/*! Set pagedir dirty to value. */
-void sup_page_set_dirty(struct sup_page *page, bool value) {
-    pagedir_set_dirty(page->pagedir, page->addr, value);
-}
-
 /*! Copy data to the frame table. */
 bool fetch_data_to_frame(struct sup_page *page) {
     ASSERT(!page->loaded);
@@ -277,17 +257,18 @@ bool fetch_data_to_frame(struct sup_page *page) {
     }
 
     uint32_t *pagedir = thread_current()->pagedir;
-    if (pagedir != NULL) {
-        page->pagedir = pagedir;
-    }
+    ASSERT (pagedir != NULL);
+    page->pagedir = pagedir;
     page->fte = fte;
     fte->spte = page;
+    fte->addr = page->addr;
+    fte->pagedir = page->pagedir;
 
     if (success) {
         page->loaded = true;
     }
-    sup_page_set_dirty(page, false);
-    sup_page_set_accessed(page, true);
+    pagedir_set_dirty(pagedir, fte->addr, false);
+    pagedir_set_accessed(pagedir, fte->addr, true);
     return success;
 }
 
