@@ -29,6 +29,7 @@ void frame_table_init(void);
 struct frame_table_entry *get_frame(void);
 
 void evict_chosen_frame(struct frame_table_entry *fte);
+void evict_chosen_frame_no_lock(struct frame_table_entry *fte);
 void free_frame(struct frame_table_entry *fte);
 
 void pin(struct frame_table_entry *fte);

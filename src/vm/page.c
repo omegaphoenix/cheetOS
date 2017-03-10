@@ -24,6 +24,7 @@ static bool get_file_page(struct sup_page *page,
 static bool get_zero_page(struct sup_page *page,
         struct frame_table_entry *fte);
 static void sup_page_free(struct hash_elem *e, void *aux);
+static void sup_page_free_hash(struct hash_elem *e, void *aux);
 
 /* Initialize locks. */
 void sup_page_table_init(void) {
@@ -61,9 +62,29 @@ static void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
     page_to_delete = NULL;
 }
 
+/* Frees a sup_page element. */
+static void sup_page_free_hash(struct hash_elem *e, void *aux UNUSED) {
+    struct sup_page *page_to_delete = hash_entry(e, struct sup_page,
+            sup_page_table_elem);
+
+    ASSERT(page_to_delete != NULL);
+    struct frame_table_entry *fte = page_to_delete->fte;
+    ASSERT(fte == NULL || fte->pin_count == 0);
+    if (page_to_delete->loaded && fte != NULL) {
+        evict_chosen_frame_no_lock(fte);
+    }
+    /* First, free the file stats */
+    free(page_to_delete->file_stats);
+    /* Then free page_to_delete */
+    free(page_to_delete);
+    page_to_delete = NULL;
+}
+
 /*! Frees a hash table */
 void thread_sup_page_table_delete(struct thread *t) {
-    hash_destroy(&t->sup_page, sup_page_free);
+    acquire_eviction_lock();
+    hash_destroy(&t->sup_page, sup_page_free_hash);
+    release_eviction_lock();
 }
 
 /*! Create a suplemental page. */

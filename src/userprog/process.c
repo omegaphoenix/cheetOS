@@ -216,14 +216,16 @@ void process_exit(void) {
            directory before destroying the process's page
            directory, or our active page directory will be one
            that's been freed (and cleared). */
+
+#ifdef VM
+        thread_sup_page_table_delete(cur);
+#endif
+
         cur->pagedir = NULL;
         pagedir_activate(NULL);
         pagedir_destroy(pd);
     }
 
-    #ifdef VM
-        thread_sup_page_table_delete(cur);
-    #endif
 }
 
 /*! Sets up the CPU for running user code in the current thread.
