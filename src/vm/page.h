@@ -44,8 +44,6 @@ struct sup_page {
     uint32_t *pagedir;                    /*!< Page directory. */
 };
 
-void sup_page_table_init(void);
-
 /* Initializes supplemental page hash table */
 void thread_sup_page_table_init(struct thread *t);
 void thread_sup_page_table_delete(struct thread *t);
@@ -61,11 +59,6 @@ bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *a
 bool sup_page_delete(struct hash *hash_table, void *addr);
 void sup_page_delete_page(struct sup_page *page);
 void sup_page_insert(struct hash *hash_table, struct sup_page *page);
-
-bool sup_page_is_accessed(struct sup_page *page);
-void sup_page_set_accessed(struct sup_page *page, bool value);
-bool sup_page_is_dirty(struct sup_page *page);
-void sup_page_set_dirty(struct sup_page *page, bool value);
 
 bool is_stack_access(void *addr, void *esp);
 #endif /* vm/page.h */
