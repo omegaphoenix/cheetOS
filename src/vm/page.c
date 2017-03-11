@@ -6,6 +6,7 @@
 #include "filesys/file.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
+#include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "userprog/syscall.h"
@@ -29,9 +30,15 @@ void thread_sup_page_table_init(struct thread *t) {
 
 /* Frees a sup_page element. */
 static void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
-    struct sup_page *page_to_delete = hash_entry(e, struct sup_page, sup_page_table_elem);
+    struct sup_page *page_to_delete = hash_entry(e, struct sup_page,
+            sup_page_table_elem);
 
     ASSERT(page_to_delete != NULL);
+    struct frame_table_entry *fte = page_to_delete->fte;
+    ASSERT(fte == NULL || fte->pin_count == 0);
+    if (page_to_delete->loaded && fte != NULL) {
+        evict_chosen_frame(fte, true);
+    }
     /* First, free the file stats */
     free(page_to_delete->file_stats);
     /* Then free page_to_delete */
@@ -41,12 +48,15 @@ static void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
 
 /*! Frees a hash table */
 void thread_sup_page_table_delete(struct thread *t) {
+    acquire_eviction_lock();
     hash_destroy(&t->sup_page, sup_page_free);
+    release_eviction_lock();
 }
 
 /*! Create a suplemental page. */
 struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     uint8_t *upage, size_t read_bytes, size_t zero_bytes, bool writable) {
+    struct thread *cur = thread_current();
     ASSERT (read_bytes <= PGSIZE);
     ASSERT (read_bytes + zero_bytes == PGSIZE);
 
@@ -65,13 +75,14 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     }
 
     page->addr = upage;
+    ASSERT(pg_ofs(upage) == 0);
     if (read_bytes > 0) {
         page->status = FILE_PAGE;
     }
     else {
         page->status = ZERO_PAGE;
     }
-    page->page_no = pg_no(upage);
+    page->page_no = pg_no(page->addr);
     page->writable = writable;
     page->fte = NULL;
     page->swap_position = NOT_SWAP; /* Not in swap yet */
@@ -83,43 +94,52 @@ struct sup_page *sup_page_file_create(struct file *file, off_t ofs,
     page->file_stats->offset = ofs;
     page->file_stats->read_bytes = read_bytes;
     page->file_stats->zero_bytes = zero_bytes;
+    page->pagedir = cur->pagedir;
 
     /* Default is_mmap to false; set this flag in sys_mmap(). */
-    sup_page_set_dirty(thread_current(), page->addr, false);
     page->is_mmap = false;
 
     /* Insert into table. */
-    struct thread *cur = thread_current();
     sup_page_insert(&cur->sup_page, page);
     return page;
 }
 
 /*! Create a suplemental page of zeros. */
 struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable) {
+    struct thread *cur = thread_current();
     /* Copy over page data. */
     struct sup_page *page = malloc(sizeof(struct sup_page));
     if (page == NULL) {
         sys_exit(-1);
     }
-    page->addr = upage;
-    page->status = ZERO_PAGE;
-    page->page_no = pg_no(upage);
-    page->writable = writable;
-    page->loaded = false;
+    struct file_info *file_stats = malloc(sizeof(struct file_info));
+    if (file_stats == NULL) {
+        printf("Not enough space!\n");
 
-    /* Copy over file data. */
-    page->file_stats = malloc(sizeof(struct file_info));
-    if (page->file_stats == NULL) {
         free(page);
         sys_exit(-1);
     }
+    page->addr = upage;
+    ASSERT(pg_ofs(upage) == 0);
+    page->status = ZERO_PAGE;
+    page->page_no = pg_no(page->addr);
+    page->writable = writable;
+    page->fte = NULL;
+    page->swap_position = NOT_SWAP; /* Not in swap yet */
+    page->loaded = false;
+
+    /* Copy over file data. */
+    page->file_stats = file_stats;
     page->file_stats->file = NULL;
     page->file_stats->offset = 0;
     page->file_stats->read_bytes = 0;
     page->file_stats->zero_bytes = PGSIZE;
+    page->pagedir = cur->pagedir;
+
+    /* Default is_mmap to false; set this flag in sys_mmap(). */
+    page->is_mmap = false;
 
     /* Insert into table. */
-    struct thread *cur = thread_current();
     sup_page_insert(&cur->sup_page, page);
     return page;
 }
@@ -143,6 +163,7 @@ bool sup_page_less(const struct hash_elem *a, const struct hash_elem *b, void *a
 
 /*! Delete an entry from hash table using the address of the page */
 bool sup_page_delete(struct hash *hash_table, void *addr) {
+    acquire_eviction_lock();
     struct sup_page temp_page;
     struct hash_elem *elem_to_delete = NULL;
     struct hash_elem *deleted_elem = NULL;
@@ -160,11 +181,13 @@ bool sup_page_delete(struct hash *hash_table, void *addr) {
         ASSERT(deleted_elem != NULL);
         ASSERT(thread_sup_page_get(hash_table, addr) == NULL);
 
-	/* Free the element */
+        /* Free the element */
         sup_page_free(deleted_elem, NULL);
 
+        release_eviction_lock();
         return true;
     }
+    release_eviction_lock();
     return false;
 }
 
@@ -198,34 +221,17 @@ void sup_page_insert(struct hash *hash_table, struct sup_page *page) {
     hash_insert(hash_table, &page->sup_page_table_elem);
 }
 
-/*! Returns true if page has been accessed. Does not account for aliases. */
-bool sup_page_is_accessed(struct thread *owner, void *addr) {
-    return pagedir_is_accessed(owner->pagedir, addr);
-}
-
-void sup_page_set_accessed(struct thread *owner, void *addr, bool value) {
-    pagedir_set_accessed(owner->pagedir, addr, value);
-}
-
-/*! Returns true if page has been written to. Does not account for aliases. */
-bool sup_page_is_dirty(struct thread *owner, void *addr) {
-    return pagedir_is_dirty(owner->pagedir, addr);
-}
-
-void sup_page_set_dirty(struct thread *owner, void *addr, bool value) {
-    pagedir_set_dirty(owner->pagedir, addr, value);
-}
-
 /*! Copy data to the frame table. */
 bool fetch_data_to_frame(struct sup_page *page) {
-    acquire_load_lock();
+    ASSERT(!page->loaded);
     struct frame_table_entry *fte = get_frame();
-    release_load_lock();
+
     bool success = false;
     if (page->loaded) {
-        release_load_lock();
         return page->loaded;
     }
+
+    pagedir_clear_page(page->pagedir, page->addr);
 
     /* Loads a page */
     switch (page->status) {
@@ -240,14 +246,19 @@ bool fetch_data_to_frame(struct sup_page *page) {
             break;
     }
 
+    uint32_t *pagedir = thread_current()->pagedir;
+    ASSERT (pagedir != NULL);
+    page->pagedir = pagedir;
     page->fte = fte;
     fte->spte = page;
+    fte->addr = page->addr;
+    fte->pagedir = page->pagedir;
 
     if (success) {
         page->loaded = true;
     }
-    sup_page_set_accessed(fte->owner, page->addr, true);
-    unpin(fte);
+    pagedir_set_dirty(pagedir, fte->addr, false);
+    pagedir_set_accessed(pagedir, fte->addr, true);
     return success;
 }
 
@@ -334,12 +345,25 @@ static bool get_zero_page(struct sup_page *page,
     ASSERT (page_zero_bytes == PGSIZE);
 
     /* Zero out bytes. */
-    memset(kpage + page_read_bytes, 0, page_zero_bytes);
+    memset(kpage, 0, PGSIZE);
 
     /* Add the page to the process's address space. */
     if (!install_page(upage, kpage, writable)) {
         return false;
     }
 
+    return true;
+}
+
+/*! Return true addr appears to be a stack address. */
+bool is_stack_access(void *addr, void *esp) {
+    /* Buggy if user program writes to stack below stack pointer. */
+    if (!((addr >= (void *) (esp - 32)) && (addr < PHYS_BASE))) {
+        return false;
+    }
+    int size = PHYS_BASE - addr;
+    if (size > MAX_STACK) {
+        sys_exit(-1);
+    }
     return true;
 }

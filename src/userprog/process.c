@@ -216,14 +216,16 @@ void process_exit(void) {
            directory before destroying the process's page
            directory, or our active page directory will be one
            that's been freed (and cleared). */
+
+#ifdef VM
+        thread_sup_page_table_delete(cur);
+#endif
+
         cur->pagedir = NULL;
         pagedir_activate(NULL);
         pagedir_destroy(pd);
     }
 
-    #ifdef VM
-        thread_sup_page_table_delete(cur);
-    #endif
 }
 
 /*! Sets up the CPU for running user code in the current thread.
@@ -538,6 +540,8 @@ static bool setup_stack(void **esp) {
     kpage = ((uint8_t *) PHYS_BASE) - PGSIZE;
     struct sup_page *page = sup_page_zero_create(kpage, true);
     success = fetch_data_to_frame(page);
+    page->status = SWAP_PAGE;
+    unpin(page->fte);
     if (success) {
         *esp = PHYS_BASE;
     }
