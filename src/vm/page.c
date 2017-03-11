@@ -28,7 +28,7 @@ void thread_sup_page_table_init(struct thread *t) {
     hash_init(&t->sup_page, sup_page_hash, sup_page_less, NULL);
 }
 
-/* Frees a sup_page element. */
+/*! Frees a sup_page element. */
 static void sup_page_free(struct hash_elem *e, void *aux UNUSED) {
     struct sup_page *page_to_delete = hash_entry(e, struct sup_page,
             sup_page_table_elem);
@@ -148,7 +148,7 @@ struct sup_page *sup_page_zero_create(uint8_t *upage, bool writable) {
     supplied by Pintos. */
 unsigned sup_page_hash(const struct hash_elem *e, void *aux UNUSED) {
     const struct sup_page *page = hash_entry(e, struct sup_page, sup_page_table_elem);
-    int hash_index = hash_bytes(&page->page_no, sizeof page->page_no);
+    int hash_index = hash_int(page->page_no);
 
     return hash_index;
 }
