@@ -28,12 +28,12 @@ static void evict(void);
 
 static void *fte_create(void *frame, struct thread *owner);
 
-/* Acquire eviction lock. */
+/* Acquire frame lock. */
 void acquire_frame_lock(void) {
     lock_acquire(&frame_lock);
 }
 
-/* Release eviction lock. */
+/* Release frame lock. */
 void release_frame_lock(void) {
     lock_release(&frame_lock);
 }
