@@ -14,17 +14,15 @@
 
 struct hash cache_sector_table;
 
-/* Global lock for protecting cache hash map. */
-struct lock cache_lock;
-
 /* We would like our cache sector to be in a hash table for
    easier lookup. We will use sector index as the key. */
 struct cache_sector {
-    block_sector_t sector_idx;          /*! Sector index on filesys block. */
-    bool accessed;                      /*! Sector access level. */
-    bool dirty;                         /*! Boolean if sector is dirty. */
-    struct hash_elem cache_sector_elem; /*! Makes it part of a hash table. */
-    uint8_t sector[BLOCK_SECTOR_SIZE];  /*! Each sector is 512 bytes. */
+    block_sector_t sector_idx;          /*!< Sector index on filesys block. */
+    bool accessed;                      /*!< Sector access level. */
+    bool dirty;                         /*!< Boolean if sector is dirty. */
+    struct hash_elem cache_hash_elem;   /*!< Makes it part of a hash table. */
+    struct list_elem cache_list_elem;   /*!< Makes it part of a hash table. */
+    uint8_t sector[BLOCK_SECTOR_SIZE];  /*!< Each sector is 512 bytes. */
 };
 
 /* Hash table constructor/destructor. */
@@ -38,8 +36,7 @@ void cache_free(block_sector_t sector_idx);
 /* Might use clock algorithm for this. */
 void cache_evict(void);
 
-/* Removal and Insertion from buffer cache. */
-void cache_remove(block_sector_t sector_idx);
+/* Insertion from buffer cache. */
 void cache_insert(block_sector_t sector_idx, void *data);
 
 /* Retrieval. */
