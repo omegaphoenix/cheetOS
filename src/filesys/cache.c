@@ -22,6 +22,7 @@ static struct lock cache_lock;
 static void acquire_cache_lock(void);
 static void release_cache_lock(void);
 
+static int cache_get_free(void);
 static bool in_cache(block_sector_t idx);
 static struct cache_sector *choose_sector_to_evict(void);
 static void cache_remove(struct cache_sector *sector);
@@ -67,10 +68,10 @@ static bool is_full_cache(void) {
     int i;
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
         if (!cache_buffer[i].valid) {
-            return true;
+            return false;
         }
     }
-    return false;
+    return true;
 }
 
 /*! Initialize a new sector_idx, and insert into cache buffer. */
@@ -160,10 +161,11 @@ static void cache_remove(struct cache_sector *sector) {
     memory to cache. */
 struct cache_sector *cache_insert(block_sector_t sector_idx) {
     /* Checks if the cache has already hit maximum capacity */
-    if (list_size(&cache_list) == MAX_BUFFER_SIZE) {
+    if (is_full_cache()) {
         cache_evict();
     }
 
+    ASSERT(!is_full_cache());
     ASSERT(list_size(&cache_list) < MAX_BUFFER_SIZE);
     return cache_init(sector_idx);
 }
@@ -181,7 +183,7 @@ int cache_get(block_sector_t idx) {
 }
 
 /*! Will retrieve the specific cache from the cache map. */
-int cache_get_free(block_sector_t idx) {
+static int cache_get_free(void) {
     int i;
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
         if (!cache_buffer[i].valid) {
