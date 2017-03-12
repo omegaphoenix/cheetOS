@@ -27,14 +27,14 @@ struct cache_sector {
 void cache_table_init(void);
 
 /* cache_sector constructor/destructor. Removal/insertion into list. */
-struct cache_sector *cache_init(block_sector_t sector_idx);
+int cache_init(block_sector_t sector_idx);
 void cache_free(block_sector_t sector_idx);
 
 /* Might use clock algorithm for this. */
 void cache_evict(void);
 
 /* Insertion from buffer cache. */
-struct cache_sector *cache_insert(block_sector_t sector_idx);
+int cache_insert(block_sector_t sector_idx);
 
 /* Retrieval. */
 int cache_get(block_sector_t idx);

@@ -23,9 +23,9 @@ static void acquire_cache_lock(void);
 static void release_cache_lock(void);
 
 static int cache_get_free(void);
-static bool in_cache(block_sector_t idx);
-static struct cache_sector *choose_sector_to_evict(void);
-static void cache_remove(struct cache_sector *sector);
+static bool in_cache(block_sector_t sector_idx);
+static int choose_sector_to_evict(void);
+static void cache_remove(int array_idx);
 static void increment_clock_hand(void);
 
 /*! Acquire global cache lock for modifying cache table. */
@@ -53,10 +53,11 @@ void cache_table_init(void) {
 }
 
 /*! Return true if idx is stored in the buffer cache. */
-static bool in_cache(block_sector_t idx) {
+static bool in_cache(block_sector_t sector_idx) {
     int i;
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
-        if (cache_buffer[i].valid && cache_buffer[i].sector_idx == idx) {
+        if (cache_buffer[i].valid
+                && cache_buffer[i].sector_idx == sector_idx) {
             return true;
         }
     }
@@ -75,7 +76,7 @@ static bool is_full_cache(void) {
 }
 
 /*! Initialize a new sector_idx, and insert into cache buffer. */
-struct cache_sector *cache_init(block_sector_t sector_idx) {
+int cache_init(block_sector_t sector_idx) {
     /* First, check that it doesn't exist */
     ASSERT(!in_cache(sector_idx));
     int i = cache_get_free();
@@ -95,7 +96,7 @@ struct cache_sector *cache_init(block_sector_t sector_idx) {
     else {
         list_insert(clock_hand, &cache_buffer[i].cache_list_elem);
     }
-    return &cache_buffer[i];
+    return i;
 }
 
 /*! Finds appropriate sector and removes it from table. */
@@ -122,7 +123,7 @@ static void increment_clock_hand(void) {
 }
 
 /*! Choose a cache sector to be evicted based on clock algorithm. */
-static struct cache_sector *choose_sector_to_evict(void) {
+static int choose_sector_to_evict(void) {
     ASSERT(!list_empty(&cache_list));
     if (clock_hand == NULL) {
         increment_clock_hand();
@@ -138,28 +139,29 @@ static struct cache_sector *choose_sector_to_evict(void) {
     }
 
     increment_clock_hand();
-    return sector;
+    return sector->sector_idx;
 }
 
 /*! Uses block algorithm to choose the next block to evict. */
 void cache_evict(void) {
-    struct cache_sector *sector_to_evict = choose_sector_to_evict();
-    cache_remove(sector_to_evict);
+    int idx = choose_sector_to_evict();
+    cache_remove(idx);
 
     /* Free memory. */
-    cache_free(sector_to_evict->sector_idx);
+    cache_free(cache_buffer[idx].sector_idx);
 }
 
 /*! Removes a block from the buffer cache. This involves it writing from cache
     back to memory. */
-static void cache_remove(struct cache_sector *sector) {
-    block_write(fs_device, sector->sector_idx, sector->sector);
-    sector->dirty = false;
+static void cache_remove(int array_idx) {
+    block_write(fs_device, cache_buffer[array_idx].sector_idx,
+            cache_buffer[array_idx].sector);
+    cache_buffer[array_idx].dirty = false;
 }
 
 /*! Adds a block into buffer cache. Evicts if necessary. Will write from
     memory to cache. */
-struct cache_sector *cache_insert(block_sector_t sector_idx) {
+int cache_insert(block_sector_t sector_idx) {
     /* Checks if the cache has already hit maximum capacity */
     if (is_full_cache()) {
         cache_evict();
@@ -171,11 +173,12 @@ struct cache_sector *cache_insert(block_sector_t sector_idx) {
 }
 
 /*! Will retrieve the specific cache from the cache map. */
-int cache_get(block_sector_t idx) {
+int cache_get(block_sector_t sector_idx) {
     int i;
     int ret = -1;
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
-        if (cache_buffer[i].valid && cache_buffer[i].sector_idx == idx) {
+        if (cache_buffer[i].valid
+                && cache_buffer[i].sector_idx == sector_idx) {
             ret = i;
         }
     }
@@ -196,23 +199,19 @@ static int cache_get_free(void) {
 /*! Will write data to a cache_sector buffer. */
 void write_to_cache(block_sector_t sector_idx, void *data) {
 #ifdef CACHE
-    int found_idx = cache_get(sector_idx);
-    struct cache_sector *found_sector;
+    int idx = cache_get(sector_idx);
 
-    if (found_idx == -1) {
+    if (idx == -1) {
         /* Import sector into cache. */
-        found_sector = cache_insert(sector_idx);
-    }
-    else {
-        found_sector= &cache_buffer[found_idx];
+        idx = cache_insert(sector_idx);
     }
 
     /* We want to be sure that the sector we find is not null */
-    ASSERT(found_sector != NULL);
-    memcpy(found_sector->sector, data, BLOCK_SECTOR_SIZE);
+    ASSERT(cache_buffer[idx].valid);
+    memcpy(cache_buffer[idx].sector, data, BLOCK_SECTOR_SIZE);
 
-    found_sector->accessed = true;
-    found_sector->dirty = true;
+    cache_buffer[idx].accessed = true;
+    cache_buffer[idx].dirty = true;
 #else
     block_write(fs_device, sector_idx, data);
 #endif
@@ -221,21 +220,16 @@ void write_to_cache(block_sector_t sector_idx, void *data) {
 /*! Will read from cache and write to memory. Involves freeing. */
 void read_from_cache(block_sector_t sector_idx, void *data) {
 #ifdef CACHE
-    int found_idx = cache_get(sector_idx);
-    struct cache_sector *found_sector;
+    int idx = cache_get(sector_idx);
 
-    if (found_idx == -1) {
+    if (idx == -1) {
         /* Import sector into cache. */
-        found_sector = cache_insert(sector_idx);
+        idx = cache_insert(sector_idx);
     }
-    else {
-        found_sector= &cache_buffer[found_idx];
-    }
+    ASSERT(cache_buffer[idx].valid);
+    memcpy(data, cache_buffer[idx].sector, BLOCK_SECTOR_SIZE);
 
-    ASSERT(found_sector != NULL);
-    memcpy(data, found_sector->sector, BLOCK_SECTOR_SIZE);
-
-    found_sector->accessed = true;
+    cache_buffer[idx].accessed = true;
 #else
     block_read(fs_device, sector_idx, data);
 #endif
@@ -247,20 +241,17 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     ASSERT(ofs >= 0 && ofs < BLOCK_SECTOR_SIZE);
     ASSERT(bytes > 0 && bytes <= BLOCK_SECTOR_SIZE);
 #ifdef NCACHE
-    int found_idx = cache_get(sector_idx);
+    int idx = cache_get(sector_idx);
     struct cache_sector *found_sector;
 
-    if (found_idx == -1) {
+    if (idx == -1) {
         /* Import sector into cache. */
-        found_sector = cache_insert(sector_idx);
+        idx = cache_insert(sector_idx);
     }
-    else {
-        found_sector = &cache_buffer[found_idx];
-    }
-    ASSERT(found_sector != NULL);
-    memcpy(data, found_sector->sector + ofs, bytes);
+    ASSERT(cache_buffer[idx].valid);
+    memcpy(data, cache_buffer[idx].sector + ofs, bytes);
 
-    found_sector->accessed = true;
+    cache_buffer[idx].accessed = true;
 #else
     uint8_t *bounce = malloc(BLOCK_SECTOR_SIZE);
     if (bounce == NULL) {
