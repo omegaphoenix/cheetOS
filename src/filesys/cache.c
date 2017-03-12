@@ -98,7 +98,6 @@ struct cache_sector *cache_init(block_sector_t sector_idx, void *data) {
     /* Read from memory into buffer */
     block_read(fs_device, sector_idx, data);
 
-    acquire_cache_lock();
     hash_insert(&cache_sector_table, &new_sector->cache_hash_elem);
     if (clock_hand == NULL) {
         list_push_back(&cache_list, &new_sector->cache_list_elem);
@@ -106,14 +105,12 @@ struct cache_sector *cache_init(block_sector_t sector_idx, void *data) {
     else {
         list_insert(clock_hand, &new_sector->cache_list_elem);
     }
-    release_cache_lock();
     return new_sector;
 }
 
 /*! Finds appropriate struct from hash table, and frees it and deletes it from
     table. */
 void cache_free(block_sector_t sector_idx) {
-    acquire_cache_lock();
     struct cache_sector *sector = cache_get(sector_idx);
     struct hash_elem *cache_sector_entry = hash_find(&cache_sector_table,
             &sector->cache_hash_elem);
@@ -131,7 +128,6 @@ void cache_free(block_sector_t sector_idx) {
 
         hash_cache_free(cache_sector_entry, NULL);
     }
-    release_cache_lock();
 }
 
 /*! Increment clock hand in clock algorithm. */
@@ -153,18 +149,14 @@ static struct cache_sector *choose_sector_to_evict(void) {
     if (clock_hand == NULL) {
         increment_clock_hand();
     }
-    acquire_cache_lock();
     struct cache_sector *sector =
         list_entry(clock_hand, struct cache_sector, cache_list_elem);
-    release_cache_lock();
 
     while (sector->accessed) {
         sector->accessed = false;
 
         increment_clock_hand();
-        acquire_cache_lock();
         sector = list_entry(clock_hand, struct cache_sector, cache_list_elem);
-        release_cache_lock();
     }
 
     increment_clock_hand();
@@ -191,12 +183,10 @@ static void cache_remove(struct cache_sector *sector) {
 /*! Adds a block into buffer cache. Evicts if necessary. Will write from
     memory to cache. */
 void cache_insert(block_sector_t sector_idx, void *data) {
-    acquire_cache_lock();
     /* Checks if the cache has already hit maximum capacity */
     if (hash_size(&cache_sector_table) == MAX_BUFFER_SIZE) {
         cache_evict();
     }
-    release_cache_lock();
 
     ASSERT(hash_size(&cache_sector_table) < MAX_BUFFER_SIZE);
     cache_init(sector_idx, data);
@@ -204,7 +194,6 @@ void cache_insert(block_sector_t sector_idx, void *data) {
 
 /*! Will retrieve the specific cache from the cache map. */
 struct cache_sector *cache_get(block_sector_t sector_idx) {
-    acquire_cache_lock();
     struct cache_sector temp_sector;
     struct cache_sector *return_sector = NULL;
     temp_sector.sector_idx = sector_idx;
@@ -216,7 +205,6 @@ struct cache_sector *cache_get(block_sector_t sector_idx) {
         return_sector = hash_entry(cache_sector_entry, struct cache_sector,
                 cache_hash_elem);
     }
-    release_cache_lock();
     return return_sector;
 }
 

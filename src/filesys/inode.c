@@ -3,6 +3,7 @@
 #include <debug.h>
 #include <round.h>
 #include <string.h>
+#include "filesys/cache.h"
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
@@ -81,8 +82,8 @@ bool inode_create(block_sector_t sector, off_t length) {
             if (sectors > 0) {
                 static char zeros[BLOCK_SECTOR_SIZE];
                 size_t i;
-              
-                for (i = 0; i < sectors; i++) 
+
+                for (i = 0; i < sectors; i++)
                     block_write(fs_device, disk_inode->start + i, zeros);
             }
             success = true; 
@@ -105,7 +106,7 @@ struct inode * inode_open(block_sector_t sector) {
         inode = list_entry(e, struct inode, elem);
         if (inode->sector == sector) {
             inode_reopen(inode);
-            return inode; 
+            return inode;
         }
     }
 
@@ -148,15 +149,15 @@ void inode_close(struct inode *inode) {
     if (--inode->open_cnt == 0) {
         /* Remove from inode list and release lock. */
         list_remove(&inode->elem);
- 
+
         /* Deallocate blocks if removed. */
         if (inode->removed) {
             free_map_release(inode->sector, 1);
             free_map_release(inode->data.start,
-                             bytes_to_sectors(inode->data.length)); 
+                             bytes_to_sectors(inode->data.length));
         }
 
-        free(inode); 
+        free(inode);
     }
 }
 
@@ -205,7 +206,7 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
             block_read(fs_device, sector_idx, bounce);
             memcpy(buffer + bytes_read, bounce + sector_ofs, chunk_size);
         }
-      
+
         /* Advance. */
         size -= chunk_size;
         offset += chunk_size;
@@ -260,7 +261,7 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t
                we're writing, then we need to read in the sector
                first.  Otherwise we start with a sector of all zeros. */
 
-            if (sector_ofs > 0 || chunk_size < sector_left) 
+            if (sector_ofs > 0 || chunk_size < sector_left)
                 block_read(fs_device, sector_idx, bounce);
             else
                 memset (bounce, 0, BLOCK_SECTOR_SIZE);
