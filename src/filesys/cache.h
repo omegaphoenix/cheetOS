@@ -5,7 +5,6 @@
 #ifndef BUFFER_CACHE_H_
 #define BUFFER_CACHE_H_
 
-#include <hash.h>
 #include <stdbool.h>
 #include "devices/block.h"
 #include "filesys/off_t.h"
@@ -13,24 +12,21 @@
 
 #define MAX_BUFFER_SIZE 64
 
-struct hash cache_sector_table;
-
-/* We would like our cache sector to be in a hash table for
-   easier lookup. We will use sector index as the key. */
+/* We would like our cache sector to be in a list for
+   easier eviction. We will use sector index as the key. */
 struct cache_sector {
     block_sector_t sector_idx;          /*!< Sector index on filesys block. */
+    bool valid;                         /*!< True if sector is used. False when evicted. */
     bool accessed;                      /*!< Sector access level. */
     bool dirty;                         /*!< Boolean if sector is dirty. */
-    struct hash_elem cache_hash_elem;   /*!< Makes it part of a hash table. */
-    struct list_elem cache_list_elem;   /*!< Makes it part of a hash table. */
+    struct list_elem cache_list_elem;   /*!< Makes it part of an eviction list. */
     uint8_t sector[BLOCK_SECTOR_SIZE];  /*!< Each sector is 512 bytes. */
 };
 
-/* Hash table constructor/destructor. */
+/* Cache initialization. */
 void cache_table_init(void);
-void cache_table_free(void);
 
-/* cache_sector constructor/destructor. Removal/insertion into hash table. */
+/* cache_sector constructor/destructor. Removal/insertion into list. */
 struct cache_sector *cache_init(block_sector_t sector_idx);
 void cache_free(block_sector_t sector_idx);
 
@@ -41,7 +37,7 @@ void cache_evict(void);
 struct cache_sector *cache_insert(block_sector_t sector_idx);
 
 /* Retrieval. */
-struct cache_sector *cache_get(block_sector_t sector_idx);
+int cache_get(block_sector_t idx);
 
 /* Writing/Reading to/from disk methods. */
 void write_to_cache(block_sector_t sector_idx, void *data);
