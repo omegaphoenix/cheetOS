@@ -121,7 +121,7 @@ struct inode * inode_open(block_sector_t sector) {
     inode->open_cnt = 1;
     inode->deny_write_cnt = 0;
     inode->removed = false;
-    block_read(fs_device, inode->sector, &inode->data);
+    read_from_cache(inode->sector, &inode->data);
     return inode;
 }
 
@@ -174,7 +174,6 @@ void inode_remove(struct inode *inode) {
 off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset) {
     uint8_t *buffer = buffer_;
     off_t bytes_read = 0;
-    uint8_t *bounce = NULL;
 
     while (size > 0) {
         /* Disk sector to read, starting byte offset within sector. */
@@ -191,28 +190,14 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
         if (chunk_size <= 0)
             break;
 
-        if (sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE) {
-            /* Read full sector directly into caller's buffer. */
-            block_read (fs_device, sector_idx, buffer + bytes_read);
-        }
-        else {
-            /* Read sector into bounce buffer, then partially copy
-               into caller's buffer. */
-            if (bounce == NULL) {
-                bounce = malloc(BLOCK_SECTOR_SIZE);
-                if (bounce == NULL)
-                    break;
-            }
-            block_read(fs_device, sector_idx, bounce);
-            memcpy(buffer + bytes_read, bounce + sector_ofs, chunk_size);
-        }
+        read_cache_offset(sector_idx, buffer + bytes_read, sector_ofs,
+                chunk_size);
 
         /* Advance. */
         size -= chunk_size;
         offset += chunk_size;
         bytes_read += chunk_size;
     }
-    free(bounce);
 
     return bytes_read;
 }

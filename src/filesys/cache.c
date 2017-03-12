@@ -4,6 +4,7 @@
 #include <string.h>
 #include "devices/block.h"
 #include "filesys/filesys.h"
+#include "filesys/off_t.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
 
@@ -228,7 +229,6 @@ void write_to_cache(block_sector_t sector_idx, void *data) {
 #endif
 }
 
-
 /*! Will read from cache and write to memory. Involves freeing. */
 void read_from_cache(block_sector_t sector_idx, void *data) {
 #ifdef CACHE
@@ -244,5 +244,32 @@ void read_from_cache(block_sector_t sector_idx, void *data) {
     found_sector->accessed = true;
 #else
     block_read(fs_device, sector_idx, data);
+#endif
+}
+
+/*! Will read from cache and write to memory. Involves freeing. */
+void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
+        size_t bytes) {
+    ASSERT(ofs >= 0 && ofs < BLOCK_SECTOR_SIZE);
+    ASSERT(bytes > 0 && bytes <= BLOCK_SECTOR_SIZE);
+#ifdef CACHE
+    struct cache_sector *found_sector = cache_get(sector_idx);
+
+    if (found_sector == NULL) {
+        /* Import sector into cache. */
+        found_sector = cache_insert(sector_idx);
+    }
+    ASSERT(found_sector != NULL);
+    memcpy(data, found_sector->sector + ofs, bytes);
+
+    found_sector->accessed = true;
+#else
+    uint8_t *bounce = malloc(BLOCK_SECTOR_SIZE);
+    bounce = malloc(BLOCK_SECTOR_SIZE);
+    if (bounce == NULL) {
+        return;
+    }
+    block_read(fs_device, sector_idx, bounce);
+    memcpy(data, bounce + ofs, bytes);
 #endif
 }
