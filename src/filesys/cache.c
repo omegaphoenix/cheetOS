@@ -86,17 +86,17 @@ static void hash_cache_free(struct hash_elem *e, void *aux UNUSED) {
 }
 
 /*! Initialize a new sector_idx, and insert into hash table. */
-struct cache_sector *cache_init(block_sector_t sector_idx, void *data) {
+struct cache_sector *cache_init(block_sector_t sector_idx) {
     /* First, check that it doesn't exist */
     ASSERT(cache_get(sector_idx) == NULL);
     struct cache_sector *new_sector = malloc(sizeof(struct cache_sector));
 
     new_sector->sector_idx = sector_idx;
-    new_sector->accessed = false;
+    new_sector->accessed = true;
     new_sector->dirty = false;
 
     /* Read from memory into buffer */
-    block_read(fs_device, sector_idx, data);
+    block_read(fs_device, sector_idx, new_sector->sector);
 
     hash_insert(&cache_sector_table, &new_sector->cache_hash_elem);
     if (clock_hand == NULL) {
@@ -182,14 +182,14 @@ static void cache_remove(struct cache_sector *sector) {
 
 /*! Adds a block into buffer cache. Evicts if necessary. Will write from
     memory to cache. */
-void cache_insert(block_sector_t sector_idx, void *data) {
+struct cache_sector *cache_insert(block_sector_t sector_idx) {
     /* Checks if the cache has already hit maximum capacity */
     if (hash_size(&cache_sector_table) == MAX_BUFFER_SIZE) {
         cache_evict();
     }
 
     ASSERT(hash_size(&cache_sector_table) < MAX_BUFFER_SIZE);
-    cache_init(sector_idx, data);
+    return cache_init(sector_idx);
 }
 
 /*! Will retrieve the specific cache from the cache map. */
@@ -201,7 +201,7 @@ struct cache_sector *cache_get(block_sector_t sector_idx) {
     struct hash_elem *cache_sector_entry = hash_find(&cache_sector_table,
             &temp_sector.cache_hash_elem);
 
-    if (cache_sector_entry) {
+    if (cache_sector_entry != NULL) {
         return_sector = hash_entry(cache_sector_entry, struct cache_sector,
                 cache_hash_elem);
     }
@@ -210,20 +210,39 @@ struct cache_sector *cache_get(block_sector_t sector_idx) {
 
 /*! Will write data to a cache_sector buffer. */
 void write_to_cache(block_sector_t sector_idx, void *data) {
+#ifdef CACHE
     struct cache_sector *found_sector = cache_get(sector_idx);
 
+    if (found_sector == NULL) {
+        /* Import sector into cache. */
+        found_sector = cache_insert(sector_idx);
+    }
     /* We want to be sure that the sector we find is not null */
     ASSERT(found_sector != NULL);
     memcpy(found_sector->sector, data, BLOCK_SECTOR_SIZE);
 
+    found_sector->accessed = true;
     found_sector->dirty = true;
+#else
+    block_write(fs_device, sector_idx, data);
+#endif
 }
 
 
 /*! Will read from cache and write to memory. Involves freeing. */
 void read_from_cache(block_sector_t sector_idx, void *data) {
+#ifdef CACHE
     struct cache_sector *found_sector = cache_get(sector_idx);
 
+    if (found_sector == NULL) {
+        /* Import sector into cache. */
+        found_sector = cache_insert(sector_idx);
+    }
     ASSERT(found_sector != NULL);
     memcpy(data, found_sector->sector, BLOCK_SECTOR_SIZE);
+
+    found_sector->accessed = true;
+#else
+    block_read(fs_device, sector_idx, data);
+#endif
 }

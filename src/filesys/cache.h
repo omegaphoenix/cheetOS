@@ -30,14 +30,14 @@ void cache_table_init(void);
 void cache_table_free(void);
 
 /* cache_sector constructor/destructor. Removal/insertion into hash table. */
-struct cache_sector *cache_init(block_sector_t sector_idx, void *data);
+struct cache_sector *cache_init(block_sector_t sector_idx);
 void cache_free(block_sector_t sector_idx);
 
 /* Might use clock algorithm for this. */
 void cache_evict(void);
 
 /* Insertion from buffer cache. */
-void cache_insert(block_sector_t sector_idx, void *data);
+struct cache_sector *cache_insert(block_sector_t sector_idx);
 
 /* Retrieval. */
 struct cache_sector *cache_get(block_sector_t sector_idx);
