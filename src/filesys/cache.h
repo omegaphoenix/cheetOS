@@ -41,6 +41,8 @@ int cache_get(block_sector_t idx);
 
 /* Writing/Reading to/from disk methods. */
 void write_to_cache(block_sector_t sector_idx, void *data);
+void write_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
+    size_t bytes, int sector_left);
 void read_from_cache(block_sector_t sector_idx, void *data);
 void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     size_t bytes);

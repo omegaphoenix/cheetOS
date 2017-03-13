@@ -88,6 +88,7 @@ int cache_init(block_sector_t sector_idx) {
 
     /* Read from memory into buffer */
     block_read(fs_device, sector_idx, cache_buffer[i].sector);
+    //printf("CACHE_INIT, inserted at sector: %d, cache_buffer index: %d\n", sector_idx, i);
 
     /* Insert into eviction list. */
     if (clock_hand == NULL) {
@@ -111,15 +112,18 @@ void cache_free(block_sector_t sector_idx) {
 
 /*! Increment clock hand in clock algorithm. */
 static void increment_clock_hand(void) {
-    if (clock_hand == NULL || clock_hand == list_end(&cache_list)) {
+    acquire_cache_lock();
+    if (clock_hand == NULL || list_next(clock_hand) == list_end(&cache_list)) {
         clock_hand = list_begin(&cache_list);
     }
     else {
         clock_hand = list_next(clock_hand);
     }
+
     if (list_size(&cache_list) == 1) {
         clock_hand = NULL;
     }
+    release_cache_lock();
 }
 
 /*! Choose a cache sector to be evicted based on clock algorithm. */
@@ -133,11 +137,9 @@ static int choose_sector_to_evict(void) {
 
     while (sector->accessed) {
         sector->accessed = false;
-
         increment_clock_hand();
         sector = list_entry(clock_hand, struct cache_sector, cache_list_elem);
     }
-
     increment_clock_hand();
     return sector->sector_idx;
 }
@@ -198,6 +200,7 @@ static int cache_get_free(void) {
 
 /*! Will write data to a cache_sector buffer. */
 void write_to_cache(block_sector_t sector_idx, void *data) {
+    //printf("write_to_cache(): sector_idx = %d\n", sector_idx);
 #ifdef CACHE
     int idx = cache_get(sector_idx);
 
@@ -214,6 +217,44 @@ void write_to_cache(block_sector_t sector_idx, void *data) {
     cache_buffer[idx].dirty = true;
 #else
     block_write(fs_device, sector_idx, data);
+#endif
+}
+
+void write_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
+    size_t bytes, int sector_left) {
+    //printf("write_cache_offset(): sector_idx = %d, offset = %d\n", sector_idx, ofs);
+#ifdef CACHE
+    int idx = cache_get(sector_idx);
+
+    if (idx == -1) {
+        /* Import sector into cache. */
+        idx = cache_insert(sector_idx);
+    }
+
+    /* We want to be sure that the sector we find is not null */
+    ASSERT(cache_buffer[idx].valid);
+    memcpy(cache_buffer[idx].sector + ofs, data, bytes);
+
+    cache_buffer[idx].accessed = true;
+    cache_buffer[idx].dirty = true;
+#else
+    /* We need a bounce buffer. */
+    uint8_t *bounce = malloc(BLOCK_SECTOR_SIZE);
+    if (bounce == NULL) {
+        return;
+    }
+
+    /* If the sector contains data before or after the chunk
+       we're writing, then we need to read in the sector
+       first.  Otherwise we start with a sector of all zeros. */
+
+    if (ofs > 0 || bytes < sector_left)
+        block_read(fs_device, sector_idx, bounce);
+    else
+        memset (bounce, 0, BLOCK_SECTOR_SIZE);
+
+    memcpy(bounce + ofs, data, bytes);
+    block_write(fs_device, sector_idx, bounce);
 #endif
 }
 
@@ -238,18 +279,19 @@ void read_from_cache(block_sector_t sector_idx, void *data) {
 /*! Will read from cache and write to memory. Involves freeing. */
 void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
         size_t bytes) {
+    //printf("\nread_cache_offset(): sector_idx = %d, ofs = %d, bytes = %d\n", sector_idx, ofs, bytes);
     ASSERT(ofs >= 0 && ofs < BLOCK_SECTOR_SIZE);
     ASSERT(bytes > 0 && bytes <= BLOCK_SECTOR_SIZE);
-#ifdef NCACHE
+#ifdef CACHE
     int idx = cache_get(sector_idx);
-    struct cache_sector *found_sector;
 
-    if (idx == -1) {
+    if (idx == -1) { // if we load the cache every time, it works.
         /* Import sector into cache. */
         idx = cache_insert(sector_idx);
     }
     ASSERT(cache_buffer[idx].valid);
     memcpy(data, cache_buffer[idx].sector + ofs, bytes);
+    //printf("data: %s\n", data);
 
     cache_buffer[idx].accessed = true;
 #else
@@ -259,5 +301,6 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     }
     block_read(fs_device, sector_idx, bounce);
     memcpy(data, bounce + ofs, bytes);
+    //printf("data: %s\n", data);
 #endif
 }
