@@ -102,10 +102,12 @@ int cache_init(block_sector_t sector_idx) {
 /*! Finds appropriate sector and removes it from table. */
 void cache_free(block_sector_t sector_idx) {
     int i = cache_get(sector_idx);
+    ASSERT(i != -1);
     if (clock_hand == &cache_buffer[i].cache_list_elem) {
         increment_clock_hand();
     }
     cache_buffer[i].valid = false;
+    cache_buffer[i].sector_idx = 0;
     list_remove(&cache_buffer[i].cache_list_elem);
 }
 
@@ -242,7 +244,6 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     ASSERT(bytes > 0 && bytes <= BLOCK_SECTOR_SIZE);
 #ifdef NCACHE
     int idx = cache_get(sector_idx);
-    struct cache_sector *found_sector;
 
     if (idx == -1) {
         /* Import sector into cache. */
@@ -253,6 +254,8 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
 
     cache_buffer[idx].accessed = true;
 #else
+    /* Read sector into bounce buffer, then partially copy
+       into caller's buffer. */
     uint8_t *bounce = malloc(BLOCK_SECTOR_SIZE);
     if (bounce == NULL) {
         return;
