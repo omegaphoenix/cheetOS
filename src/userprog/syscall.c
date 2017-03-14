@@ -17,7 +17,9 @@
 #endif
 
 /* Protect filesys calls. */
+#ifndef CACHE
 static struct lock filesys_lock;
+#endif
 
 static void syscall_handler(struct intr_frame *);
 
@@ -56,7 +58,9 @@ static bool valid_write_addr(void *addr) UNUSED;
 
 void syscall_init(void) {
     intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
+#ifndef CACHE
     lock_init(&filesys_lock);
+#endif
 }
 
 static void syscall_handler(struct intr_frame *f UNUSED) {
@@ -180,12 +184,16 @@ void *get_third_arg(struct intr_frame *f) {
 /*! Acquire file locks. Need two because bochs might have files and their
     static variables go out of memory. */
 void acquire_file_lock(void) {
+#ifndef CACHE
     lock_acquire(&filesys_lock);
+#endif
 }
 
 /*! Release file locks. See comment in acquire_file_lock. */
 void release_file_lock(void) {
+#ifndef CACHE
     lock_release(&filesys_lock);
+#endif
 }
 
 /*! Terminates Pintos. Should be seldom used due to loss of information on

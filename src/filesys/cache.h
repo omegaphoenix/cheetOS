@@ -22,23 +22,12 @@ struct cache_sector {
     struct list_elem cache_list_elem;   /*!< Makes it part of an eviction list. */
     uint8_t sector[BLOCK_SECTOR_SIZE];  /*!< Each sector is 512 bytes. */
     struct rw_lock read_write_lock;     /*!< For synchronizing readers/writers. */
+    struct lock block_lock;             /*!< Lock for using block. */
+    bool pin_count;                      /*!< Pin to prevent eviction. */
 };
 
 /* Cache initialization. */
 void cache_table_init(void);
-
-/* cache_sector constructor/destructor. Removal/insertion into list. */
-int cache_init(block_sector_t sector_idx);
-void cache_free(block_sector_t sector_idx);
-
-/* Might use clock algorithm for this. */
-void cache_evict(void);
-
-/* Insertion from buffer cache. */
-int cache_insert(block_sector_t sector_idx);
-
-/* Retrieve cache_buffer index that corresponds to block sector_idx. */
-int cache_get(block_sector_t sector_idx);
 
 /* Writing/Reading to/from disk methods. */
 void write_to_cache(block_sector_t sector_idx, const void *data);

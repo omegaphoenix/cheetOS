@@ -22,6 +22,19 @@ static struct lock cache_lock;
 static void acquire_cache_lock(void);
 static void release_cache_lock(void);
 
+/* cache_sector constructor/destructor. Removal/insertion into list. */
+static int cache_init(block_sector_t sector_idx);
+static void cache_free(block_sector_t sector_idx);
+
+/* Might use clock algorithm for this. */
+static void cache_evict(void);
+
+/* Insertion from buffer cache. */
+static int cache_insert(block_sector_t sector_idx);
+
+/* Retrieve cache_buffer index that corresponds to block sector_idx. */
+static int cache_get(block_sector_t sector_idx);
+
 static int cache_get_free(void);
 static bool in_cache(block_sector_t sector_idx);
 static int choose_sector_to_evict(void);
@@ -49,8 +62,19 @@ void cache_table_init(void) {
         cache_buffer[i].valid = false;
         cache_buffer[i].accessed = false;
         cache_buffer[i].dirty = false;
+        cache_buffer[i].pin_count = 0;
         rw_lock_init(&cache_buffer[i].read_write_lock);
     }
+}
+
+static void pin(int array_idx) {
+    cache_buffer[array_idx].pin_count++;
+}
+
+static void unpin(int array_idx) {
+    ASSERT(cache_buffer[array_idx].valid);
+    ASSERT(cache_buffer[array_idx].pin_count > 0);
+    cache_buffer[array_idx].pin_count--;
 }
 
 /*! Return true if idx is stored in the buffer cache. */
@@ -77,7 +101,7 @@ static bool is_full_cache(void) {
 }
 
 /*! Initialize a new sector_idx, and insert into cache buffer. */
-int cache_init(block_sector_t sector_idx) {
+static int cache_init(block_sector_t sector_idx) {
     /* First, check that it doesn't exist */
     ASSERT(!in_cache(sector_idx));
     int i = cache_get_free();
@@ -103,20 +127,24 @@ int cache_init(block_sector_t sector_idx) {
 }
 
 /*! Finds appropriate sector and removes it from table. */
-void cache_free(block_sector_t sector_idx) {
+static void cache_free(block_sector_t sector_idx) {
     int i = cache_get(sector_idx);
     ASSERT(i != -1);
+    ASSERT(cache_buffer[i].pin_count == 1);
+    ASSERT(cache_buffer[i].valid);
     if (clock_hand == &cache_buffer[i].cache_list_elem) {
         increment_clock_hand();
     }
     cache_buffer[i].valid = false;
+    cache_buffer[i].accessed = false;
+    cache_buffer[i].dirty = false;
     cache_buffer[i].sector_idx = 0;
+    cache_buffer[i].pin_count = 0;
     list_remove(&cache_buffer[i].cache_list_elem);
 }
 
 /*! Increment clock hand in clock algorithm. */
 static void increment_clock_hand(void) {
-    acquire_cache_lock();
     if (clock_hand == NULL || clock_hand == list_back(&cache_list)) {
         clock_hand = list_begin(&cache_list);
     }
@@ -127,7 +155,6 @@ static void increment_clock_hand(void) {
     if (list_size(&cache_list) == 1) {
         clock_hand = NULL;
     }
-    release_cache_lock();
 }
 
 /*! Choose a cache sector to be evicted based on clock algorithm. */
@@ -139,8 +166,10 @@ static int choose_sector_to_evict(void) {
     struct cache_sector *sector =
         list_entry(clock_hand, struct cache_sector, cache_list_elem);
 
-    while (sector->accessed) {
-        sector->accessed = false;
+    while (sector->accessed || sector->pin_count > 0) {
+        if (sector->pin_count == 0) {
+            sector->accessed = false;
+        }
         increment_clock_hand();
         sector = list_entry(clock_hand, struct cache_sector, cache_list_elem);
     }
@@ -149,7 +178,7 @@ static int choose_sector_to_evict(void) {
 }
 
 /*! Uses block algorithm to choose the next block to evict. */
-void cache_evict(void) {
+static void cache_evict(void) {
     int sector_idx = choose_sector_to_evict();
     cache_remove(sector_idx);
 
@@ -169,7 +198,7 @@ static void cache_remove(int sector_idx) {
 
 /*! Adds a block into buffer cache. Evicts if necessary. Will write from
     memory to cache. */
-int cache_insert(block_sector_t sector_idx) {
+static int cache_insert(block_sector_t sector_idx) {
     /* Checks if the cache has already hit maximum capacity */
     if (is_full_cache()) {
         cache_evict();
@@ -181,11 +210,12 @@ int cache_insert(block_sector_t sector_idx) {
 }
 
 /* Retrieve cache_buffer index that corresponds to block sector_idx. */
-int cache_get(block_sector_t sector_idx) {
+static int cache_get(block_sector_t sector_idx) {
     int i;
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
         if (cache_buffer[i].valid
                 && cache_buffer[i].sector_idx == sector_idx) {
+            pin(i);
             return i;
         }
     }
@@ -197,6 +227,7 @@ static int cache_get_free(void) {
     int i;
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
         if (!cache_buffer[i].valid) {
+            pin(i);
             return i;
         }
     }
@@ -215,7 +246,10 @@ void write_to_cache(block_sector_t sector_idx, const void *data) {
 /* Write data to cache_sector buffer at an offset. */
 void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
     size_t bytes) {
+    ASSERT(ofs >= 0 && ofs < BLOCK_SECTOR_SIZE);
+    ASSERT(bytes > 0 && bytes <= BLOCK_SECTOR_SIZE);
 #ifdef CACHE
+    acquire_cache_lock();
     int idx = cache_get(sector_idx);
 
     if (idx == -1) {
@@ -231,6 +265,8 @@ void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
 
     cache_buffer[idx].accessed = true;
     cache_buffer[idx].dirty = true;
+    unpin(idx);
+    release_cache_lock();
 #else
     /* We need a bounce buffer. */
     uint8_t *bounce = malloc(BLOCK_SECTOR_SIZE);
@@ -241,7 +277,7 @@ void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
     /* If the sector contains data before or after the chunk
        we're writing, then we need to read in the sector
        first.  Otherwise we start with a sector of all zeros. */
-    int sector_left = BLOCK_SECTOR_SIZE - ofs;
+    size_t sector_left = BLOCK_SECTOR_SIZE - ofs;
     if (ofs > 0 || bytes < sector_left)
         block_read(fs_device, sector_idx, bounce);
     else
@@ -267,18 +303,22 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     ASSERT(ofs >= 0 && ofs < BLOCK_SECTOR_SIZE);
     ASSERT(bytes > 0 && bytes <= BLOCK_SECTOR_SIZE);
 #ifdef CACHE
+    acquire_cache_lock();
     int idx = cache_get(sector_idx);
 
     if (idx == -1) { // if we load the cache every time, it works.
         /* Import sector into cache. */
         idx = cache_insert(sector_idx);
     }
+
     ASSERT(cache_buffer[idx].valid);
     begin_read(&cache_buffer[idx].read_write_lock);
     memcpy(data, cache_buffer[idx].sector + ofs, bytes);
     end_read(&cache_buffer[idx].read_write_lock);
 
     cache_buffer[idx].accessed = true;
+    unpin(idx);
+    release_cache_lock();
 #else
     /* Read sector into bounce buffer, then partially copy
        into caller's buffer. */
