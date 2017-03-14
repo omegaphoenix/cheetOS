@@ -2,10 +2,12 @@
 #include <stdbool.h>
 #include <string.h>
 #include "devices/block.h"
+#include "devices/timer.h"
 #include "filesys/filesys.h"
 #include "filesys/off_t.h"
-#include "threads/synch.h"
+#include "threads/thread.h"
 #include "threads/malloc.h"
+#include "threads/synch.h"
 
 static struct cache_sector cache_buffer[MAX_BUFFER_SIZE];
 
@@ -38,7 +40,9 @@ static int cache_get(block_sector_t sector_idx);
 static int cache_get_free(void);
 static bool in_cache(block_sector_t sector_idx);
 static int choose_sector_to_evict(void);
-static void cache_remove(int array_idx);
+static void write_all_dirty(void);
+static void cache_write_to_disk(int array_idx);
+static void cache_write_sector_to_disk(int array_idx);
 static void increment_clock_hand(void);
 
 /*! Acquire global cache lock for modifying cache table. */
@@ -67,6 +71,9 @@ void cache_table_init(void) {
         rw_lock_init(&cache_buffer[i].read_write_lock);
     }
     release_cache_lock();
+
+    /* Spawn write-behind child. */
+    thread_create("write-behind", PRI_DEFAULT, write_all_dirty, NULL);
 }
 
 static void pin(int array_idx) {
@@ -182,20 +189,50 @@ static int choose_sector_to_evict(void) {
 /*! Uses block algorithm to choose the next block to evict. */
 static void cache_evict(void) {
     int sector_idx = choose_sector_to_evict();
-    cache_remove(sector_idx);
+    cache_write_sector_to_disk(sector_idx);
 
     /* Free memory. */
     cache_free(sector_idx);
 }
 
+static void write_behind(void) {
+    while (true) {
+        timer_sleep(100 * TIMER_FREQ);
+        write_all_dirty();
+    }
+}
+
+/*! Write out all dirty blocks to memory. */
+static void write_all_dirty(void) {
+    int i;
+    for (i = 0; i < MAX_BUFFER_SIZE; i++) {
+        if (cache_buffer[i].valid) {
+            cache_write_to_disk(i);
+        }
+    }
+}
+
 /*! Removes a block from the buffer cache. This involves it writing from cache
     back to memory. */
-static void cache_remove(int sector_idx) {
+static void cache_write_to_disk(int array_idx) {
+    if (cache_buffer[array_idx].valid && cache_buffer[array_idx].dirty) {
+        begin_write(&cache_buffer[array_idx].read_write_lock);
+        block_write(fs_device, cache_buffer[array_idx].sector_idx, cache_buffer[array_idx].sector);
+        end_write(&cache_buffer[array_idx].read_write_lock);
+        cache_buffer[array_idx].dirty = false;
+    }
+}
+
+/*! Removes a block from the buffer cache. This involves it writing from cache
+    back to memory. */
+static void cache_write_sector_to_disk(int sector_idx) {
     int array_idx = cache_get(sector_idx);
-    begin_write(&cache_buffer[array_idx].read_write_lock);
-    block_write(fs_device, sector_idx, cache_buffer[array_idx].sector);
-    end_write(&cache_buffer[array_idx].read_write_lock);
-    cache_buffer[array_idx].dirty = false;
+    if (cache_buffer[array_idx].valid && cache_buffer[array_idx].dirty) {
+        begin_write(&cache_buffer[array_idx].read_write_lock);
+        block_write(fs_device, sector_idx, cache_buffer[array_idx].sector);
+        end_write(&cache_buffer[array_idx].read_write_lock);
+        cache_buffer[array_idx].dirty = false;
+    }
 }
 
 /*! Adds a block into buffer cache. Evicts if necessary. Will write from

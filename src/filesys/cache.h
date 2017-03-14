@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include "devices/block.h"
+#include "devices/timer.h"
 #include "filesys/off_t.h"
 #include "threads/synch.h"
 
