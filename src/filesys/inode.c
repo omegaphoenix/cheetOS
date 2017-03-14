@@ -241,30 +241,12 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t
             break;
 
         if (sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE) {
-            /* Write full sector directly to disk. */
+            /* Write full sector into caller's buffer. */
             write_to_cache(sector_idx, buffer + bytes_written);
         }
         else {
             write_cache_offset(sector_idx, buffer + bytes_written, sector_ofs,
-                chunk_size, sector_left);
-            /* We need a bounce buffer. */
-            // if (bounce == NULL) {
-            //     bounce = malloc(BLOCK_SECTOR_SIZE);
-            //     if (bounce == NULL)
-            //         break;
-            // }
-
-            /* If the sector contains data before or after the chunk
-               we're writing, then we need to read in the sector
-               first.  Otherwise we start with a sector of all zeros. */
-
-            // if (sector_ofs > 0 || chunk_size < sector_left)
-            //     block_read(fs_device, sector_idx, bounce);
-            // else
-            //     memset (bounce, 0, BLOCK_SECTOR_SIZE);
-
-            // memcpy(bounce + sector_ofs, buffer + bytes_written, chunk_size);
-            // block_write(fs_device, sector_idx, bounce);
+                chunk_size);
         }
 
         /* Advance. */

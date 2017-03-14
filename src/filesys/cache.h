@@ -36,13 +36,13 @@ void cache_evict(void);
 /* Insertion from buffer cache. */
 int cache_insert(block_sector_t sector_idx);
 
-/* Retrieval. */
-int cache_get(block_sector_t idx);
+/* Retrieve cache_buffer index that corresponds to block sector_idx. */
+int cache_get(block_sector_t sector_idx);
 
 /* Writing/Reading to/from disk methods. */
-void write_to_cache(block_sector_t sector_idx, void *data);
-void write_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
-    size_t bytes, int sector_left);
+void write_to_cache(block_sector_t sector_idx, const void *data);
+void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
+    size_t bytes);
 void read_from_cache(block_sector_t sector_idx, void *data);
 void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     size_t bytes);

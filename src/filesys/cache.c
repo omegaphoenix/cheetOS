@@ -88,7 +88,6 @@ int cache_init(block_sector_t sector_idx) {
 
     /* Read from memory into buffer */
     block_read(fs_device, sector_idx, cache_buffer[i].sector);
-    //printf("CACHE_INIT, inserted at sector: %d, cache_buffer index: %d\n", sector_idx, i);
 
     /* Insert into eviction list. */
     if (clock_hand == NULL) {
@@ -113,7 +112,7 @@ void cache_free(block_sector_t sector_idx) {
 /*! Increment clock hand in clock algorithm. */
 static void increment_clock_hand(void) {
     acquire_cache_lock();
-    if (clock_hand == NULL || list_next(clock_hand) == list_end(&cache_list)) {
+    if (clock_hand == NULL || clock_hand == list_back(&cache_list)) {
         clock_hand = list_begin(&cache_list);
     }
     else {
@@ -146,18 +145,18 @@ static int choose_sector_to_evict(void) {
 
 /*! Uses block algorithm to choose the next block to evict. */
 void cache_evict(void) {
-    int idx = choose_sector_to_evict();
-    cache_remove(idx);
+    int sector_idx = choose_sector_to_evict();
+    cache_remove(sector_idx);
 
     /* Free memory. */
-    cache_free(cache_buffer[idx].sector_idx);
+    cache_free(sector_idx);
 }
 
 /*! Removes a block from the buffer cache. This involves it writing from cache
     back to memory. */
-static void cache_remove(int array_idx) {
-    block_write(fs_device, cache_buffer[array_idx].sector_idx,
-            cache_buffer[array_idx].sector);
+static void cache_remove(int sector_idx) {
+    int array_idx = cache_get(sector_idx);
+    block_write(fs_device, sector_idx, cache_buffer[array_idx].sector);
     cache_buffer[array_idx].dirty = false;
 }
 
@@ -174,7 +173,7 @@ int cache_insert(block_sector_t sector_idx) {
     return cache_init(sector_idx);
 }
 
-/*! Will retrieve the specific cache from the cache map. */
+/* Retrieve cache_buffer index that corresponds to block sector_idx. */
 int cache_get(block_sector_t sector_idx) {
     int i;
     int ret = -1;
@@ -198,9 +197,8 @@ static int cache_get_free(void) {
     return -1;
 }
 
-/*! Will write data to a cache_sector buffer. */
-void write_to_cache(block_sector_t sector_idx, void *data) {
-    //printf("write_to_cache(): sector_idx = %d\n", sector_idx);
+/*! Write data to a cache_sector buffer. */
+void write_to_cache(block_sector_t sector_idx, const void *data) {
 #ifdef CACHE
     int idx = cache_get(sector_idx);
 
@@ -220,9 +218,9 @@ void write_to_cache(block_sector_t sector_idx, void *data) {
 #endif
 }
 
-void write_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
-    size_t bytes, int sector_left) {
-    //printf("write_cache_offset(): sector_idx = %d, offset = %d\n", sector_idx, ofs);
+/* Write data to cache_sector buffer at an offset. */
+void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
+    size_t bytes) {
 #ifdef CACHE
     int idx = cache_get(sector_idx);
 
@@ -247,18 +245,18 @@ void write_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     /* If the sector contains data before or after the chunk
        we're writing, then we need to read in the sector
        first.  Otherwise we start with a sector of all zeros. */
-
+    int sector_left = BLOCK_SECTOR_SIZE - ofs;
     if (ofs > 0 || bytes < sector_left)
         block_read(fs_device, sector_idx, bounce);
     else
-        memset (bounce, 0, BLOCK_SECTOR_SIZE);
+        memset(bounce, 0, BLOCK_SECTOR_SIZE);
 
     memcpy(bounce + ofs, data, bytes);
     block_write(fs_device, sector_idx, bounce);
 #endif
 }
 
-/*! Will read from cache and write to memory. Involves freeing. */
+/*! Read from cache and write to memory. Involves freeing. */
 void read_from_cache(block_sector_t sector_idx, void *data) {
 #ifdef CACHE
     int idx = cache_get(sector_idx);
@@ -276,10 +274,9 @@ void read_from_cache(block_sector_t sector_idx, void *data) {
 #endif
 }
 
-/*! Will read from cache and write to memory. Involves freeing. */
+/*! Read from cache at an offset and write to memory. Involves freeing. */
 void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
         size_t bytes) {
-    //printf("\nread_cache_offset(): sector_idx = %d, ofs = %d, bytes = %d\n", sector_idx, ofs, bytes);
     ASSERT(ofs >= 0 && ofs < BLOCK_SECTOR_SIZE);
     ASSERT(bytes > 0 && bytes <= BLOCK_SECTOR_SIZE);
 #ifdef CACHE
@@ -291,7 +288,6 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     }
     ASSERT(cache_buffer[idx].valid);
     memcpy(data, cache_buffer[idx].sector + ofs, bytes);
-    //printf("data: %s\n", data);
 
     cache_buffer[idx].accessed = true;
 #else
@@ -301,6 +297,5 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     }
     block_read(fs_device, sector_idx, bounce);
     memcpy(data, bounce + ofs, bytes);
-    //printf("data: %s\n", data);
 #endif
 }
