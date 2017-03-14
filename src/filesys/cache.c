@@ -55,6 +55,7 @@ static void release_cache_lock(void) {
 void cache_table_init(void) {
     list_init(&cache_list);
     lock_init(&cache_lock);
+    acquire_cache_lock();
     clock_hand = NULL;
     int i;
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
@@ -65,6 +66,7 @@ void cache_table_init(void) {
         cache_buffer[i].pin_count = 0;
         rw_lock_init(&cache_buffer[i].read_write_lock);
     }
+    release_cache_lock();
 }
 
 static void pin(int array_idx) {
@@ -256,6 +258,7 @@ void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
         /* Import sector into cache. */
         idx = cache_insert(sector_idx);
     }
+    release_cache_lock();
 
     /* We want to be sure that the sector we find is not null */
     ASSERT(cache_buffer[idx].valid);
@@ -266,7 +269,6 @@ void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
     cache_buffer[idx].accessed = true;
     cache_buffer[idx].dirty = true;
     unpin(idx);
-    release_cache_lock();
 #else
     /* We need a bounce buffer. */
     uint8_t *bounce = malloc(BLOCK_SECTOR_SIZE);
@@ -310,6 +312,7 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
         /* Import sector into cache. */
         idx = cache_insert(sector_idx);
     }
+    release_cache_lock();
 
     ASSERT(cache_buffer[idx].valid);
     begin_read(&cache_buffer[idx].read_write_lock);
@@ -318,7 +321,6 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
 
     cache_buffer[idx].accessed = true;
     unpin(idx);
-    release_cache_lock();
 #else
     /* Read sector into bounce buffer, then partially copy
        into caller's buffer. */
