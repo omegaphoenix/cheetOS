@@ -48,6 +48,15 @@ mapid_t sys_mmap(int fd, void *addr);
 void sys_munmap(mapid_t mapping);
 #endif
 
+#ifdef CACHE
+/* File system */
+bool sys_chdir (const char *dir);
+bool sys_mkdir (const char *dir);
+bool sys_readdir (int fd, char *name);
+bool sys_isdir (int fd);
+int sys_inumber (int fd);
+#endif
+
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byteput);
@@ -562,7 +571,7 @@ void sys_close(int fd) {
 
 #ifdef VM
 /*! Maps the file open as FD into the process's virtual address space.
-    The entire file is mapped as consecutive pages starting at ADDR. 
+    The entire file is mapped as consecutive pages starting at ADDR.
     Returns mapping id that is unique within the process, or -1 on failure. */
 mapid_t sys_mmap (int fd, void *addr) {
     struct thread *cur = thread_current();
@@ -621,6 +630,7 @@ mapid_t sys_mmap (int fd, void *addr) {
     return add_mmap(cur, addr, fd, mapping);
 }
 
+/*! Unmaps mmapped file by writing file back to disk and evicting frame. */
 void sys_munmap (mapid_t mapping) {
     struct thread *cur = thread_current();
 
@@ -659,6 +669,47 @@ void sys_munmap (mapid_t mapping) {
     /* Remove entry from list of mmap files */
     remove_mmap(cur, mapping);
 
+}
+#endif
+
+#ifdef CACHE
+/*! Changes the current working directory of the process to DIR, which may be
+    relative or absolute. Returns true if successful, false on failure. */
+bool sys_chdir (const char *dir) {
+    // TODO
+    return false;
+
+}
+
+/*! Creates the directory named DIR, which may be relative or absolute.
+    Returns true if successful, false on failure. Fails if DIR already exists
+    or if any directory name in DIR, besides the last, doesn't already exist. */
+bool sys_mkdir (const char *dir) {
+    // TODO
+    return false;
+}
+
+/*! Reads a directory entry from file descriptor FD, which must represent a
+    directory. If successful, stores the null-terminated file name in NAME,
+    which must have room for READDIR_MAX_LEN + 1 bytes, and returns true.
+    If no entries are left in the directory, returns false. */
+bool sys_readdir (int fd, char *name) {
+    // TODO
+    return false;
+}
+
+/*! Returns true if fd represents a directory, false if it represents an
+    ordinary file.*/
+bool sys_isdir (int fd) {
+    // TODO
+    return false;
+}
+
+/*! Returns the inode number of the inode associated with fd, which may
+    represent an ordinary file or a directory. */
+int sys_inumber (int fd) {
+    // TODO
+    return 0;
 }
 #endif
 
