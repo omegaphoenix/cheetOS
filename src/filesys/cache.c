@@ -178,14 +178,13 @@ int cache_insert(block_sector_t sector_idx) {
 /* Retrieve cache_buffer index that corresponds to block sector_idx. */
 int cache_get(block_sector_t sector_idx) {
     int i;
-    int ret = -1;
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
         if (cache_buffer[i].valid
                 && cache_buffer[i].sector_idx == sector_idx) {
-            ret = i;
+            return i;
         }
     }
-    return ret;
+    return -1;
 }
 
 /*! Will retrieve the specific cache from the cache map. */
