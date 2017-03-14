@@ -106,11 +106,14 @@ struct frame_table_entry *get_frame(void) {
     list. If we reach the end of the list, wrap around to the beginning. */
 static void increment_clock_hand(void) {
     acquire_frame_lock();
-    if (clock_hand == NULL || clock_hand == list_end(&frame_table)) {
+    if (clock_hand == NULL || clock_hand->next == list_end(&frame_table)) {
         clock_hand = list_begin(&frame_table);
     }
     else {
         clock_hand = list_next(clock_hand);
+    }
+    if (list_size(&frame_table) == 1) {
+        clock_hand = NULL;
     }
     release_frame_lock();
 }
