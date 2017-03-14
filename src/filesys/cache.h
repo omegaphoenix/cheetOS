@@ -21,6 +21,7 @@ struct cache_sector {
     bool dirty;                         /*!< Boolean if sector is dirty. */
     struct list_elem cache_list_elem;   /*!< Makes it part of an eviction list. */
     uint8_t sector[BLOCK_SECTOR_SIZE];  /*!< Each sector is 512 bytes. */
+    struct rw_lock read_write_lock;     /*!< For synchronizing readers/writers. */
 };
 
 /* Cache initialization. */

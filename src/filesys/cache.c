@@ -49,6 +49,7 @@ void cache_table_init(void) {
         cache_buffer[i].valid = false;
         cache_buffer[i].accessed = false;
         cache_buffer[i].dirty = false;
+        rw_lock_init(&cache_buffer[i].read_write_lock);
     }
 }
 
@@ -87,7 +88,9 @@ int cache_init(block_sector_t sector_idx) {
     cache_buffer[i].dirty = false;
 
     /* Read from memory into buffer */
+    begin_write(&cache_buffer[i].read_write_lock);
     block_read(fs_device, sector_idx, cache_buffer[i].sector);
+    end_write(&cache_buffer[i].read_write_lock);
 
     /* Insert into eviction list. */
     if (clock_hand == NULL) {
@@ -158,7 +161,9 @@ void cache_evict(void) {
     back to memory. */
 static void cache_remove(int sector_idx) {
     int array_idx = cache_get(sector_idx);
+    begin_write(&cache_buffer[array_idx].read_write_lock);
     block_write(fs_device, sector_idx, cache_buffer[array_idx].sector);
+    end_write(&cache_buffer[array_idx].read_write_lock);
     cache_buffer[array_idx].dirty = false;
 }
 
@@ -201,19 +206,7 @@ static int cache_get_free(void) {
 /*! Write data to a cache_sector buffer. */
 void write_to_cache(block_sector_t sector_idx, const void *data) {
 #ifdef CACHE
-    int idx = cache_get(sector_idx);
-
-    if (idx == -1) {
-        /* Import sector into cache. */
-        idx = cache_insert(sector_idx);
-    }
-
-    /* We want to be sure that the sector we find is not null */
-    ASSERT(cache_buffer[idx].valid);
-    memcpy(cache_buffer[idx].sector, data, BLOCK_SECTOR_SIZE);
-
-    cache_buffer[idx].accessed = true;
-    cache_buffer[idx].dirty = true;
+    write_cache_offset(sector_idx, data, 0, BLOCK_SECTOR_SIZE);
 #else
     block_write(fs_device, sector_idx, data);
 #endif
@@ -232,7 +225,9 @@ void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
 
     /* We want to be sure that the sector we find is not null */
     ASSERT(cache_buffer[idx].valid);
+    begin_write(&cache_buffer[idx].read_write_lock);
     memcpy(cache_buffer[idx].sector + ofs, data, bytes);
+    end_write(&cache_buffer[idx].read_write_lock);
 
     cache_buffer[idx].accessed = true;
     cache_buffer[idx].dirty = true;
@@ -260,16 +255,7 @@ void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
 /*! Read from cache and write to memory. Involves freeing. */
 void read_from_cache(block_sector_t sector_idx, void *data) {
 #ifdef CACHE
-    int idx = cache_get(sector_idx);
-
-    if (idx == -1) {
-        /* Import sector into cache. */
-        idx = cache_insert(sector_idx);
-    }
-    ASSERT(cache_buffer[idx].valid);
-    memcpy(data, cache_buffer[idx].sector, BLOCK_SECTOR_SIZE);
-
-    cache_buffer[idx].accessed = true;
+    read_cache_offset(sector_idx, data, 0, BLOCK_SECTOR_SIZE);
 #else
     block_read(fs_device, sector_idx, data);
 #endif
@@ -288,7 +274,9 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
         idx = cache_insert(sector_idx);
     }
     ASSERT(cache_buffer[idx].valid);
+    begin_read(&cache_buffer[idx].read_write_lock);
     memcpy(data, cache_buffer[idx].sector + ofs, bytes);
+    end_read(&cache_buffer[idx].read_write_lock);
 
     cache_buffer[idx].accessed = true;
 #else
