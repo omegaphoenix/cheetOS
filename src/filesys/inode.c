@@ -196,8 +196,6 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
             read_from_cache(sector_idx, buffer + bytes_read);
         }
         else {
-            /* Read sector into bounce buffer, then partially copy
-               into caller's buffer. */
             read_cache_offset(sector_idx, buffer + bytes_read, sector_ofs,
                     chunk_size);
         }
