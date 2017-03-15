@@ -223,8 +223,8 @@ static void write_behind(void *arg_ UNUSED) {
 
 /*! Write out all dirty blocks to memory. */
 void write_all_dirty(void) {
-    int i;
     acquire_cache_lock();
+    int i;
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
         if (cache_buffer[i].valid) {
             cache_write_to_disk(i);
@@ -325,7 +325,6 @@ static void read_ahead_loop(void *arg_ UNUSED) {
 /*! Read sector into cache. */
 static void read_ahead(block_sector_t sector_idx) {
     if (sector_idx >= block_size(fs_device)) {
-        release_cache_lock();
         return;
     }
     int idx = cache_get(sector_idx, true);
@@ -338,11 +337,7 @@ static void read_ahead(block_sector_t sector_idx) {
 
 /*! Write data to a cache_sector buffer. */
 void write_to_cache(block_sector_t sector_idx, const void *data) {
-#ifdef CACHE
     write_cache_offset(sector_idx, data, 0, BLOCK_SECTOR_SIZE);
-#else
-    block_write(fs_device, sector_idx, data);
-#endif
 }
 
 /* Write data to cache_sector buffer at an offset. */
@@ -389,16 +384,13 @@ void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
 
     memcpy(bounce + ofs, data, bytes);
     block_write(fs_device, sector_idx, bounce);
+    free(bounce);
 #endif
 }
 
 /*! Read from cache and write to memory. Involves freeing. */
 void read_from_cache(block_sector_t sector_idx, void *data) {
-#ifdef CACHE
     read_cache_offset(sector_idx, data, 0, BLOCK_SECTOR_SIZE);
-#else
-    block_read(fs_device, sector_idx, data);
-#endif
 }
 
 /*! Read from cache at an offset and write to memory. Involves freeing. */
@@ -434,5 +426,6 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     }
     block_read(fs_device, sector_idx, bounce);
     memcpy(data, bounce + ofs, bytes);
+    free(bounce);
 #endif
 }
