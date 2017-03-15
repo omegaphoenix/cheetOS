@@ -18,13 +18,14 @@
 struct cache_sector {
     block_sector_t sector_idx;          /*!< Sector index on filesys block. */
     bool valid;                         /*!< True if sector is used. False when evicted. */
+    bool evicting;                      /*!< True if sector is being evicted. */
     bool accessed;                      /*!< Sector access level. */
     bool dirty;                         /*!< Boolean if sector is dirty. */
     struct list_elem cache_list_elem;   /*!< Makes it part of an eviction list. */
     uint8_t sector[BLOCK_SECTOR_SIZE];  /*!< Each sector is 512 bytes. */
     struct rw_lock read_write_lock;     /*!< For synchronizing readers/writers. */
     struct lock block_lock;             /*!< Lock for using block. */
-    bool pin_count;                      /*!< Pin to prevent eviction. */
+    int pin_count;                      /*!< Pin to prevent eviction. */
 };
 
 /* Cache initialization. */

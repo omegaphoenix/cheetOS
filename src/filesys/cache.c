@@ -35,7 +35,7 @@ static void cache_evict(void);
 static int cache_insert(block_sector_t sector_idx);
 
 /* Retrieve cache_buffer index that corresponds to block sector_idx. */
-static int cache_get(block_sector_t sector_idx);
+static int cache_get(block_sector_t sector_idx, bool evicting);
 
 static int cache_get_free(void);
 static bool in_cache(block_sector_t sector_idx);
@@ -70,6 +70,7 @@ void cache_table_init(void) {
         cache_buffer[i].accessed = false;
         cache_buffer[i].dirty = false;
         cache_buffer[i].pin_count = 0;
+        cache_buffer[i].evicting = false;
         rw_lock_init(&cache_buffer[i].read_write_lock);
     }
     release_cache_lock();
@@ -79,6 +80,7 @@ void cache_table_init(void) {
 }
 
 static void pin(int array_idx) {
+    ASSERT(cache_buffer[array_idx].pin_count >= 0);
     cache_buffer[array_idx].pin_count++;
 }
 
@@ -117,10 +119,12 @@ static int cache_init(block_sector_t sector_idx) {
     ASSERT(!in_cache(sector_idx));
     int i = cache_get_free();
     ASSERT(i != -1);
+    ASSERT(cache_buffer[i].pin_count == 1);
     cache_buffer[i].sector_idx = sector_idx;
     cache_buffer[i].valid = true;
     cache_buffer[i].accessed = true;
     cache_buffer[i].dirty = false;
+    cache_buffer[i].evicting = false;
 
     /* Read from memory into buffer */
     begin_write(&cache_buffer[i].read_write_lock);
@@ -139,9 +143,9 @@ static int cache_init(block_sector_t sector_idx) {
 
 /*! Finds appropriate sector and removes it from table. */
 static void cache_free(block_sector_t sector_idx) {
-    int i = cache_get(sector_idx);
+    int i = cache_get(sector_idx, true);
     ASSERT(i != -1);
-    ASSERT(cache_buffer[i].pin_count == 1);
+    ASSERT(cache_buffer[i].pin_count == 2);
     ASSERT(cache_buffer[i].valid);
     if (clock_hand == &cache_buffer[i].cache_list_elem) {
         increment_clock_hand();
@@ -149,6 +153,7 @@ static void cache_free(block_sector_t sector_idx) {
     cache_buffer[i].valid = false;
     cache_buffer[i].accessed = false;
     cache_buffer[i].dirty = false;
+    cache_buffer[i].evicting = false;
     cache_buffer[i].sector_idx = 0;
     cache_buffer[i].pin_count = 0;
     list_remove(&cache_buffer[i].cache_list_elem);
@@ -184,6 +189,7 @@ static int choose_sector_to_evict(void) {
         increment_clock_hand();
         sector = list_entry(clock_hand, struct cache_sector, cache_list_elem);
     }
+    sector->evicting = true;
     increment_clock_hand();
     return sector->sector_idx;
 }
@@ -207,11 +213,13 @@ static void write_behind(void *arg_ UNUSED) {
 /*! Write out all dirty blocks to memory. */
 void write_all_dirty(void) {
     int i;
+    acquire_cache_lock();
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
         if (cache_buffer[i].valid) {
             cache_write_to_disk(i);
         }
     }
+    release_cache_lock();
 }
 
 /*! Removes a block from the buffer cache. This involves it writing from cache
@@ -219,7 +227,8 @@ void write_all_dirty(void) {
 static void cache_write_to_disk(int array_idx) {
     if (cache_buffer[array_idx].valid && cache_buffer[array_idx].dirty) {
         begin_write(&cache_buffer[array_idx].read_write_lock);
-        block_write(fs_device, cache_buffer[array_idx].sector_idx, cache_buffer[array_idx].sector);
+        block_write(fs_device, cache_buffer[array_idx].sector_idx,
+                cache_buffer[array_idx].sector);
         end_write(&cache_buffer[array_idx].read_write_lock);
         cache_buffer[array_idx].dirty = false;
     }
@@ -228,7 +237,8 @@ static void cache_write_to_disk(int array_idx) {
 /*! Removes a block from the buffer cache. This involves it writing from cache
     back to memory. */
 static void cache_write_sector_to_disk(int sector_idx) {
-    int array_idx = cache_get(sector_idx);
+    int array_idx = cache_get(sector_idx, true);
+    ASSERT(cache_buffer[array_idx].pin_count == 1);
     if (cache_buffer[array_idx].valid && cache_buffer[array_idx].dirty) {
         begin_write(&cache_buffer[array_idx].read_write_lock);
         block_write(fs_device, sector_idx, cache_buffer[array_idx].sector);
@@ -251,10 +261,11 @@ static int cache_insert(block_sector_t sector_idx) {
 }
 
 /* Retrieve cache_buffer index that corresponds to block sector_idx. */
-static int cache_get(block_sector_t sector_idx) {
+static int cache_get(block_sector_t sector_idx, bool evicting) {
     int i;
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
         if (cache_buffer[i].valid
+                && (!cache_buffer[i].evicting || evicting)
                 && cache_buffer[i].sector_idx == sector_idx) {
             pin(i);
             return i;
@@ -282,7 +293,7 @@ static void read_ahead(void *sector_idx) {
         return;
     }
     acquire_cache_lock();
-    int idx = cache_get(new_sector_idx);
+    int idx = cache_get(new_sector_idx, false);
     if (idx == -1) {
         idx = cache_insert(new_sector_idx);
     }
@@ -307,13 +318,15 @@ void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
     ASSERT(bytes > 0 && bytes <= BLOCK_SECTOR_SIZE);
 #ifdef CACHE
     acquire_cache_lock();
-    int idx = cache_get(sector_idx);
+    int idx = cache_get(sector_idx, false);
 
     if (idx == -1) {
         /* Import sector into cache. */
         idx = cache_insert(sector_idx);
+        /* Spawn read-ahead child. */
+        // thread_create("read-ahead", PRI_DEFAULT, read_ahead, &sector_idx);
     }
-    release_cache_lock();
+    cache_buffer[idx].accessed = true;
 
     /* We want to be sure that the sector we find is not null */
     ASSERT(cache_buffer[idx].valid);
@@ -325,6 +338,7 @@ void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
     cache_buffer[idx].dirty = true;
     ASSERT(cache_buffer[idx].pin_count > 0);
     unpin(idx);
+    release_cache_lock();
 #else
     /* We need a bounce buffer. */
     uint8_t *bounce = malloc(BLOCK_SECTOR_SIZE);
@@ -362,15 +376,15 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     ASSERT(bytes > 0 && bytes <= BLOCK_SECTOR_SIZE);
 #ifdef CACHE
     acquire_cache_lock();
-    int idx = cache_get(sector_idx);
+    int idx = cache_get(sector_idx, false);
 
     if (idx == -1) { // if we load the cache every time, it works.
         /* Import sector into cache. */
         idx = cache_insert(sector_idx);
         /* Spawn read-ahead child. */
-        thread_create("read-ahead", PRI_DEFAULT, read_ahead, &sector_idx);
+        // thread_create("read-ahead", PRI_DEFAULT, read_ahead, &sector_idx);
     }
-    release_cache_lock();
+    cache_buffer[idx].accessed = true;
 
     ASSERT(cache_buffer[idx].valid);
     begin_read(&cache_buffer[idx].read_write_lock);
@@ -380,6 +394,7 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     cache_buffer[idx].accessed = true;
     ASSERT(cache_buffer[idx].pin_count > 0);
     unpin(idx);
+    release_cache_lock();
 #else
     /* Read sector into bounce buffer, then partially copy
        into caller's buffer. */
