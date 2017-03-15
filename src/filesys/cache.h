@@ -28,6 +28,11 @@ struct cache_sector {
     int pin_count;                      /*!< Pin to prevent eviction. */
 };
 
+struct read_ahead_sector {
+    block_sector_t sector_idx;  /*!< Next sector index. */
+    struct list_elem ra_elem;   /*!< Add this to the list. */
+};
+
 /* Cache initialization. */
 void cache_table_init(void);
 
