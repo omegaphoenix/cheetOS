@@ -31,6 +31,7 @@ struct cache_sector {
 void cache_table_init(void);
 
 /* Writing/Reading to/from disk methods. */
+void write_all_dirty(void);
 void write_to_cache(block_sector_t sector_idx, const void *data);
 void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
     size_t bytes);

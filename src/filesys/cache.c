@@ -40,10 +40,12 @@ static int cache_get(block_sector_t sector_idx);
 static int cache_get_free(void);
 static bool in_cache(block_sector_t sector_idx);
 static int choose_sector_to_evict(void);
-static void write_all_dirty(void);
 static void cache_write_to_disk(int array_idx);
 static void cache_write_sector_to_disk(int array_idx);
 static void increment_clock_hand(void);
+
+static void write_behind(void *arg_ UNUSED);
+static void read_ahead(void *sector_idx);
 
 /*! Acquire global cache lock for modifying cache table. */
 static void acquire_cache_lock(void) {
@@ -73,7 +75,7 @@ void cache_table_init(void) {
     release_cache_lock();
 
     /* Spawn write-behind child. */
-    thread_create("write-behind", PRI_DEFAULT, write_all_dirty, NULL);
+    thread_create("write-behind", PRI_DEFAULT, write_behind, NULL);
 }
 
 static void pin(int array_idx) {
@@ -195,7 +197,7 @@ static void cache_evict(void) {
     cache_free(sector_idx);
 }
 
-static void write_behind(void) {
+static void write_behind(void *arg_ UNUSED) {
     while (true) {
         timer_sleep(100 * TIMER_FREQ);
         write_all_dirty();
@@ -203,7 +205,7 @@ static void write_behind(void) {
 }
 
 /*! Write out all dirty blocks to memory. */
-static void write_all_dirty(void) {
+void write_all_dirty(void) {
     int i;
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
         if (cache_buffer[i].valid) {
@@ -273,6 +275,22 @@ static int cache_get_free(void) {
     return -1;
 }
 
+/*! Read sector into cache. */
+static void read_ahead(void *sector_idx) {
+    block_sector_t new_sector_idx = (*(block_sector_t *)sector_idx) + 1;
+    if (new_sector_idx >= block_size(fs_device)) {
+        return;
+    }
+    acquire_cache_lock();
+    int idx = cache_get(new_sector_idx);
+    if (idx == -1) {
+        idx = cache_insert(new_sector_idx);
+    }
+    ASSERT(cache_buffer[idx].pin_count > 0);
+    unpin(idx);
+    release_cache_lock();
+}
+
 /*! Write data to a cache_sector buffer. */
 void write_to_cache(block_sector_t sector_idx, const void *data) {
 #ifdef CACHE
@@ -305,6 +323,7 @@ void write_cache_offset(block_sector_t sector_idx, const void *data, off_t ofs,
 
     cache_buffer[idx].accessed = true;
     cache_buffer[idx].dirty = true;
+    ASSERT(cache_buffer[idx].pin_count > 0);
     unpin(idx);
 #else
     /* We need a bounce buffer. */
@@ -348,6 +367,8 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     if (idx == -1) { // if we load the cache every time, it works.
         /* Import sector into cache. */
         idx = cache_insert(sector_idx);
+        /* Spawn read-ahead child. */
+        thread_create("read-ahead", PRI_DEFAULT, read_ahead, &sector_idx);
     }
     release_cache_lock();
 
@@ -357,6 +378,7 @@ void read_cache_offset(block_sector_t sector_idx, void *data, off_t ofs,
     end_read(&cache_buffer[idx].read_write_lock);
 
     cache_buffer[idx].accessed = true;
+    ASSERT(cache_buffer[idx].pin_count > 0);
     unpin(idx);
 #else
     /* Read sector into bounce buffer, then partially copy
