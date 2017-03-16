@@ -74,7 +74,7 @@ static bool handle_direct_alloc(struct inode_disk *disk, size_t num_direct) {
     /* We want to free map one at a time */
     for (idx = 0; idx < num_direct; idx++) {
         /* Ensure not allocated yet */
-        ASSERT(&disk->direct_blocks[idx] == 0);
+        ASSERT(disk->direct_blocks[idx] == 0);
         if (!free_map_allocate(1, &disk->direct_blocks[idx]))
             return false;
         write_to_cache(disk->direct_blocks[idx], zeros);
@@ -197,14 +197,84 @@ static bool inode_allocate_free_map(struct inode_disk *disk) {
 
 
     /* Finally, handle the doubly indirect block */
-    size_t num_double_indirect = (num_sectors < TOTAL_SECTOR_COUNT * TOTAL_SECTOR_COUNT) ?
-                                    num_sectors : TOTAL_SECTOR_COUNT * TOTAL_SECTOR_COUNT;
+    size_t num_double_indirect = num_sectors;
+    ASSERT(num_double_indirect < TOTAL_SECTOR_COUNT * TOTAL_SECTOR_COUNT);
+
     if (!handle_double_indirect_alloc(disk, num_double_indirect))
         return false;
+    num_sectors -= num_double_indirect;
 
     /* All sectors should be accounted for */
     ASSERT(num_sectors == 0);
     return true;
+}
+
+/* This will release the bitmap in free_map when we're freeing an inode.
+   Since we filled up inode direct -> indirect -> doubly indirect,
+   we will release in the same order */
+static void inode_release_free_map(struct inode_disk *disk) {
+    unsigned idx;
+    size_t length = disk->length;
+    size_t num_sectors = bytes_to_sectors(length);
+
+    /* First, release all direct block sectors */
+    size_t num_direct = (num_sectors < DIRECT_BLOCK_COUNT) ? num_sectors : DIRECT_BLOCK_COUNT;
+    for (idx = 0; idx < num_direct; idx++) {
+        /* It's assumed that it has been allocated already */
+        ASSERT(disk->direct_blocks[idx] != 0);
+        free_map_release(disk->direct_blocks[idx], 1);
+    }
+
+    num_sectors -= num_direct;
+
+    /* Next, release all indirect block sectors */
+    size_t num_indirect = (num_sectors < TOTAL_SECTOR_COUNT) ? num_sectors : TOTAL_SECTOR_COUNT;
+    struct indirect_block *temp_block;
+    if (num_indirect > 0) {
+        read_from_cache(disk->indirect_block, temp_block);
+
+        for (idx = 0; idx < num_indirect; idx++) {
+            ASSERT(temp_block->blocks[idx] != 0);
+            free_map_release(temp_block->blocks[idx], 1);
+        }
+
+        free_map_release(disk->indirect_block, 1);
+    }
+
+    num_sectors -= num_indirect;
+
+    /* Finally, release all doubly indirect block sectors */
+    size_t num_double_indirect = num_sectors;
+    ASSERT(num_double_indirect < TOTAL_SECTOR_COUNT * TOTAL_SECTOR_COUNT);
+
+    struct indirect_block *temp_double_block;
+    if (num_double_indirect > 0) {
+        unsigned indirect_idx;
+        /* Number of second layer indirects to account for... */
+        size_t num_second_layer_blocks = DIV_ROUND_UP(num_double_indirect, TOTAL_SECTOR_COUNT);
+
+        /* Writing the double indirect block struct into this pointer */
+        ASSERT(disk->double_indirect_block != 0);
+        read_from_cache(disk->double_indirect_block, temp_double_block);
+
+        struct indirect_block *second_layer_block;
+        for (indirect_idx = 0; indirect_idx < num_second_layer_blocks; indirect_idx++) {
+            ASSERT(temp_double_block->blocks[indirect_idx] != 0);
+            read_from_cache(temp_double_block->blocks[indirect_idx], second_layer_block);
+            
+            size_t num_sectors_in_indir = (num_double_indirect < TOTAL_SECTOR_COUNT) ?
+                                           num_double_indirect : TOTAL_SECTOR_COUNT;
+
+            for (idx = 0; idx < num_sectors_in_indir; idx++) {
+                ASSERT(second_layer_block->blocks[idx] != 0);
+                free_map_release(second_layer_block->blocks[idx], 1);
+            }
+
+            free_map_release(temp_double_block->blocks[indirect_idx], 1);
+            num_double_indirect -= num_sectors_in_indir;
+        }
+        free_map_release(disk->double_indirect_block, 1);
+    }
 }
 
 /*! Returns the block device sector that contains byte offset POS
@@ -216,8 +286,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
     ASSERT(inode != NULL);
     if (pos < inode->data.length)
         return inode->data.start + pos / BLOCK_SECTOR_SIZE;
-    else
-        return -1;
+    return -1;
 }
 
 /*! List of open inodes, so that opening a single inode twice
@@ -318,11 +387,7 @@ void inode_close(struct inode *inode) {
         /* Deallocate blocks if removed. */
         if (inode->removed) {
             free_map_release(inode->sector, 1);
-            // TODO: Refactor the free_map releasing.
-            //       Preferably do it here, instead of changing
-            //       free map a lot.
-            free_map_release(inode->data.start,
-                             bytes_to_sectors(inode->data.length));
+            inode_release_free_map(&inode->data);
         }
 
         free(inode);
