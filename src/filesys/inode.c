@@ -290,13 +290,8 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
     ASSERT(inode != NULL);
     block_sector_t sector_idx;
 
-    /* Read data from cache. */
-    struct inode_disk * data = NULL;
-    read_from_cache(inode->sector, data);
-
     /* Calculate file length. */
-    int length = DIV_ROUND_UP(data->length, BLOCK_SECTOR_SIZE)
-        * BLOCK_SECTOR_SIZE;
+    int length = inode->data.length;
 
     if (pos < length) {
         int sector_ofs = pos / BLOCK_SECTOR_SIZE;
@@ -304,7 +299,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
         /* Check whether it should be a direct block. */
         if (sector_ofs < DIRECT_BLOCK_COUNT) {
             /* Return direct block */
-            sector_idx = data->direct_blocks[sector_ofs];
+            sector_idx = inode->data.direct_blocks[sector_ofs];
             return sector_idx;
         }
         else {
@@ -314,7 +309,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
             struct indirect_block *indirect = NULL;
             if (sector_ofs < TOTAL_SECTOR_COUNT) {
                 /* Get indirect block from cache. */
-                read_from_cache(data->indirect_block, indirect);
+                read_from_cache(inode->data.indirect_block, indirect);
 
                 /* Get sector. */
                 sector_idx = indirect->blocks[sector_ofs];
@@ -335,7 +330,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
 
                 /* Read double indirect block from cache. */
                 struct indirect_block *double_indirect = NULL;
-                read_from_cache(data->double_indirect_block, double_indirect);
+                read_from_cache(inode->data.double_indirect_block, double_indirect);
 
                 /* Read appropriate block in double indirect from cache. */
                 block_sector_t indir_sector_idx =
