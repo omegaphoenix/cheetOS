@@ -4,6 +4,7 @@
 #define MAX_BUF_WRI 300
 #define ARG_SIZE 4
 #define ERR -1
+#define NUM_ENTRIES 10 /* Temporarily fix number of entries in new directories */
 
 void syscall_init(void);
 void sys_exit(int status);

@@ -745,15 +745,17 @@ bool sys_readdir (int fd, char *name) {
 /*! Returns true if fd represents a directory, false if it represents an
     ordinary file.*/
 bool sys_isdir (int fd) {
-    // TODO
-    return false;
+    struct file *file = get_fd(thread_current(), fd);
+    struct inode *inode = file_get_inode(file);
+    return is_dir(inode);
 }
 
 /*! Returns the inode number of the inode associated with fd, which may
     represent an ordinary file or a directory. */
 int sys_inumber (int fd) {
-    // TODO
-    return 0;
+    struct file *file = get_fd(thread_current(), fd);
+    struct inode *inode = file_get_inode(file);
+    return inode_get_inumber(inode);
 }
 #endif
 
