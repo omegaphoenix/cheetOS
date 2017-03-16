@@ -118,10 +118,11 @@ bool filesys_remove(const char *path) {
     Returns true if path is valid, i.e, all directories along path exist. The
     file itself may or may not exist. */
 bool parse_path(char *path, struct dir **dir, char **name) {
-    //printf("PARSE_PATH BEGIN\n");
+    //printf("PARSE_PATH BEGIN: %s\n", path);
     struct inode *inode = NULL;
     bool prev_was_null = false;
     char *token, *save_ptr;
+    struct inode *prev_dir_inode = NULL;
     *name = ""; /* In case of empty path */
 
     /* Parse path */
@@ -146,19 +147,24 @@ bool parse_path(char *path, struct dir **dir, char **name) {
         if (prev_was_null) { /* missing directory along path */
             *name = NULL;
             *dir = NULL;
+            //printf("yup, it was a problem\n");
             return false;
+        }
+        if (prev_dir_inode != NULL) {
+            dir_close(*dir);
+            *dir = dir_open(prev_dir_inode);
         }
         //printf("token - '%s'\n", token); // debug
         ASSERT(*dir != NULL);
         dir_lookup(*dir, token, &inode);
 
         if (inode == NULL) { /* File or dir is missing */
+            //printf("possibly problematic token: %s\n", token);
             prev_was_null = true;
         }
 
         else if (is_dir(inode)) {
-            dir_close(*dir); /* close previous dir */
-            *dir = dir_open(inode);
+            prev_dir_inode = inode; /* Open directory when parsing next token */
         }
 
         *name = token;

@@ -750,7 +750,7 @@ bool sys_chdir (const char *dir) {
     Returns true if successful, false on failure. Fails if DIR already exists
     or if any directory name in DIR, besides the last, doesn't already exist. */
 bool sys_mkdir (const char *dir) {
-    //printf("mkdir begins...\n");
+    //printf("mkdir begins...making %s\n", dir);
     block_sector_t inode_sector = 0;
     bool success = false;
     char *name = NULL;
@@ -764,6 +764,7 @@ bool sys_mkdir (const char *dir) {
     }
     strlcpy(dir_copy, dir, strlen(dir) + 1);
     bool valid_path = parse_path(dir_copy, &parent_dir, &name);
+    //printf("directory name is %s\n", name);
 
     //printf("valid_path = %d\n", valid_path);
 
@@ -771,7 +772,7 @@ bool sys_mkdir (const char *dir) {
         success = (dir != NULL &&
             free_map_allocate(1, &inode_sector) &&
             dir_create(inode_sector, NUM_ENTRIES) &&
-            dir_add(parent_dir, dir, inode_sector));
+            dir_add(parent_dir, name, inode_sector));
 
         /* Do subdirectory setup */
         if (success) {
@@ -782,7 +783,7 @@ bool sys_mkdir (const char *dir) {
         if (!success && inode_sector != 0)
             free_map_release(inode_sector, 1);
         dir_close(parent_dir);
-        //printf("mkdir ends...\n");
+        //printf("mkdir ends: %d\n", success);
         free(dir_copy);
         return success;
     }
