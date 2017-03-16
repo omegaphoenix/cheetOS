@@ -28,5 +28,10 @@ bool dir_add(struct dir *, const char *name, block_sector_t);
 bool dir_remove(struct dir *, const char *name);
 bool dir_readdir(struct dir *, char name[NAME_MAX + 1]);
 
+#ifdef CACHE
+/* Subdirectories. */
+bool is_empty_dir(struct inode *);
+#endif
+
 #endif /* filesys/directory.h */
 
