@@ -14,10 +14,16 @@
 /*! On-disk inode.
     Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk {
-    block_sector_t start;               /*!< First data sector. */
-    off_t length;                       /*!< File size in bytes. */
-    unsigned magic;                     /*!< Magic number. */
-    uint32_t unused[125];               /*!< Not used. */
+    block_sector_t direct_blocks[DIRECT_BLOCK_COUNT] /*!< Number of direct blocks. */
+    block_sector_t indirect_block;                   /*!< Index for indirect block */
+    block_sector_t double_indirect_block;            /*!< Index for double indirect block */
+
+    off_t length;                                    /*!< File size in bytes. */
+    unsigned magic;                                  /*!< Magic number. */
+};
+
+struct indirect_block {
+    block_sector_t direct_blocks[TOTAL_SECTOR_COUNT]; /*!< Number of direct blocks */
 };
 
 /*! Returns the number of sectors to allocate for an inode SIZE
@@ -36,10 +42,19 @@ struct inode {
     struct inode_disk data;             /*!< Inode content. */
 };
 
+static struct indirect_block *indirect_inode_new(void) {
+    struct indirect_block *new_indir_block = calloc(1, sizeof(struct indirect_block));
+    if (new_indir_block == NULL) {
+        PANIC("Not enough memory for indirect inode block!");
+    }
+    return new_indir_block;
+}
+
 /*! Returns the block device sector that contains byte offset POS
     within INODE.
     Returns -1 if INODE does not contain data for a byte at offset
     POS. */
+// TODO
 static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
     ASSERT(inode != NULL);
     if (pos < inode->data.length)
@@ -77,6 +92,7 @@ bool inode_create(block_sector_t sector, off_t length) {
         size_t sectors = bytes_to_sectors(length);
         disk_inode->length = length;
         disk_inode->magic = INODE_MAGIC;
+        // disk_inode->start = sector;
         if (free_map_allocate(sectors, &disk_inode->start)) {
             write_to_cache(sector, disk_inode);
             if (sectors > 0) {
