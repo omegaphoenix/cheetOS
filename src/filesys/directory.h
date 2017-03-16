@@ -31,6 +31,9 @@ bool dir_readdir(struct dir *, char name[NAME_MAX + 1]);
 #ifdef CACHE
 /* Subdirectories. */
 bool is_empty_dir(struct inode *);
+bool is_pinned_dir(struct inode *);
+void pin_cwd(struct inode *); /* Should only be used in chdir. */
+void unpin_cwd(struct inode *); /* Should only be used in chdir. */
 #endif
 
 #endif /* filesys/directory.h */

@@ -10,6 +10,7 @@
 struct dir {
     struct inode *inode;                /*!< Backing store. */
     off_t pos;                          /*!< Current position. */
+    int pin_count;
 };
 
 /*! A single directory entry. */
@@ -33,6 +34,7 @@ struct dir * dir_open(struct inode *inode) {
     if (inode != NULL && dir != NULL) {
         dir->inode = inode;
         dir->pos = 0;
+        dir->pin_count++;
         return dir;
     }
     else {
@@ -57,6 +59,8 @@ struct dir * dir_reopen(struct dir *dir) {
 /*! Destroys DIR and frees associated resources. */
 void dir_close(struct dir *dir) {
     if (dir != NULL) {
+        dir->pin_count--;
+        ASSERT(dir->pin_count >= 0);
         inode_close(dir->inode);
         free(dir);
     }
@@ -186,6 +190,16 @@ bool dir_remove(struct dir *dir, const char *name) {
     if (inode == NULL)
         goto done;
 
+    /* If directory, need additional checks. */
+    if (is_dir(inode)) {
+        /* Criteria for deleting a directory:
+           - dir must be empty to be deleted.
+           - dir must not be in use as working directory or in a process. */
+        if (!is_empty_dir(inode) || is_pinned_dir(inode)) {
+            return false;
+        }
+    }
+
     /* Erase directory entry. */
     e.in_use = false;
     if (inode_write_at(dir->inode, &e, sizeof(e), ofs) != sizeof(e))
@@ -215,6 +229,7 @@ bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
     return false;
 }
 
+
 /* Returns true if directory is empty (other than "." and "..") */
 bool is_empty_dir(struct inode *inode) {
     struct dir *dir = dir_open(inode);
@@ -233,4 +248,19 @@ bool is_empty_dir(struct inode *inode) {
     }
     dir_close(dir);
     return true;
+}
+
+bool is_pinned_dir(struct inode *inode) {
+    ASSERT(is_dir(inode));
+    struct dir *dir = dir_open(inode);
+    int pin_count = dir->pin_count;
+    dir_close(dir);
+    return pin_count > 1; /* Discount the pin we added when opening */
+}
+
+void pin_cwd(struct inode *inode) {
+
+}
+void unpin_cwd(struct inode *inode) {
+
 }

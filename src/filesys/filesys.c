@@ -108,16 +108,6 @@ bool filesys_remove(const char *path) {
     strlcpy(path_copy, path, strlen(path) + 1);
     parse_path(path_copy, &dir, &name);
 
-    /* If directory, need additional checks. */
-    dir_lookup(dir, name, &inode);
-    if (inode != NULL && is_dir(inode)) {
-        /* Directory must be empty to be deleted. */
-        if (!is_empty_dir(inode)) {
-            return false;
-        }
-        /* Do not allow deletion of directory that is in use. */
-    }
-
     bool success = dir != NULL && dir_remove(dir, name);
     dir_close(dir);
 
