@@ -725,9 +725,17 @@ bool sys_chdir (const char *dir) {
     }
     strlcpy(dir_copy, dir, strlen(dir) + 1);
 
-    parse_path(dir_copy, &parent_dir, &name); // might need to check bool
+    if (!(parse_path(dir_copy, &parent_dir, &name))) {
+        //printf("sys_chdir(): invalid path\n"); //debug
+        return false;
+    }
+    //printf("sys_chdir(): finished parsing path\n");
 
-    success = dir_lookup(parent_dir, name, &inode);
+    if (parent_dir != NULL) {
+        success = dir_lookup(parent_dir, name, &inode);
+    }
+    dir_close(parent_dir);
+
     if (!success || !is_dir(inode)) {
         free(dir_copy);
         return false;
@@ -762,7 +770,7 @@ bool sys_mkdir (const char *dir) {
     if (valid_path) {
         success = (dir != NULL &&
             free_map_allocate(1, &inode_sector) &&
-            inode_create(inode_sector, NUM_ENTRIES) &&
+            dir_create(inode_sector, NUM_ENTRIES) &&
             dir_add(parent_dir, dir, inode_sector));
 
         /* Do subdirectory setup */
