@@ -229,7 +229,7 @@ static void inode_release_free_map(struct inode_disk *disk) {
 
     /* Next, release all indirect block sectors */
     size_t num_indirect = (num_sectors < TOTAL_SECTOR_COUNT) ? num_sectors : TOTAL_SECTOR_COUNT;
-    struct indirect_block *temp_block;
+    struct indirect_block *temp_block = indirect_inode_new();
     if (num_indirect > 0) {
         read_from_cache(disk->indirect_block, temp_block);
 
@@ -240,6 +240,8 @@ static void inode_release_free_map(struct inode_disk *disk) {
 
         free_map_release(disk->indirect_block, 1);
     }
+    free(temp_block);
+    temp_block = NULL;
 
     num_sectors -= num_indirect;
 
@@ -247,7 +249,7 @@ static void inode_release_free_map(struct inode_disk *disk) {
     size_t num_double_indirect = num_sectors;
     ASSERT(num_double_indirect < TOTAL_SECTOR_COUNT * TOTAL_SECTOR_COUNT);
 
-    struct indirect_block *temp_double_block;
+    struct indirect_block *temp_double_block = indirect_inode_new();
     if (num_double_indirect > 0) {
         unsigned indirect_idx;
         /* Number of second layer indirects to account for... */
@@ -257,9 +259,10 @@ static void inode_release_free_map(struct inode_disk *disk) {
         ASSERT(disk->double_indirect_block != 0);
         read_from_cache(disk->double_indirect_block, temp_double_block);
 
-        struct indirect_block *second_layer_block;
         for (indirect_idx = 0; indirect_idx < num_second_layer_blocks; indirect_idx++) {
             ASSERT(temp_double_block->blocks[indirect_idx] != 0);
+            struct indirect_block *second_layer_block = indirect_inode_new();
+
             read_from_cache(temp_double_block->blocks[indirect_idx], second_layer_block);
             
             size_t num_sectors_in_indir = (num_double_indirect < TOTAL_SECTOR_COUNT) ?
@@ -271,10 +274,12 @@ static void inode_release_free_map(struct inode_disk *disk) {
             }
 
             free_map_release(temp_double_block->blocks[indirect_idx], 1);
+            free(second_layer_block);
             num_double_indirect -= num_sectors_in_indir;
         }
         free_map_release(disk->double_indirect_block, 1);
     }
+    free(temp_double_block);
 }
 
 /*! Returns the block device sector that contains byte offset POS
@@ -285,7 +290,8 @@ static void inode_release_free_map(struct inode_disk *disk) {
 static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
     ASSERT(inode != NULL);
     if (pos < inode->data.length)
-        return inode->data.start + pos / BLOCK_SECTOR_SIZE;
+        // return inode->data.start + pos / BLOCK_SECTOR_SIZE;
+        return 0;
     return -1;
 }
 
@@ -315,7 +321,6 @@ bool inode_create(block_sector_t sector, off_t length) {
 
     disk_inode = calloc(1, sizeof *disk_inode);
     if (disk_inode != NULL) {
-        size_t sectors = bytes_to_sectors(length);
         disk_inode->length = length;
         disk_inode->magic = INODE_MAGIC;
         if (inode_allocate_free_map(disk_inode)) {
