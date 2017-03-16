@@ -14,16 +14,16 @@
 /*! On-disk inode.
     Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk {
-    block_sector_t direct_blocks[DIRECT_BLOCK_COUNT] /*!< Number of direct blocks. */
-    block_sector_t indirect_block;                   /*!< Index for indirect block */
-    block_sector_t double_indirect_block;            /*!< Index for double indirect block */
+    block_sector_t direct_blocks[DIRECT_BLOCK_COUNT];   /*!< Number of direct blocks. */
+    block_sector_t indirect_block;                      /*!< Index for indirect block */
+    block_sector_t double_indirect_block;               /*!< Index for double indirect block */
 
-    off_t length;                                    /*!< File size in bytes. */
-    unsigned magic;                                  /*!< Magic number. */
+    off_t length;                                       /*!< File size in bytes. */
+    unsigned magic;                                     /*!< Magic number. */
 };
 
 struct indirect_block {
-    block_sector_t direct_blocks[TOTAL_SECTOR_COUNT]; /*!< Number of direct blocks */
+    block_sector_t blocks[TOTAL_SECTOR_COUNT];          /*!< Number of direct blocks */
 };
 
 /*! Returns the number of sectors to allocate for an inode SIZE
@@ -50,11 +50,168 @@ static struct indirect_block *indirect_inode_new(void) {
     return new_indir_block;
 }
 
+/* Handles populating the actual sectors pointed by the indirect block */
+static bool handle_indirect_block(struct indirect_block *block, size_t num_indirect) {
+    static char zeros[BLOCK_SECTOR_SIZE];
+    unsigned idx;
+
+    for (idx = 0; idx < num_indirect; idx++) {
+        /* Ensure not allocated yet */
+        ASSERT(block->blocks[idx] == 0);
+        if (!free_map_allocate(1, &block->blocks[idx]))
+            return false;
+        write_to_cache(block->blocks[idx], zeros);
+    }
+
+    return true;
+}
+
+/* Handles the free-map allocations for direct blocks */
+static bool handle_direct_alloc(struct inode_disk *disk, size_t num_direct) {
+    static char zeros[BLOCK_SECTOR_SIZE];
+    unsigned idx;
+
+    /* We want to free map one at a time */
+    for (idx = 0; idx < num_direct; idx++) {
+        /* Ensure not allocated yet */
+        ASSERT(&disk->direct_blocks[idx] == 0);
+        if (!free_map_allocate(1, &disk->direct_blocks[idx]))
+            return false;
+        write_to_cache(disk->direct_blocks[idx], zeros);
+    }
+
+    return true;
+}
+
+/* Handles the free-map allocations for indirect blocks. Will invoke handle_indirect_block */
+static bool handle_indirect_alloc(struct inode_disk *disk, size_t num_indirect) {
+    static char zeros[BLOCK_SECTOR_SIZE];
+
+    if (num_indirect > 0) {
+        struct indirect_block *new_indir_block = indirect_inode_new();
+
+        /* If indirect block not allocated */
+        if (disk->indirect_block == 0) {
+            if (!free_map_allocate(1, &disk->indirect_block))
+                return false;
+            write_to_cache(disk->indirect_block, zeros);
+        }
+
+        /* Populate the pointers inside the indirect block */
+        if (!handle_indirect_block(new_indir_block, num_indirect)) {
+            free(new_indir_block);
+            return false;
+        }
+
+        /* Write entire indirect block into cache */
+        write_to_cache(disk->indirect_block, new_indir_block);
+        free(new_indir_block);
+    }
+
+    return true;
+}
+
+/* Handles the free-map allocations for double indirect blocks. Will invoke
+   handle_indirect_block several times */
+static bool handle_double_indirect_alloc(struct inode_disk *disk, size_t num_double_indirect) {
+    static char zeros[BLOCK_SECTOR_SIZE];
+
+    /* If the file is actually large enough for a doubly indirect block... */
+    if (num_double_indirect > 0) {
+        /* Number of iterations we need to do */
+        size_t indirect_blocks = DIV_ROUND_UP(num_double_indirect, TOTAL_SECTOR_COUNT);
+        unsigned indirect_idx;
+
+
+        /* If double indirect block not allocated, allocate that. */
+        if (disk->double_indirect_block == 0) {
+            if (!free_map_allocate(1, &disk->double_indirect_block))
+                return false;
+            write_to_cache(disk->double_indirect_block, zeros);
+        }
+
+        /* Create an doubly indirect block */
+        struct indirect_block *new_double_indirect_block = indirect_inode_new();
+
+        /* For each indirect block, we will essentially do what handle_indirect_alloc does */
+        for (indirect_idx = 0; indirect_idx < indirect_blocks; indirect_idx++) {
+            size_t num_sectors_in_indir = (num_double_indirect < TOTAL_SECTOR_COUNT) ? 
+                                          num_double_indirect : TOTAL_SECTOR_COUNT;
+
+            if (new_double_indirect_block->blocks[indirect_idx] == 0) {
+                if (!free_map_allocate(1, &new_double_indirect_block->blocks[indirect_idx])) {
+                    free(new_double_indirect_block);
+                    return false;
+                }
+
+                write_to_cache(new_double_indirect_block->blocks[indirect_idx], zeros);
+            }
+
+            struct indirect_block *new_indir_block = indirect_inode_new();
+            if (!handle_indirect_block(new_indir_block, num_sectors_in_indir)) {
+                free(new_indir_block);
+                free(new_double_indirect_block);
+                return false;
+            }
+
+            /* Writing this indirect block information on one of the indices in the doubly indirect
+               block */
+            write_to_cache(new_double_indirect_block->blocks[indirect_idx], new_indir_block);
+            free(new_indir_block);
+
+            num_double_indirect -= num_sectors_in_indir;
+        }
+
+        ASSERT(num_double_indirect == 0);
+
+        /* Doubly indirect block should be finished. Write all of that to inode_disk */
+        write_to_cache(disk->double_indirect_block, new_double_indirect_block);
+        free(new_double_indirect_block);
+    }
+
+    return true;
+}
+
+/* Based on the number of direct, indirect, and doubly indirect blocks, we
+   map the appropriate sectors.
+
+   Returns true if free_map was allocated properly given the disk
+   Returns false otherwise. */
+static bool inode_allocate_free_map(struct inode_disk *disk) {
+    off_t length = disk->length;
+    ASSERT(length >= 0);        /* We would hope that the length would be non-negative */
+
+    size_t num_sectors = bytes_to_sectors(length);
+
+    /* First, handle the direct blocks */
+    size_t num_direct = (num_sectors < DIRECT_BLOCK_COUNT) ? num_sectors : DIRECT_BLOCK_COUNT;
+    if (!handle_direct_alloc(disk, num_direct))
+        return false;
+    num_sectors -= num_direct;
+
+    /* Next, handle the indirect block */
+    size_t num_indirect = (num_sectors < TOTAL_SECTOR_COUNT) ? num_sectors : TOTAL_SECTOR_COUNT;
+    if (!handle_indirect_alloc(disk, num_indirect))
+        return false;
+    num_sectors -= num_indirect;
+
+
+    /* Finally, handle the doubly indirect block */
+    size_t num_double_indirect = (num_sectors < TOTAL_SECTOR_COUNT * TOTAL_SECTOR_COUNT) ?
+                                    num_sectors : TOTAL_SECTOR_COUNT * TOTAL_SECTOR_COUNT;
+    if (!handle_double_indirect_alloc(disk, num_double_indirect))
+        return false;
+
+    /* All sectors should be accounted for */
+    ASSERT(num_sectors == 0);
+    return true;
+}
+
 /*! Returns the block device sector that contains byte offset POS
     within INODE.
     Returns -1 if INODE does not contain data for a byte at offset
     POS. */
-// TODO
+// TODO: No longer contiguous. This might be annoying.
 static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
     ASSERT(inode != NULL);
     if (pos < inode->data.length)
@@ -92,17 +249,8 @@ bool inode_create(block_sector_t sector, off_t length) {
         size_t sectors = bytes_to_sectors(length);
         disk_inode->length = length;
         disk_inode->magic = INODE_MAGIC;
-        // disk_inode->start = sector;
-        if (free_map_allocate(sectors, &disk_inode->start)) {
+        if (inode_allocate_free_map(disk_inode)) {
             write_to_cache(sector, disk_inode);
-            if (sectors > 0) {
-                static char zeros[BLOCK_SECTOR_SIZE];
-                size_t i;
-
-                for (i = 0; i < sectors; i++) {
-                    write_to_cache(disk_inode->start + i, zeros);
-                }
-            }
             success = true; 
         }
         free(disk_inode);
@@ -170,6 +318,9 @@ void inode_close(struct inode *inode) {
         /* Deallocate blocks if removed. */
         if (inode->removed) {
             free_map_release(inode->sector, 1);
+            // TODO: Refactor the free_map releasing.
+            //       Preferably do it here, instead of changing
+            //       free map a lot.
             free_map_release(inode->data.start,
                              bytes_to_sectors(inode->data.length));
         }
@@ -224,6 +375,8 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
     less than SIZE if end of file is reached or an error occurs.
     (Normally a write at end of file would extend the inode, but
     growth is not yet implemented.) */
+
+// TODO: Handle EOF extensions.
 off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t offset) {
     const uint8_t *buffer = buffer_;
     off_t bytes_written = 0;
