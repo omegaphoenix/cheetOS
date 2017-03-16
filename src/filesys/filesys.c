@@ -28,7 +28,7 @@ void filesys_init(bool format) {
     inode_init();
     free_map_init();
 
-    if (format) 
+    if (format)
         do_format();
 
     free_map_open();
@@ -36,9 +36,10 @@ void filesys_init(bool format) {
 
 /*! Shuts down the file system module, writing any unwritten data to disk. */
 void filesys_done(void) {
+    write_all_dirty();
     free_map_close();
 }
-
+
 /*! Creates a file at path PATH with the given INITIAL_SIZE.  Returns true if
     successful, false otherwise.  Fails if a file at PATH already exists,
     or if internal memory allocation fails. */
@@ -156,7 +157,7 @@ static void parse_path(char *path, struct dir **dir, char **name) {
     }
 
 }
-
+
 /*! Formats the file system. */
 static void do_format(void) {
     printf("Formatting file system...");
