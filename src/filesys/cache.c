@@ -84,9 +84,9 @@ void cache_table_init(void) {
     release_cache_lock();
 
     /* Spawn write-behind child. */
-    thread_create("write-behind", PRI_DEFAULT, write_behind, NULL);
+    // thread_create("write-behind", PRI_DEFAULT, write_behind, NULL);
     /* Spawn read-ahead child. */
-    thread_create("read-ahead", PRI_DEFAULT, read_ahead_loop, NULL);
+    // thread_create("read-ahead", PRI_DEFAULT, read_ahead_loop, NULL);
 }
 
 static void pin(int array_idx) {
