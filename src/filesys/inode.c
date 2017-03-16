@@ -23,7 +23,7 @@ struct inode_disk {
 };
 
 struct indirect_block {
-    block_sector_t blocks[TOTAL_SECTOR_COUNT];          /*!< Number of direct blocks */
+    block_sector_t blocks[TOTAL_SECTOR_COUNT];          /*!< Number of indirect blocks */
 };
 
 /*! Returns the number of sectors to allocate for an inode SIZE
@@ -135,7 +135,7 @@ static bool handle_double_indirect_alloc(struct inode_disk *disk, size_t num_dou
 
         /* For each indirect block, we will essentially do what handle_indirect_alloc does */
         for (indirect_idx = 0; indirect_idx < indirect_blocks; indirect_idx++) {
-            size_t num_sectors_in_indir = (num_double_indirect < TOTAL_SECTOR_COUNT) ? 
+            size_t num_sectors_in_indir = (num_double_indirect < TOTAL_SECTOR_COUNT) ?
                                           num_double_indirect : TOTAL_SECTOR_COUNT;
 
             if (new_double_indirect_block->blocks[indirect_idx] == 0) {
@@ -264,7 +264,7 @@ static void inode_release_free_map(struct inode_disk *disk) {
             struct indirect_block *second_layer_block = indirect_inode_new();
 
             read_from_cache(temp_double_block->blocks[indirect_idx], second_layer_block);
-            
+
             size_t num_sectors_in_indir = (num_double_indirect < TOTAL_SECTOR_COUNT) ?
                                            num_double_indirect : TOTAL_SECTOR_COUNT;
 
@@ -286,13 +286,73 @@ static void inode_release_free_map(struct inode_disk *disk) {
     within INODE.
     Returns -1 if INODE does not contain data for a byte at offset
     POS. */
-// TODO: No longer contiguous. This might be annoying.
 static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
     ASSERT(inode != NULL);
-    if (pos < inode->data.length)
-        // return inode->data.start + pos / BLOCK_SECTOR_SIZE;
-        return 0;
-    return -1;
+    block_sector_t sector_idx;
+
+    /* Read data from cache. */
+    struct inode_disk * data = NULL;
+    read_from_cache(inode->sector, data);
+
+    /* Calculate file length. */
+    int length = DIV_ROUND_UP(data->length, BLOCK_SECTOR_SIZE)
+        * BLOCK_SECTOR_SIZE;
+
+    if (pos < length) {
+        int sector_ofs = pos / BLOCK_SECTOR_SIZE;
+
+        /* Check whether it should be a direct block. */
+        if (sector_ofs < DIRECT_BLOCK_COUNT) {
+            /* Return direct block */
+            sector_idx = data->direct_blocks[sector_ofs];
+            return sector_idx;
+        }
+        else {
+            sector_ofs -= DIRECT_BLOCK_COUNT;
+
+            /* Check whether it should be an indirect block. */
+            struct indirect_block *indirect = NULL;
+            if (sector_ofs < TOTAL_SECTOR_COUNT) {
+                /* Get indirect block from cache. */
+                read_from_cache(data->indirect_block, indirect);
+
+                /* Get sector. */
+                sector_idx = indirect->blocks[sector_ofs];
+                return sector_idx;
+            }
+            else {
+                /* Handle doubly indirect blocks. */
+                sector_ofs -= TOTAL_SECTOR_COUNT;
+
+                if (sector_ofs >= TOTAL_SECTOR_COUNT * TOTAL_SECTOR_COUNT) {
+                    /* Error if asking for block after doubly indirect. */
+                    return -1;
+                }
+
+                /* Calculate indexes of blocks. */
+                int indir_idx = sector_ofs / TOTAL_SECTOR_COUNT;
+                int double_indir_idx = sector_ofs % TOTAL_SECTOR_COUNT;
+
+                /* Read double indirect block from cache. */
+                struct indirect_block *double_indirect = NULL;
+                read_from_cache(data->double_indirect_block, double_indirect);
+
+                /* Read appropriate block in double indirect from cache. */
+                block_sector_t indir_sector_idx =
+                    double_indirect->blocks[indir_idx];
+                read_from_cache(indir_sector_idx, indirect);
+
+                /* Get sector. */
+                sector_idx = indirect->blocks[double_indir_idx];
+                return sector_idx;
+            }
+        }
+    }
+    else {
+        /* Invalid position. */
+        return -1;
+    }
+
 }
 
 /*! List of open inodes, so that opening a single inode twice
@@ -325,7 +385,7 @@ bool inode_create(block_sector_t sector, off_t length) {
         disk_inode->magic = INODE_MAGIC;
         if (inode_allocate_free_map(disk_inode)) {
             write_to_cache(sector, disk_inode);
-            success = true; 
+            success = true;
         }
         free(disk_inode);
     }
