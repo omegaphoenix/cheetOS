@@ -5,10 +5,13 @@
 #include <user/syscall.h>
 #include "devices/input.h"
 #include "devices/shutdown.h"
+#include "filesys/directory.h"
 #include "filesys/inode.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "filesys/free-map.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -715,13 +718,23 @@ bool sys_chdir (const char *dir) {
     struct inode *inode = NULL;
     struct thread *cur = thread_current();
 
-    parse_path(dir, parent_dir, name);
-    success = dir_lookup(dir, name, &inode);
+    /* Copy path to be safe */
+    char *dir_copy = calloc(MAX_PATH_SIZE, 1);
+    if (dir_copy == NULL) {
+        return false;
+    }
+    strlcpy(dir_copy, dir, strlen(dir) + 1);
+
+    parse_path(dir_copy, &parent_dir, &name); // might need to check bool
+
+    success = dir_lookup(parent_dir, name, &inode);
     if (!success || !is_dir(inode)) {
+        free(dir_copy);
         return false;
     }
     // might need to close old directory?
     cur->cur_dir_inode = inode;
+    free(dir_copy);
     return true;
 }
 
@@ -729,7 +742,44 @@ bool sys_chdir (const char *dir) {
     Returns true if successful, false on failure. Fails if DIR already exists
     or if any directory name in DIR, besides the last, doesn't already exist. */
 bool sys_mkdir (const char *dir) {
-    // TODO
+    //printf("mkdir begins...\n");
+    block_sector_t inode_sector = 0;
+    bool success = false;
+    char *name = NULL;
+    struct dir *parent_dir = NULL;
+    struct inode *inode = NULL;
+
+    /* Copy path to be safe */
+    char *dir_copy = calloc(MAX_PATH_SIZE, 1);
+    if (dir_copy == NULL) {
+        return false;
+    }
+    strlcpy(dir_copy, dir, strlen(dir) + 1);
+    bool valid_path = parse_path(dir_copy, &parent_dir, &name);
+
+    //printf("valid_path = %d\n", valid_path);
+
+    if (valid_path) {
+        success = (dir != NULL &&
+            free_map_allocate(1, &inode_sector) &&
+            inode_create(inode_sector, NUM_ENTRIES) &&
+            dir_add(parent_dir, dir, inode_sector));
+
+        /* Do subdirectory setup */
+        if (success) {
+            inode = inode_open(inode_sector);
+            set_dir(inode, true);
+        }
+
+        if (!success && inode_sector != 0)
+            free_map_release(inode_sector, 1);
+        dir_close(parent_dir);
+        //printf("mkdir ends...\n");
+        free(dir_copy);
+        return success;
+    }
+    //printf("invalid mkdir path!\n");
+    free(dir_copy);
     return false;
 }
 
@@ -738,8 +788,17 @@ bool sys_mkdir (const char *dir) {
     which must have room for READDIR_MAX_LEN + 1 bytes, and returns true.
     If no entries are left in the directory, returns false. */
 bool sys_readdir (int fd, char *name) {
-    // TODO
-    return false;
+    struct file *file = get_fd(thread_current(), fd);
+    struct inode *inode = file_get_inode(file);
+    if (!is_dir(inode)) {
+        return false;
+    }
+
+    /* Open as directory */
+    struct dir *dir = dir_open(inode);
+
+    return dir_readdir(dir, name);
+
 }
 
 /*! Returns true if fd represents a directory, false if it represents an

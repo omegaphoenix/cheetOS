@@ -10,7 +10,6 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 
-#define MAX_PATH_SIZE BLOCK_SECTOR_SIZE
 /*! Partition that contains the file system. */
 struct block *fs_device;
 
@@ -113,9 +112,12 @@ bool filesys_remove(const char *path) {
 }
 
 /*! Parses PATH to find the file name and the directory that contains the file.
-    These values are put in NAME and DIR respectively. Values may be NULL. */
-void parse_path(char *path, struct dir **dir, char **name) {
+    These values are put in NAME and DIR respectively. Values may be NULL.
+    Returns true if path is valid, i.e, all directories along path exist. The
+    file itself may or may not exist. */
+bool parse_path(char *path, struct dir **dir, char **name) {
     struct inode *inode = NULL;
+    bool prev_was_null = false;
     char *token, *save_ptr;
     *name = path; /* In case of empty path */
 
@@ -138,22 +140,28 @@ void parse_path(char *path, struct dir **dir, char **name) {
     //printf("path_copy = %s\n", path_copy); // debug
     for (token = strtok_r(path, " ", &save_ptr); token != NULL;
         token = strtok_r(NULL, " ", &save_ptr)) {
+        if (prev_was_null) { /* missing directory along path */
+            *name = NULL;
+            *dir = NULL;
+            return false;
+        }
         //printf("'%s'\n", token); // debug
         ASSERT(*dir != NULL);
         dir_lookup(*dir, token, &inode);
 
-        if (inode == NULL) { /* File is missing or path is invalid */
-            *name = token;
-            break;
+        if (inode == NULL) { /* File or dir is missing */
+            prev_was_null = true;
         }
 
-        if (is_dir(inode)) {
+        else if (is_dir(inode)) {
             dir_close(*dir); /* close previous dir */
             *dir = dir_open(inode);
         }
 
         *name = token;
     }
+
+    return true;
 
 }
 

@@ -10,6 +10,7 @@
     After directories are implemented, this maximum length may be
     retained, but much longer full path names must be allowed. */
 #define NAME_MAX 14
+#define NUM_ENTRIES 10 /* Temporarily fix number of entries in new directories */
 
 struct inode;
 

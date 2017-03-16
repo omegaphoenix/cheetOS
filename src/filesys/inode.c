@@ -273,5 +273,10 @@ off_t inode_length(const struct inode *inode) {
 bool is_dir(const struct inode *inode) {
     return inode->is_dir;
 }
+
+/* Sets inode's is_dir flag to specified bool. */
+void set_dir(struct inode *inode, bool is_dir) {
+    inode->is_dir = is_dir;
+}
 #endif
 
