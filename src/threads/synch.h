@@ -48,9 +48,9 @@ void cond_signal(struct condition *, struct lock *);
 void cond_broadcast(struct condition *, struct lock *);
 
 struct rw_lock {
-  struct lock read_lock;    /*!< Used by readers. */
-  struct lock global_lock;  /*!< Ensures mututal exclusion of writers. */
-  int num_readers;          /*!< Number of blocking readers. */
+  struct lock read_lock;        /*!< Used by readers. */
+  struct semaphore global_lock; /*!< Ensures mututal exclusion of writers. */
+  int num_readers;              /*!< Number of blocking readers. */
 };
 
 void rw_lock_init(struct rw_lock *rw);

@@ -421,7 +421,7 @@ void cond_broadcast(struct condition *cond, struct lock *lock) {
 /*! Initialize variables to use for R/W lock.*/
 void rw_lock_init(struct rw_lock *rw) {
     lock_init(&rw->read_lock);
-    lock_init(&rw->global_lock);
+    sema_init(&rw->global_lock, 1);
     rw->num_readers = 0;
 }
 
@@ -431,7 +431,7 @@ void begin_read(struct rw_lock *rw) {
     rw->num_readers++;
     /* If first reader, acquire global lock. */
     if (rw->num_readers == 1) {
-        lock_acquire(&rw->global_lock);
+        sema_down(&rw->global_lock);
     }
     lock_release(&rw->read_lock);
 }
@@ -442,17 +442,17 @@ void end_read(struct rw_lock *rw) {
     rw->num_readers--;
     /* If last reader, release global lock. */
     if (rw->num_readers == 0) {
-        lock_release(&rw->global_lock);
+        sema_up(&rw->global_lock);
     }
     lock_release(&rw->read_lock);
 }
 
 /*! Acquire global R/W lock. */
 void begin_write(struct rw_lock *rw) {
-    lock_acquire(&rw->global_lock);
+    sema_down(&rw->global_lock);
 }
 
 /*! Release global R/W lock. */
 void end_write(struct rw_lock *rw) {
-    lock_release(&rw->global_lock);
+    sema_up(&rw->global_lock);
 }
