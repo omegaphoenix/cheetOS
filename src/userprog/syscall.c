@@ -5,6 +5,7 @@
 #include <user/syscall.h>
 #include "devices/input.h"
 #include "devices/shutdown.h"
+#include "filesys/inode.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/interrupt.h"
@@ -78,6 +79,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     unsigned int *size, *initial_size, *position;
     char **cmd_line;
     char **file;
+    char **dir, **name;
 
     if (f == NULL || !valid_read_addr(f->esp)) {
         sys_exit(ERR);
@@ -160,6 +162,29 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
         case SYS_MUNMAP:
             mapping = (mapid_t *) get_first_arg(f);
             sys_munmap(*mapping);
+            break;
+#endif
+#ifdef CACHE
+        case SYS_CHDIR:
+            dir = get_first_arg(f);
+            f->eax = sys_chdir(*dir);
+            break;
+        case SYS_MKDIR:
+            dir = get_first_arg(f);
+            f->eax = sys_mkdir(*dir);
+            break;
+        case SYS_READDIR:
+            fd = (int *) get_first_arg(f);
+            name = get_second_arg(f);
+            f->eax = sys_readdir(*fd, *name);
+            break;
+        case SYS_ISDIR:
+            fd = (int *) get_first_arg(f);
+            f->eax = sys_isdir(*fd);
+            break;
+        case SYS_INUMBER:
+            fd = (int *) get_first_arg(f);
+            f->eax = sys_inumber(*fd);
             break;
 #endif
         default:
@@ -684,9 +709,20 @@ void sys_munmap (mapid_t mapping) {
 /*! Changes the current working directory of the process to DIR, which may be
     relative or absolute. Returns true if successful, false on failure. */
 bool sys_chdir (const char *dir) {
-    // TODO
-    return false;
+    bool success = false;
+    char *name = NULL;
+    struct dir *parent_dir = NULL;
+    struct inode *inode = NULL;
+    struct thread *cur = thread_current();
 
+    parse_path(dir, parent_dir, name);
+    success = dir_lookup(dir, name, &inode);
+    if (!success || !is_dir(inode)) {
+        return false;
+    }
+    // might need to close old directory?
+    cur->cur_dir_inode = inode;
+    return true;
 }
 
 /*! Creates the directory named DIR, which may be relative or absolute.

@@ -14,7 +14,6 @@
 /*! Partition that contains the file system. */
 struct block *fs_device;
 
-static void parse_path(char *path, struct dir **dir, char **name);
 static void do_format(void);
 
 /*! Initializes the file system module.
@@ -115,7 +114,7 @@ bool filesys_remove(const char *path) {
 
 /*! Parses PATH to find the file name and the directory that contains the file.
     These values are put in NAME and DIR respectively. Values may be NULL. */
-static void parse_path(char *path, struct dir **dir, char **name) {
+void parse_path(char *path, struct dir **dir, char **name) {
     struct inode *inode = NULL;
     char *token, *save_ptr;
     *name = path; /* In case of empty path */
