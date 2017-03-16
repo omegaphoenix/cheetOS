@@ -34,6 +34,10 @@ struct inode {
     bool removed;                       /*!< True if deleted, false otherwise. */
     int deny_write_cnt;                 /*!< 0: writes ok, >0: deny writes. */
     struct inode_disk data;             /*!< Inode content. */
+
+#ifdef CACHE
+    bool is_dir;                        /*!< Directory or normal file. */
+#endif
 };
 
 /*! Returns the block device sector that contains byte offset POS
@@ -121,6 +125,7 @@ struct inode * inode_open(block_sector_t sector) {
     inode->open_cnt = 1;
     inode->deny_write_cnt = 0;
     inode->removed = false;
+    inode->is_dir = false; // fix this?
     read_from_cache(inode->sector, &inode->data);
     return inode;
 }
@@ -277,4 +282,11 @@ void inode_allow_write (struct inode *inode) {
 off_t inode_length(const struct inode *inode) {
     return inode->data.length;
 }
+
+#ifdef CACHE
+/* Returns true if inode is a directory. */
+bool is_dir(const struct inode *inode) {
+    return inode->is_dir;
+}
+#endif
 

@@ -7,10 +7,14 @@
 #include "filesys/free-map.h"
 #include "filesys/inode.h"
 #include "filesys/directory.h"
+#include "threads/malloc.h"
+#include "threads/thread.h"
 
+#define MAX_PATH_SIZE BLOCK_SECTOR_SIZE
 /*! Partition that contains the file system. */
 struct block *fs_device;
 
+static void parse_path(char *path, struct dir **dir, char **name);
 static void do_format(void);
 
 /*! Initializes the file system module.
@@ -35,46 +39,122 @@ void filesys_done(void) {
     free_map_close();
 }
 
-/*! Creates a file named NAME with the given INITIAL_SIZE.  Returns true if
-    successful, false otherwise.  Fails if a file named NAME already exists,
+/*! Creates a file at path PATH with the given INITIAL_SIZE.  Returns true if
+    successful, false otherwise.  Fails if a file at PATH already exists,
     or if internal memory allocation fails. */
-bool filesys_create(const char *name, off_t initial_size) {
+bool filesys_create(const char *path, off_t initial_size) {
     block_sector_t inode_sector = 0;
-    struct dir *dir = dir_open_root();
+    struct dir *dir = NULL;
+    char *name = NULL;
+
+    /* Copy path to be safe */
+    char *path_copy = calloc(MAX_PATH_SIZE, 1);
+    if (path_copy == NULL) {
+        return false;
+    }
+    strlcpy(path_copy, path, strlen(path) + 1);
+    parse_path(path_copy, &dir, &name);
+
     bool success = (dir != NULL &&
                     free_map_allocate(1, &inode_sector) &&
                     inode_create(inode_sector, initial_size) &&
                     dir_add(dir, name, inode_sector));
-    if (!success && inode_sector != 0) 
+
+    if (!success && inode_sector != 0)
         free_map_release(inode_sector, 1);
     dir_close(dir);
-
+    free(path_copy);
     return success;
 }
 
-/*! Opens the file with the given NAME.  Returns the new file if successful
-    or a null pointer otherwise.  Fails if no file named NAME exists,
+/*! Opens the file with the given PATH.  Returns the new file if successful
+    or a null pointer otherwise.  Fails if no file with path PATH exists,
     or if an internal memory allocation fails. */
-struct file * filesys_open(const char *name) {
-    struct dir *dir = dir_open_root();
+struct file * filesys_open(const char *path) {
+    struct dir *dir = NULL;
     struct inode *inode = NULL;
+    char *name = NULL;
+
+    /* Copy path to be safe */
+    char *path_copy = calloc(MAX_PATH_SIZE, 1);
+    if (path_copy == NULL) {
+        return NULL;
+    }
+    strlcpy(path_copy, path, strlen(path) + 1);
+    parse_path(path_copy, &dir, &name);
 
     if (dir != NULL)
         dir_lookup(dir, name, &inode);
     dir_close(dir);
 
+    free(path_copy);
     return file_open(inode);
 }
 
-/*! Deletes the file named NAME.  Returns true if successful, false on failure.
-    Fails if no file named NAME exists, or if an internal memory allocation
+/*! Deletes the file at PATH.  Returns true if successful, false on failure.
+    Fails if no file at PATH exists, or if an internal memory allocation
     fails. */
-bool filesys_remove(const char *name) {
-    struct dir *dir = dir_open_root();
+bool filesys_remove(const char *path) {
+    struct dir *dir = NULL;
+    char *name = NULL;
+
+    /* Copy path to be safe */
+    char *path_copy = calloc(MAX_PATH_SIZE, 1);
+    if (path_copy == NULL) {
+        return false;
+    }
+    strlcpy(path_copy, path, strlen(path) + 1);
+    parse_path(path_copy, &dir, &name);
+
     bool success = dir != NULL && dir_remove(dir, name);
     dir_close(dir);
 
     return success;
+}
+
+/*! Parses PATH to find the file name and the directory that contains the file.
+    These values are put in NAME and DIR respectively. Values may be NULL. */
+static void parse_path(char *path, struct dir **dir, char **name) {
+    struct inode *inode = NULL;
+    char *token, *save_ptr;
+    *name = path; /* In case of empty path */
+
+    /* Parse path */
+    if (path[0] == '/') {
+        /* Begin at root directory */
+        *dir = dir_open_root();
+    }
+    else {
+        /* Begin at current directory */
+        if (thread_current()->cur_dir_inode == NULL) {
+            //printf("cur_dir_inode is NULL! Opening root.\n"); // debug
+            *dir = dir_open_root();
+        }
+        else {
+            *dir = dir_open(thread_current()->cur_dir_inode);
+        }
+    }
+
+    //printf("path_copy = %s\n", path_copy); // debug
+    for (token = strtok_r(path, " ", &save_ptr); token != NULL;
+        token = strtok_r(NULL, " ", &save_ptr)) {
+        //printf("'%s'\n", token); // debug
+        ASSERT(*dir != NULL);
+        dir_lookup(*dir, token, &inode);
+
+        if (inode == NULL) { /* File is missing or path is invalid */
+            *name = token;
+            break;
+        }
+
+        if (is_dir(inode)) {
+            dir_close(*dir); /* close previous dir */
+            *dir = dir_open(inode);
+        }
+
+        *name = token;
+    }
+
 }
 
 /*! Formats the file system. */
@@ -86,4 +166,3 @@ static void do_format(void) {
     free_map_close();
     printf("done.\n");
 }
-
