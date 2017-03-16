@@ -42,6 +42,7 @@ void filesys_done(void) {
     successful, false otherwise.  Fails if a file at PATH already exists,
     or if internal memory allocation fails. */
 bool filesys_create(const char *path, off_t initial_size) {
+    //printf("FILESYS_CREATE()\n");
     block_sector_t inode_sector = 0;
     struct dir *dir = NULL;
     char *name = NULL;
@@ -59,6 +60,7 @@ bool filesys_create(const char *path, off_t initial_size) {
                     inode_create(inode_sector, initial_size) &&
                     dir_add(dir, name, inode_sector));
 
+    //printf("success in creating file? %d\n", success);
     if (!success && inode_sector != 0)
         free_map_release(inode_sector, 1);
     dir_close(dir);
@@ -116,10 +118,11 @@ bool filesys_remove(const char *path) {
     Returns true if path is valid, i.e, all directories along path exist. The
     file itself may or may not exist. */
 bool parse_path(char *path, struct dir **dir, char **name) {
+    //printf("PARSE_PATH BEGIN\n");
     struct inode *inode = NULL;
     bool prev_was_null = false;
     char *token, *save_ptr;
-    *name = path; /* In case of empty path */
+    *name = ""; /* In case of empty path */
 
     /* Parse path */
     if (path[0] == '/') {
@@ -138,14 +141,14 @@ bool parse_path(char *path, struct dir **dir, char **name) {
     }
 
     //printf("path_copy = %s\n", path_copy); // debug
-    for (token = strtok_r(path, " ", &save_ptr); token != NULL;
-        token = strtok_r(NULL, " ", &save_ptr)) {
+    for (token = strtok_r(path, "/", &save_ptr); token != NULL;
+        token = strtok_r(NULL, "/", &save_ptr)) {
         if (prev_was_null) { /* missing directory along path */
             *name = NULL;
             *dir = NULL;
             return false;
         }
-        //printf("'%s'\n", token); // debug
+        //printf("token - '%s'\n", token); // debug
         ASSERT(*dir != NULL);
         dir_lookup(*dir, token, &inode);
 
@@ -161,6 +164,7 @@ bool parse_path(char *path, struct dir **dir, char **name) {
         *name = token;
     }
 
+    //printf("PARSE PATH END\n");
     return true;
 
 }
