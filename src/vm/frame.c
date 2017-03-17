@@ -203,10 +203,11 @@ static void evict_frame(struct frame_table_entry *fte) {
             pin(fte);
             /* If dirty, maybe write */
             struct file *file = page->file_stats->file;
+            size_t bytes = page->file_stats->read_bytes;
             ASSERT(file != NULL);
             off_t offset = page->file_stats->offset;
             acquire_file_lock();
-            file_write_at(file, page->addr, PGSIZE, offset);
+            file_write_at(file, page->addr, bytes, offset);
             release_file_lock();
 
             unpin(fte);
