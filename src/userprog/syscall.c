@@ -732,10 +732,8 @@ bool sys_chdir (const char *dir) {
     strlcpy(dir_copy, dir, strlen(dir) + 1);
 
     if (!(parse_path(dir_copy, &parent_dir, &name))) {
-        //printf("sys_chdir(): invalid path\n"); //debug
         return false;
     }
-    //printf("sys_chdir(): finished parsing path\n");
 
     if (parent_dir != NULL) {
         success = dir_lookup(parent_dir, name, &inode);
@@ -752,11 +750,9 @@ done:
     /* Set new dir */
     if (cur->cur_dir_inode != NULL) {
         dec_in_use(cur->cur_dir_inode);
-        //printf("chdir (inode %x) dec_in_use = %d\n", cur->cur_dir_inode, get_in_use(cur->cur_dir_inode));
     }
     cur->cur_dir_inode = inode;
     inc_in_use(cur->cur_dir_inode);
-    //printf("chdir (inode %x) inc_in_use = %d\n", cur->cur_dir_inode, get_in_use(cur->cur_dir_inode));
     return true;
 }
 
@@ -764,7 +760,6 @@ done:
     Returns true if successful, false on failure. Fails if DIR already exists
     or if any directory name in DIR, besides the last, doesn't already exist. */
 bool sys_mkdir (const char *dir) {
-    //printf("mkdir begins...making %s\n", dir);
     block_sector_t inode_sector = 0;
     bool success = false;
     char *name = NULL;
@@ -777,9 +772,6 @@ bool sys_mkdir (const char *dir) {
     }
     strlcpy(dir_copy, dir, strlen(dir) + 1);
     bool valid_path = parse_path(dir_copy, &parent_dir, &name);
-    //printf("directory name is %s\n", name);
-
-    //printf("valid_path = %d\n", valid_path);
 
     if (valid_path) {
         success = (dir != NULL &&
@@ -790,7 +782,6 @@ bool sys_mkdir (const char *dir) {
         /* Do subdirectory setup */
         if (success) {
             struct inode *inode = inode_open(inode_sector);
-            //printf("inode %x open_cnt = %d\n", inode, get_open_cnt(inode));
             init_subdir(inode, parent_dir);
             // close inode?
         }
@@ -798,11 +789,9 @@ bool sys_mkdir (const char *dir) {
         if (!success && inode_sector != 0)
             free_map_release(inode_sector, 1);
         dir_close(parent_dir);
-        //printf("mkdir ends: %d\n", success);
         free(dir_copy);
         return success;
     }
-    //printf("invalid mkdir path!\n");
     free(dir_copy);
     return false;
 }
