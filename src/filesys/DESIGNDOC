@@ -27,8 +27,8 @@ Christina Lin <cylin@caltech.edu>
 
 We implemented this with VM for extra credit. Could you please run it with
 and without VM enabled and just grade whichever one gives us a higher score.
-For VM, it needs to be run with bochs. Without VM, bochs and qemu should be
-the same.
+For VM, it sometimes fails/passes different tests on qemu and bochs.
+Without VM, bochs and qemu should be the same.
 Thanks!
 
 >> Please cite any offline or online sources you consulted while
