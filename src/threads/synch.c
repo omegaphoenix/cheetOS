@@ -421,18 +421,26 @@ void cond_broadcast(struct condition *cond, struct lock *lock) {
 /*! Initialize variables to use for R/W lock.*/
 void rw_lock_init(struct rw_lock *rw) {
     lock_init(&rw->read_lock);
-    sema_init(&rw->global_lock, 1);
+    cond_init(&rw->read_cond);
+    cond_init(&rw->write_cond);
     rw->num_readers = 0;
+    rw->state = NONE;
 }
 
 /*! Acquire locks to begin reading. */
 void begin_read(struct rw_lock *rw) {
     lock_acquire(&rw->read_lock);
-    rw->num_readers++;
-    /* If first reader, acquire global lock. */
-    if (rw->num_readers == 1) {
-        sema_down(&rw->global_lock);
+    if (rw->state == WRITE) {
+        rw->state = READER_WAIT;
     }
+
+    /* Don't start if there are writers waiting or if a writer has the
+       lock. */
+    while (rw->state == WRITE || rw->state == WRITER_WAIT
+            || rw->state == READER_WAIT) {
+        cond_wait(&rw->read_cond, &rw->read_lock);
+    }
+    rw->num_readers++;
     lock_release(&rw->read_lock);
 }
 
@@ -442,17 +450,56 @@ void end_read(struct rw_lock *rw) {
     rw->num_readers--;
     /* If last reader, release global lock. */
     if (rw->num_readers == 0) {
-        sema_up(&rw->global_lock);
+        if (rw->state == WRITER_WAIT) {
+            /* Prefer writer next to avoid starvation. */
+            rw->state = WRITE;
+            cond_signal(&rw->write_cond, &rw->read_lock);
+        }
+        else if (list_size(&rw->read_cond.waiters) > 0) {
+            /* Start readers if no writers. */
+            rw->state = READ;
+            cond_broadcast(&rw->read_cond, &rw->read_lock);
+        }
+        else {
+            /* Nothing else contending for lock. */
+            rw->state = NONE;
+        }
     }
     lock_release(&rw->read_lock);
 }
 
 /*! Acquire global R/W lock. */
 void begin_write(struct rw_lock *rw) {
-    sema_down(&rw->global_lock);
+    lock_acquire(&rw->read_lock);
+    if (rw->state == READ) {
+        rw->state = WRITER_WAIT;
+    }
+
+    /* Don't start if there are writers waiting or if a writer has the
+       lock. */
+    while (rw->state != NONE) {
+        cond_wait(&rw->write_cond, &rw->read_lock);
+    }
+
+    lock_release(&rw->read_lock);
 }
 
 /*! Release global R/W lock. */
 void end_write(struct rw_lock *rw) {
-    sema_up(&rw->global_lock);
+    lock_acquire(&rw->read_lock);
+    if (rw->state == READER_WAIT) {
+        /* Prefer reader next to avoid starvation. */
+        rw->state = READ;
+        cond_broadcast(&rw->read_cond, &rw->read_lock);
+    }
+    else if (list_size(&rw->write_cond.waiters) > 0) {
+        /* Start next writer if no readers. */
+        rw->state = WRITE;
+        cond_signal(&rw->write_cond, &rw->read_lock);
+    }
+    else {
+        /* Nothing else contending for lock. */
+        rw->state = NONE;
+    }
+    lock_release(&rw->read_lock);
 }

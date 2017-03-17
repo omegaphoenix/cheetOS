@@ -238,9 +238,13 @@ void write_all_dirty(void) {
 static void cache_write_to_disk(int array_idx) {
     if (cache_buffer[array_idx].valid && cache_buffer[array_idx].dirty) {
         begin_write(&cache_buffer[array_idx].read_write_lock);
-        block_write(fs_device, cache_buffer[array_idx].sector_idx,
-                cache_buffer[array_idx].sector);
-        cache_buffer[array_idx].dirty = false;
+
+        /* Double check locking. */
+        if (cache_buffer[array_idx].dirty) {
+            block_write(fs_device, cache_buffer[array_idx].sector_idx,
+                    cache_buffer[array_idx].sector);
+            cache_buffer[array_idx].dirty = false;
+        }
         end_write(&cache_buffer[array_idx].read_write_lock);
     }
 }
@@ -252,8 +256,12 @@ static void cache_write_sector_to_disk(int sector_idx) {
     ASSERT(cache_buffer[array_idx].pin_count == 1);
     if (cache_buffer[array_idx].valid && cache_buffer[array_idx].dirty) {
         begin_write(&cache_buffer[array_idx].read_write_lock);
-        block_write(fs_device, sector_idx, cache_buffer[array_idx].sector);
-        cache_buffer[array_idx].dirty = false;
+
+        /* Double check locking. */
+        if (cache_buffer[array_idx].dirty) {
+            block_write(fs_device, sector_idx, cache_buffer[array_idx].sector);
+            cache_buffer[array_idx].dirty = false;
+        }
         end_write(&cache_buffer[array_idx].read_write_lock);
     }
 }
