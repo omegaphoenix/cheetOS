@@ -290,23 +290,41 @@ bool is_empty_dir(struct inode *inode) {
     return true;
 }
 
-void init_subdir(struct inode *inode, struct dir *parent_dir) {
+/* Returns previously opened directory with given inode */
+struct dir *get_open_dir(struct inode *inode) {
+    struct list_elem *e;
+    struct dir *dir;
+
+    for (e = list_begin(&open_dirs); e != list_end(&open_dirs);
+         e = list_next(e)) {
+        dir = list_entry(e, struct dir, elem);
+        if (dir_get_inode(dir) == inode) {
+            return dir;
+        }
+    }
+    return NULL;
+}
+
+/* Initializes subdirectory. */
+bool init_subdir(struct inode *inode, struct dir *parent_dir) {
+    bool success = true;
     /* Set inode's 'is_dir' to true */
     set_dir(inode, true);
 
     /* Add "." and ".." directories */
     struct dir *dir = dir_open(inode_reopen(inode));
-    dir_add(dir, ".", inode_get_inumber(inode)); /* "." points to itself */
+    /* "." points to itself */
+    success = dir_add(dir, ".", inode_get_inumber(inode));
 
     if (inode_get_inumber(inode) == ROOT_DIR_SECTOR) {
          /* ".." points to itself */
-        dir_add(dir, "..", inode_get_inumber(inode));
+        success = dir_add(dir, "..", inode_get_inumber(inode));
     }
     else {
         /* ".." points to parent */
-        dir_add(dir, "..", inode_get_inumber(dir_get_inode(parent_dir)));
+        success = dir_add(dir, "..", inode_get_inumber(dir_get_inode(parent_dir)));
     }
 
     dir_close(dir);
-    return;
+    return success;
 }

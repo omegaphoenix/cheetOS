@@ -32,7 +32,8 @@ bool dir_readdir(struct dir *, char name[NAME_MAX + 1]);
 /* Subdirectories. */
 void directory_init(void);
 bool is_empty_dir(struct inode *);
-void init_subdir(struct inode *, struct dir *);
+struct dir *get_open_dir(struct inode *);
+bool init_subdir(struct inode *, struct dir *);
 #endif
 
 #endif /* filesys/directory.h */

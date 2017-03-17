@@ -82,6 +82,7 @@ bool filesys_create(const char *path, off_t initial_size) {
     or a null pointer otherwise.  Fails if no file with path PATH exists,
     or if an internal memory allocation fails. */
 struct file * filesys_open(const char *path) {
+    //printf("open %s\n", path);
     struct dir *dir = NULL;
     struct inode *inode = NULL;
     char *name = NULL;
