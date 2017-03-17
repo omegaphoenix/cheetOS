@@ -40,6 +40,7 @@ static int cache_insert(block_sector_t sector_idx);
 /* Retrieve cache_buffer index that corresponds to block sector_idx. */
 static int cache_get(block_sector_t sector_idx, bool evicting);
 
+/* Helper methods for eviction. */
 static int cache_get_free(void);
 static bool in_cache(block_sector_t sector_idx);
 static int choose_sector_to_evict(void);
@@ -47,6 +48,7 @@ static void cache_write_to_disk(int array_idx);
 static void cache_write_sector_to_disk(int array_idx);
 static void increment_clock_hand(void);
 
+/* Write-ahead and read-behind methods. */
 static void write_behind(void *arg_ UNUSED);
 static void add_to_read_ahead(block_sector_t sector_idx);
 static void read_ahead_loop(void *arg_ UNUSED);
@@ -89,11 +91,16 @@ void cache_table_init(void) {
     thread_create("read-ahead", PRI_DEFAULT, read_ahead_loop, NULL);
 }
 
+/*! Pin this element of the cache_buffer. We keep a pin_count so a
+    sector can be pinned multiple times. */
 static void pin(int array_idx) {
     ASSERT(cache_buffer[array_idx].pin_count >= 0);
     cache_buffer[array_idx].pin_count++;
 }
 
+/*! Unpin this element of the cache_buffer. We keep a pin_count so a
+    sector can be unpinned multiple times if it was pinned in multiple
+    places. */
 static void unpin(int array_idx) {
     ASSERT(cache_buffer[array_idx].valid);
     ASSERT(cache_buffer[array_idx].pin_count > 0);

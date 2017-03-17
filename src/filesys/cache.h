@@ -11,7 +11,8 @@
 #include "filesys/off_t.h"
 #include "threads/synch.h"
 
-#define MAX_BUFFER_SIZE 64
+/* One of the cache slots is used by keeping the inode_disk data in inode. */
+#define MAX_BUFFER_SIZE 63
 
 /* Flag which indicates that filesys_done has been called. */
 bool filesys_done_wait;

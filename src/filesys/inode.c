@@ -328,8 +328,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
             sector_ofs -= DIRECT_BLOCK_COUNT;
 
             /* Check whether it should be an indirect block. */
-            struct indirect_block *indirect =
-                calloc(1, sizeof(struct indirect_block));
+            struct indirect_block *indirect = indirect_inode_new();
             if (sector_ofs < TOTAL_SECTOR_COUNT) {
                 /* Get indirect block from cache. */
                 read_from_cache(inode->data.indirect_block, indirect);
@@ -353,8 +352,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
                 int double_indir_idx = sector_ofs % TOTAL_SECTOR_COUNT;
 
                 /* Read double indirect block from cache. */
-                struct indirect_block *double_indirect =
-                    calloc(1, sizeof(struct indirect_block));
+                struct indirect_block *double_indirect = indirect_inode_new();
                 read_from_cache(inode->data.double_indirect_block, double_indirect);
 
                 /* Read appropriate block in double indirect from cache. */
