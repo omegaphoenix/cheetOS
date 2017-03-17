@@ -4,6 +4,7 @@
 #include <round.h>
 #include <string.h>
 #include "filesys/cache.h"
+#include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
@@ -570,6 +571,11 @@ off_t inode_length(const struct inode *inode) {
 }
 
 #ifdef CACHE
+bool file_is_dir(struct file *open_file) {
+    struct inode *inode = file_get_inode(open_file);
+    return is_dir(inode);
+}
+
 /* Returns true if inode is a directory. */
 bool is_dir(const struct inode *inode) {
     return inode->is_dir;
