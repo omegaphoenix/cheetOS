@@ -30,6 +30,7 @@ bool dir_readdir(struct dir *, char name[NAME_MAX + 1]);
 
 #ifdef CACHE
 /* Subdirectories. */
+void directory_init(void);
 bool is_empty_dir(struct inode *);
 void init_subdir(struct inode *, struct dir *);
 #endif
