@@ -39,7 +39,6 @@ static struct list open_dirs;
 /*! Initializes the inode module. */
 void directory_init(void) {
     list_init(&open_dirs);
-    printf("THERE ARE %d dirs in open_dirs\n", list_size(&open_dirs));
 }
 
 /*! Creates a directory with space for ENTRY_CNT entries in the
