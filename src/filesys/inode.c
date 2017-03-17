@@ -4,6 +4,7 @@
 #include <round.h>
 #include <string.h>
 #include "filesys/cache.h"
+#include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
@@ -43,6 +44,7 @@ struct inode {
 
 #ifdef CACHE
     bool is_dir;                        /*!< Directory or normal file. */
+    int in_use;                         /*!< Number of files/dirs open. */
     struct lock node_lock;              /*!< Locking for file extension */
 #endif
 };
@@ -443,6 +445,7 @@ struct inode * inode_open(block_sector_t sector) {
     inode->deny_write_cnt = 0;
     inode->removed = false;
     inode->is_dir = false; // fix this?
+    inode->in_use = 0; // only increment when corresponding file/dir is opened
     lock_init(&inode->node_lock);
     return inode;
 }
@@ -471,7 +474,7 @@ void inode_close(struct inode *inode) {
     read_from_cache(inode->sector, &disk);
 
     /* Release resources if this was the last opener. */
-    if (--inode->open_cnt == 0) {
+    if (--inode->open_cnt == 0 && inode->in_use == 0) {
         /* Remove from inode list and release lock. */
         list_remove(&inode->elem);
 
@@ -540,7 +543,6 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
     (Normally a write at end of file would extend the inode, but
     growth is not yet implemented.) */
 
-// TODO: Handle EOF extensions.
 off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t offset) {
     const uint8_t *buffer = buffer_;
     off_t bytes_written = 0;
@@ -617,6 +619,11 @@ off_t inode_length(const struct inode *inode) {
 }
 
 #ifdef CACHE
+bool file_is_dir(struct file *open_file) {
+    struct inode *inode = file_get_inode(open_file);
+    return is_dir(inode);
+}
+
 /* Returns true if inode is a directory. */
 bool is_dir(const struct inode *inode) {
     return inode->is_dir;
@@ -625,6 +632,27 @@ bool is_dir(const struct inode *inode) {
 /* Sets inode's is_dir flag to specified bool. */
 void set_dir(struct inode *inode, bool is_dir) {
     inode->is_dir = is_dir;
+}
+
+/* Returns number of times inode has been opened as a file/dir. */
+int get_in_use(struct inode *inode) {
+    return inode->in_use;
+}
+
+/* Increments inode->in_use. */
+void inc_in_use(struct inode *inode) {
+    inode->in_use++;
+}
+
+/* Decrement inode->in_use. */
+void dec_in_use(struct inode *inode) {
+    inode->in_use--;
+    ASSERT(inode->in_use >= 0);
+}
+
+/* For debugging. */
+int get_open_cnt(struct inode *inode) {
+    return inode->open_cnt;
 }
 #endif
 

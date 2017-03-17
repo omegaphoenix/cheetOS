@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "devices/timer.h"
+#include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
@@ -290,6 +291,10 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
 
     /* Set current directory to parent's current directory */
     t->cur_dir_inode = parent->cur_dir_inode;
+    if (t->cur_dir_inode != NULL) {
+        inc_in_use(t->cur_dir_inode);
+    }
+
 
     ASSERT(t->done_sema.value == 1);
     sema_down(&t->done_sema);
@@ -404,6 +409,14 @@ void thread_exit(void) {
         kid->parent = NULL;
         sema_up(&kid->done_sema);
     }
+
+#ifdef CACHE
+    /* Close current directory */
+    if (cur->cur_dir_inode != NULL) { // maybe assert
+        dec_in_use(cur->cur_dir_inode);
+        //inode_close(cur->cur_dir_inode);
+    }
+#endif
 
 #ifdef USERPROG
     process_exit();
