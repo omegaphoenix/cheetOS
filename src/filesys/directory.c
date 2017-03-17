@@ -39,7 +39,7 @@ struct dir * dir_open(struct inode *inode) {
     else {
         inode_close(inode);
         free(dir);
-        return NULL; 
+        return NULL;
     }
 }
 
@@ -60,7 +60,6 @@ void dir_close(struct dir *dir) {
     if (dir != NULL) {
         dec_in_use(dir->inode);
         inode_close(dir->inode);
-        //printf("dir_close %x, in_use = %d, open_cnt = %d\n", dir, get_in_use(dir->inode), get_open_cnt(dir->inode));
         free(dir);
     }
 }
@@ -77,7 +76,6 @@ struct inode * dir_get_inode(struct dir *dir) {
     otherwise, returns false and ignores EP and OFSP. */
 static bool lookup(const struct dir *dir, const char *name,
                    struct dir_entry *ep, off_t *ofsp) {
-    //printf("\nlookup(): looking for %s\n", name);
     struct dir_entry e;
     size_t ofs;
 
@@ -86,9 +84,7 @@ static bool lookup(const struct dir *dir, const char *name,
 
     for (ofs = 0; inode_read_at(dir->inode, &e, sizeof(e), ofs) == sizeof(e);
          ofs += sizeof(e)) {
-        //printf("e: %s\n", e.name);
         if (e.in_use && !strcmp(name, e.name)) {
-            //printf("found it!\n");
             if (ep != NULL)
                 *ep = e;
             if (ofsp != NULL)
@@ -96,7 +92,6 @@ static bool lookup(const struct dir *dir, const char *name,
             return true;
         }
     }
-    //printf("could not find it\n");
     return false;
 }
 
@@ -104,8 +99,6 @@ static bool lookup(const struct dir *dir, const char *name,
     false otherwise.  On success, sets *INODE to an inode for the file,
     otherwise to a null pointer.  The caller must close *INODE. */
 bool dir_lookup(const struct dir *dir, const char *name, struct inode **inode) {
-    //printf("DIR_LOOKUP\n");
-    //printf("dir = %x\n", dir);
 
     struct dir_entry e;
 
@@ -126,8 +119,6 @@ bool dir_lookup(const struct dir *dir, const char *name, struct inode **inode) {
     Fails if NAME is invalid (i.e. too long) or a disk or memory
     error occurs. */
 bool dir_add(struct dir *dir, const char *name, block_sector_t inode_sector) {
-    //printf("DIR_ADD\n");
-    //printf("dir = %x\n", dir);
 
     struct dir_entry e;
     off_t ofs;
@@ -157,7 +148,6 @@ bool dir_add(struct dir *dir, const char *name, block_sector_t inode_sector) {
             break;
     }
 
-    //printf("writing slot!\n");
     /* Write slot. */
     e.in_use = true;
     strlcpy(e.name, name, sizeof e.name);
@@ -171,7 +161,6 @@ done:
 /*! Removes any entry for NAME in DIR.  Returns true if successful, false on
     failure, which occurs only if there is no file with the given NAME. */
 bool dir_remove(struct dir *dir, const char *name) {
-    //printf("DIR_REMOVE\n");
     struct dir_entry e;
     struct inode *inode = NULL;
     bool success = false;
@@ -231,8 +220,7 @@ bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
 
 /* Returns true if directory is empty (other than "." and "..") */
 bool is_empty_dir(struct inode *inode) {
-    //printf("\nis_empty_dir()? inode %x\n", inode);
-    struct dir *dir = dir_open(inode_reopen(inode)); // hmmm
+    struct dir *dir = dir_open(inode_reopen(inode));
     struct dir_entry e;
     size_t ofs;
 
@@ -241,7 +229,6 @@ bool is_empty_dir(struct inode *inode) {
 
     for (ofs = 0; inode_read_at(dir->inode, &e, sizeof(e), ofs) == sizeof(e);
          ofs += sizeof(e)) {
-        //printf("e: %s\n", e.name);
         if (e.in_use && strcmp(e.name, ".") && strcmp(e.name, "..")) {
             dir_close(dir);
             return false;
@@ -254,7 +241,6 @@ bool is_empty_dir(struct inode *inode) {
 void init_subdir(struct inode *inode, struct dir *parent_dir) {
     /* Set inode's 'is_dir' to true */
     set_dir(inode, true);
-    //printf("set inode %x is_dir to true, now it's %d\n", inode, is_dir(inode));
 
     /* Add "." and ".." directories */
     struct dir *dir = dir_open(inode_reopen(inode));
@@ -270,6 +256,5 @@ void init_subdir(struct inode *inode, struct dir *parent_dir) {
     }
 
     dir_close(dir);
-    //printf("finished init_subdir of inode %x in dir %x\n", inode, parent_dir);
     return;
 }

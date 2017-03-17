@@ -34,7 +34,7 @@ void set_dir(struct inode *inode, bool is_dir);
 int get_in_use(struct inode *inode);
 void inc_in_use(struct inode *inode);
 void dec_in_use(struct inode *inode);
-int get_open_cnt(struct inode *inode); 
+int get_open_cnt(struct inode *inode);
 #endif
 
 #endif /* filesys/inode.h */

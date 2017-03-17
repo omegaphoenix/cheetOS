@@ -747,6 +747,7 @@ bool sys_chdir (const char *dir) {
         return false;
     }
 
+    free(dir_copy);
 done:
     /* Set new dir */
     if (cur->cur_dir_inode != NULL) {
@@ -756,7 +757,6 @@ done:
     cur->cur_dir_inode = inode;
     inc_in_use(cur->cur_dir_inode);
     //printf("chdir (inode %x) inc_in_use = %d\n", cur->cur_dir_inode, get_in_use(cur->cur_dir_inode));
-    free(dir_copy);
     return true;
 }
 
@@ -769,7 +769,6 @@ bool sys_mkdir (const char *dir) {
     bool success = false;
     char *name = NULL;
     struct dir *parent_dir = NULL;
-    struct inode *inode = NULL;
 
     /* Copy path to be safe */
     char *dir_copy = calloc(MAX_PATH_SIZE, 1);
