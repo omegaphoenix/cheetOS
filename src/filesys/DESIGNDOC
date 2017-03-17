@@ -197,6 +197,20 @@ struct inode {
 is_dir is used to distinguish between files and directories.
 in_use stores a count of how many times the inode has been opened as a file/dir.
 
+struct dir {
+    ...
+    struct lock dir_lock;               /*!< Lock for I/O operations. */
+    struct list_elem elem;              /*!< Element in inode list. */
+    int open_cnt;                       /*!< Number of times dir has been opened. */
+};
+dir_lock is acquired and released when performing I/O.
+elem is used to store directories in open_dirs.
+open_cnt is incremented and decremented when dirs are opened and closed.
+
+static struct list open_dirs;
+List of open directories, so that opening a single directory twice returns the
+same struct.
+
 struct thread {
     ...
     struct inode *cur_dir_inode;               /*!< Current directory inode. */
@@ -285,7 +299,7 @@ To also protect the cache table, we had to use a lock:
 static struct lock cache_lock;
 
 struct rw_lock {
-  struct lock read_lock;        /*!< Used by readers. */
+  struct lock read_lock;        /*!< Lock to change and access variables. */
   int num_readers;              /*!< Number of blocking readers. */
   struct condition read_cond;   /*!< Condition to signal all readers. */
   struct condition write_cond;  /*!< Condition to signal writers. */
