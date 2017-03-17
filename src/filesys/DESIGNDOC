@@ -45,14 +45,14 @@ which parts.
    Make sure that each member's total time is listed.
 
   Justin Leong:
-  John Li:
+  John Li: 26-27 hours
   Christina Lin: 27-28 hours
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
   Justin Leong: Buffer cache, read-ahead, write-behind, debugging VM
-  John Li:
+  John Li: Buffer cache, file extension and inode refactor.
   Christina Lin: Subdirectories (including current directory and
   parsing/navigating directory paths)
 
@@ -64,6 +64,21 @@ which parts.
 >> A1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+
+We changed the inode_disk struct to be the following:
+
+/*! On-disk inode.
+    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
+struct inode_disk {
+    block_sector_t direct_blocks[DIRECT_BLOCK_COUNT];   /*!< Number of direct blocks. */
+    block_sector_t indirect_block;                      /*!< Index for indirect block */
+    block_sector_t double_indirect_block;               /*!< Index for double indirect block */
+
+    off_t length;                                       /*!< File size in bytes. */
+    unsigned magic;                                     /*!< Magic number. */
+};
+
+
 
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
