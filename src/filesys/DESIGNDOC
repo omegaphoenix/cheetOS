@@ -18,11 +18,18 @@ Christina Lin <cylin@caltech.edu>
 
    Repository URL: https://github.com/omegaphoenix/cheetOS
    commit ...
+   tag: project6-1
 
 ---- PRELIMINARIES ----
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please give them here.
+
+We implemented this with VM for extra credit. Could you please run it with
+and without VM enabled and just grade whichever one gives us a higher score.
+For VM, it needs to be run with bochs. Without VM, bochs and qemu should be
+the same.
+Thanks!
 
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
@@ -44,7 +51,7 @@ which parts.
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
-  Justin Leong:
+  Justin Leong: Buffer cache, read-ahead, write-behind, debugging VM
   John Li:
   Christina Lin: Subdirectories (including current directory and
   parsing/navigating directory paths)
@@ -66,6 +73,12 @@ which parts.
 >> A3: Explain how your code avoids a race if two processes attempt to
 >> extend a file at the same time.
 
+Each inode has a node_lock which prevents multiple processes from modifying
+the inode at the same time. We use double check locking so if it looks like
+an extension, we would acquire the lock and then check again before extending.
+By casting the length as a volatile int, we make sure the length is checked
+again after the lock is acquired.
+
 >> A4: Suppose processes A and B both have file F open, both
 >> positioned at end-of-file.  If A reads and B writes F at the same
 >> time, A may read all, part, or none of what B writes.  However, A
@@ -73,12 +86,26 @@ which parts.
 >> nonzero data, A is not allowed to see all zeros.  Explain how your
 >> code avoids this race.
 
+We use a reader-writer lock or a shared-exclusive lock which we implement
+in synch.c. Writers cannot write while readers have the lock and readers
+cannot read while a writer has the lock. A writer must acquire the lock
+before writing and if there are no other readers, a reader much acquire
+the lock before reading to ensure that a writer deosn't get the lock. If
+there are other readers, it is possible for a reader to begin right away
+without acquiring the lock if there are no waiting writers.
+
 >> A5: Explain how your synchronization design provides "fairness".
 >> File access is "fair" if readers cannot indefinitely block writers
 >> or vice versa.  That is, many processes reading from a file cannot
 >> prevent forever another process from writing the file, and many
 >> processes writing to a file cannot prevent another process forever
 >> from reading the file.
+
+Fairness is provided by preventing new readers from reading when there are
+waiting writers. Instead, once the current readers are all finished, a writer
+is given priority to start writing. Similarly, when a writer is finished,
+if there are any waiting readers, they are all simultaneously started.
+By alternating readers and writers, file access is guaranteed to be "fair".
 
 ---- RATIONALE ----
 
