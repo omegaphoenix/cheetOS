@@ -802,8 +802,12 @@ bool sys_mkdir (const char *dir) {
     If no entries are left in the directory, returns false. */
 bool sys_readdir (int fd, char *name) {
     struct file *file = get_fd(thread_current(), fd);
+    if (file == NULL) {
+        return false;
+    }
+
     struct inode *inode = file_get_inode(file);
-    if (!is_dir(inode)) {
+    if (inode == NULL || !is_dir(inode)) {
         return false;
     }
 

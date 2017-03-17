@@ -28,6 +28,7 @@ void inode_allow_write(struct inode *);
 off_t inode_length(const struct inode *);
 
 #ifdef CACHE
+bool inode_is_removed(const struct inode *inode);
 bool file_is_dir(struct file *open_file);
 bool is_dir(const struct inode *inode);
 void set_dir(struct inode *inode, bool is_dir);

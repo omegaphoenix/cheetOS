@@ -328,8 +328,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
             sector_ofs -= DIRECT_BLOCK_COUNT;
 
             /* Check whether it should be an indirect block. */
-            struct indirect_block *indirect =
-                calloc(1, sizeof(struct indirect_block));
+            struct indirect_block *indirect = indirect_inode_new();
             if (sector_ofs < TOTAL_SECTOR_COUNT) {
                 /* Get indirect block from cache. */
                 read_from_cache(inode->data.indirect_block, indirect);
@@ -353,8 +352,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
                 int double_indir_idx = sector_ofs % TOTAL_SECTOR_COUNT;
 
                 /* Read double indirect block from cache. */
-                struct indirect_block *double_indirect =
-                    calloc(1, sizeof(struct indirect_block));
+                struct indirect_block *double_indirect = indirect_inode_new();
                 read_from_cache(inode->data.double_indirect_block, double_indirect);
 
                 /* Read appropriate block in double indirect from cache. */
@@ -533,8 +531,7 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
 /*! Writes SIZE bytes from BUFFER into INODE, starting at OFFSET.
     Returns the number of bytes actually written, which may be
     less than SIZE if end of file is reached or an error occurs.
-    (Normally a write at end of file would extend the inode, but
-    growth is not yet implemented.) */
+    A write at end of file will extend the inode. */
 
 off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t offset) {
     const uint8_t *buffer = buffer_;
@@ -545,14 +542,19 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t
 
     /* If I write past EOF, expand file */
     if (inode->data.length < offset + size) {
-        /* Expand the file */
+        /* Use double check locking. */
         extension_lock_acquire(inode);
-        inode->data.length = size + offset;
-        if (!inode_allocate_free_map(&inode->data))
-            return bytes_written;
+        if (((volatile int) inode->data.length) < offset + size) {
+            /* Expand the file */
+            inode->data.length = size + offset;
+            if (!inode_allocate_free_map(&inode->data)) {
+                extension_lock_release(inode);
+                return bytes_written;
+            }
 
-        /* Editted inode, write back to sector */
-        write_to_cache(inode->sector, &inode->data);
+            /* Editted inode, write back to sector */
+            write_to_cache(inode->sector, &inode->data);
+        }
         extension_lock_release(inode);
     }
 
@@ -605,6 +607,10 @@ off_t inode_length(const struct inode *inode) {
 }
 
 #ifdef CACHE
+bool inode_is_removed(const struct inode *inode) {
+    return inode->removed;
+}
+
 bool file_is_dir(struct file *open_file) {
     struct inode *inode = file_get_inode(open_file);
     return is_dir(inode);
