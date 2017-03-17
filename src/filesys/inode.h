@@ -6,7 +6,7 @@
 #include "filesys/off_t.h"
 #include "filesys/file.h"
 
-/* Each inode_disk will have 126 direct, 1 indirect, and 1 double indirect
+/* Each inode_disk will have 124 direct, 1 indirect, and 1 double indirect
  * 124 direct indices + 128 indirect indices + 128 ^ 2 double indirect indices
  * = 16636 indices > 16384 */
 #define DIRECT_BLOCK_COUNT 124

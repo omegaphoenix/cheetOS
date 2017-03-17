@@ -41,7 +41,6 @@ struct inode {
     int open_cnt;                       /*!< Number of openers. */
     bool removed;                       /*!< True if deleted, false otherwise. */
     int deny_write_cnt;                 /*!< 0: writes ok, >0: deny writes. */
-    struct inode_disk data;             /*!< Inode content. */
 
 #ifdef CACHE
     bool is_dir;                        /*!< Directory or normal file. */
@@ -313,7 +312,10 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
     block_sector_t sector_idx;
 
     /* Calculate file length. */
-    int length = inode->data.length;
+    struct inode_disk disk;
+    read_from_cache(inode->sector, &disk);
+
+    int length = disk.length;
 
     if (pos < length) {
         int sector_ofs = pos / BLOCK_SECTOR_SIZE;
@@ -321,7 +323,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
         /* Check whether it should be a direct block. */
         if (sector_ofs < DIRECT_BLOCK_COUNT) {
             /* Return direct block */
-            sector_idx = inode->data.direct_blocks[sector_ofs];
+            sector_idx = disk.direct_blocks[sector_ofs];
             return sector_idx;
         }
         else {
@@ -331,7 +333,7 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
             struct indirect_block *indirect = indirect_inode_new();
             if (sector_ofs < TOTAL_SECTOR_COUNT) {
                 /* Get indirect block from cache. */
-                read_from_cache(inode->data.indirect_block, indirect);
+                read_from_cache(disk.indirect_block, indirect);
 
                 /* Get sector. */
                 sector_idx = indirect->blocks[sector_ofs];
@@ -352,8 +354,9 @@ static block_sector_t byte_to_sector(const struct inode *inode, off_t pos) {
                 int double_indir_idx = sector_ofs % TOTAL_SECTOR_COUNT;
 
                 /* Read double indirect block from cache. */
+
                 struct indirect_block *double_indirect = indirect_inode_new();
-                read_from_cache(inode->data.double_indirect_block, double_indirect);
+                read_from_cache(disk.double_indirect_block, double_indirect);
 
                 /* Read appropriate block in double indirect from cache. */
                 block_sector_t indir_sector_idx =
@@ -443,7 +446,6 @@ struct inode * inode_open(block_sector_t sector) {
     inode->is_dir = false; // fix this?
     inode->in_use = 0; // only increment when corresponding file/dir is opened
     lock_init(&inode->node_lock);
-    read_from_cache(inode->sector, &inode->data);
     return inode;
 }
 
@@ -467,6 +469,9 @@ void inode_close(struct inode *inode) {
     if (inode == NULL)
         return;
 
+    struct inode_disk disk;
+    read_from_cache(inode->sector, &disk);
+
     /* Release resources if this was the last opener. */
     if (--inode->open_cnt == 0 && inode->in_use == 0) {
         /* Remove from inode list and release lock. */
@@ -475,7 +480,7 @@ void inode_close(struct inode *inode) {
         /* Deallocate blocks if removed. */
         if (inode->removed) {
             free_map_release(inode->sector, 1);
-            inode_release_free_map(&inode->data);
+            inode_release_free_map(&disk);
         }
 
         free(inode);
@@ -496,8 +501,11 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
     uint8_t *buffer = buffer_;
     off_t bytes_read = 0;
 
+    struct inode_disk disk;
+    read_from_cache(inode->sector, &disk);
+
     /* If offset goes past EOF, return 0 */
-    if (offset > inode->data.length) {
+    if (offset > disk.length) {
         return bytes_read;
     }
 
@@ -540,20 +548,23 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t
     if (inode->deny_write_cnt)
         return 0;
 
+    struct inode_disk disk;
+    read_from_cache(inode->sector, &disk);
+
     /* If I write past EOF, expand file */
-    if (inode->data.length < offset + size) {
+    if (disk.length < offset + size) {
         /* Use double check locking. */
         extension_lock_acquire(inode);
-        if (((volatile int) inode->data.length) < offset + size) {
+        if (((volatile int) disk.length) < offset + size) {
             /* Expand the file */
-            inode->data.length = size + offset;
-            if (!inode_allocate_free_map(&inode->data)) {
+            disk.length = size + offset;
+            if (!inode_allocate_free_map(&disk)) {
                 extension_lock_release(inode);
                 return bytes_written;
             }
 
             /* Editted inode, write back to sector */
-            write_to_cache(inode->sector, &inode->data);
+            write_to_cache(inode->sector, &disk);
         }
         extension_lock_release(inode);
     }
@@ -603,7 +614,9 @@ void inode_allow_write (struct inode *inode) {
 
 /*! Returns the length, in bytes, of INODE's data. */
 off_t inode_length(const struct inode *inode) {
-    return inode->data.length;
+    struct inode_disk disk;
+    read_from_cache(inode->sector, &disk);
+    return disk.length;
 }
 
 #ifdef CACHE
