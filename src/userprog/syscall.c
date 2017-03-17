@@ -509,7 +509,7 @@ int sys_write(int fd, void *buffer, unsigned size) {
             ASSERT(success || (page != NULL && page->loaded));
 
             struct file *open_file = get_fd(cur, fd);
-            if (open_file == NULL) {
+            if (open_file == NULL || file_is_dir(open_file)) {
                 sys_exit(ERR);
             }
 
@@ -538,7 +538,7 @@ int sys_write(int fd, void *buffer, unsigned size) {
 #else
         acquire_file_lock();
         struct file *open_file = get_fd(cur, fd);
-        if (open_file == NULL) {
+        if (open_file == NULL || file_is_dir(open_file)) {
             release_file_lock();
             sys_exit(ERR);
         }
@@ -718,6 +718,12 @@ bool sys_chdir (const char *dir) {
     struct inode *inode = NULL;
     struct thread *cur = thread_current();
 
+    /* Special case: '/' is root, no need to call dir_lookup */
+    if (!strcmp(dir, "/")) {
+        inode = inode_open(ROOT_DIR_SECTOR);
+        goto done;
+    }
+
     /* Copy path to be safe */
     char *dir_copy = calloc(MAX_PATH_SIZE, 1);
     if (dir_copy == NULL) {
@@ -726,10 +732,8 @@ bool sys_chdir (const char *dir) {
     strlcpy(dir_copy, dir, strlen(dir) + 1);
 
     if (!(parse_path(dir_copy, &parent_dir, &name))) {
-        //printf("sys_chdir(): invalid path\n"); //debug
         return false;
     }
-    //printf("sys_chdir(): finished parsing path\n");
 
     if (parent_dir != NULL) {
         success = dir_lookup(parent_dir, name, &inode);
@@ -740,9 +744,15 @@ bool sys_chdir (const char *dir) {
         free(dir_copy);
         return false;
     }
-    // might need to close old directory?
-    cur->cur_dir_inode = inode;
+
     free(dir_copy);
+done:
+    /* Set new dir */
+    if (cur->cur_dir_inode != NULL) {
+        dec_in_use(cur->cur_dir_inode);
+    }
+    cur->cur_dir_inode = inode;
+    inc_in_use(cur->cur_dir_inode);
     return true;
 }
 
@@ -750,12 +760,10 @@ bool sys_chdir (const char *dir) {
     Returns true if successful, false on failure. Fails if DIR already exists
     or if any directory name in DIR, besides the last, doesn't already exist. */
 bool sys_mkdir (const char *dir) {
-    //printf("mkdir begins...making %s\n", dir);
     block_sector_t inode_sector = 0;
     bool success = false;
     char *name = NULL;
     struct dir *parent_dir = NULL;
-    struct inode *inode = NULL;
 
     /* Copy path to be safe */
     char *dir_copy = calloc(MAX_PATH_SIZE, 1);
@@ -764,9 +772,6 @@ bool sys_mkdir (const char *dir) {
     }
     strlcpy(dir_copy, dir, strlen(dir) + 1);
     bool valid_path = parse_path(dir_copy, &parent_dir, &name);
-    //printf("directory name is %s\n", name);
-
-    //printf("valid_path = %d\n", valid_path);
 
     if (valid_path) {
         success = (dir != NULL &&
@@ -776,18 +781,17 @@ bool sys_mkdir (const char *dir) {
 
         /* Do subdirectory setup */
         if (success) {
-            inode = inode_open(inode_sector);
-            set_dir(inode, true);
+            struct inode *inode = inode_open(inode_sector);
+            init_subdir(inode, parent_dir);
+            // close inode?
         }
 
         if (!success && inode_sector != 0)
             free_map_release(inode_sector, 1);
         dir_close(parent_dir);
-        //printf("mkdir ends: %d\n", success);
         free(dir_copy);
         return success;
     }
-    //printf("invalid mkdir path!\n");
     free(dir_copy);
     return false;
 }
@@ -804,7 +808,7 @@ bool sys_readdir (int fd, char *name) {
     }
 
     /* Open as directory */
-    struct dir *dir = dir_open(inode);
+    struct dir *dir = dir_open(inode); // reopen?
 
     return dir_readdir(dir, name);
 

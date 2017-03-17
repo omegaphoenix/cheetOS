@@ -31,6 +31,7 @@ bool dir_readdir(struct dir *, char name[NAME_MAX + 1]);
 #ifdef CACHE
 /* Subdirectories. */
 bool is_empty_dir(struct inode *);
+void init_subdir(struct inode *, struct dir *);
 #endif
 
 #endif /* filesys/directory.h */
