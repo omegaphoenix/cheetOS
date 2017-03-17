@@ -42,6 +42,10 @@ void filesys_init(bool format) {
 
 /*! Shuts down the file system module, writing any unwritten data to disk. */
 void filesys_done(void) {
+    /* Let write-behind and read-ahead threads know they can finish. */
+    filesys_done_wait = true;
+    sema_up(&read_ahead_sema);
+    timer_sleep(TIMER_FREQ);
     write_all_dirty();
     free_map_close();
 }
@@ -95,11 +99,18 @@ struct file * filesys_open(const char *path) {
     strlcpy(path_copy, path, strlen(path) + 1);
     parse_path(path_copy, &dir, &name);
 
-    if (dir != NULL)
+    if (dir != NULL) {
         dir_lookup(dir, name, &inode);
+    }
     dir_close(dir);
 
     free(path_copy);
+
+    /* Return NULL if inode has been removed. */
+    if (inode == NULL || inode_is_removed(inode)) {
+        return NULL;
+    }
+
     return file_open(inode);
 }
 
