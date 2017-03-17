@@ -76,6 +76,11 @@ struct file * filesys_open(const char *path) {
     struct inode *inode = NULL;
     char *name = NULL;
 
+    /* Special case: '/' is root, no need to call dir_lookup */
+    if (!strcmp(path, "/")) {
+        return file_open(inode_open(ROOT_DIR_SECTOR));
+    }
+
     /* Copy path to be safe */
     char *path_copy = calloc(MAX_PATH_SIZE, 1);
     if (path_copy == NULL) {
@@ -98,7 +103,6 @@ struct file * filesys_open(const char *path) {
 bool filesys_remove(const char *path) {
     struct dir *dir = NULL;
     char *name = NULL;
-    struct inode *inode = NULL;
 
     /* Copy path to be safe */
     char *path_copy = calloc(MAX_PATH_SIZE, 1);

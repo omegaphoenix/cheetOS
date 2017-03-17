@@ -10,7 +10,6 @@
 struct dir {
     struct inode *inode;                /*!< Backing store. */
     off_t pos;                          /*!< Current position. */
-    int pin_count;
 };
 
 /*! A single directory entry. */
@@ -34,7 +33,8 @@ struct dir * dir_open(struct inode *inode) {
     if (inode != NULL && dir != NULL) {
         dir->inode = inode;
         dir->pos = 0;
-        dir->pin_count++;
+        inc_in_use(dir->inode);
+        //printf("dir_open %x in_use = %d\n", dir, get_in_use(dir->inode));
         return dir;
     }
     else {
@@ -59,8 +59,8 @@ struct dir * dir_reopen(struct dir *dir) {
 /*! Destroys DIR and frees associated resources. */
 void dir_close(struct dir *dir) {
     if (dir != NULL) {
-        dir->pin_count--;
-        ASSERT(dir->pin_count >= 0);
+        dec_in_use(dir->inode);
+        //printf("dir_close %x, in_use = %d\n", dir, get_in_use(dir->inode));
         inode_close(dir->inode);
         free(dir);
     }
@@ -195,7 +195,7 @@ bool dir_remove(struct dir *dir, const char *name) {
         /* Criteria for deleting a directory:
            - dir must be empty to be deleted.
            - dir must not be in use as working directory or in a process. */
-        if (!is_empty_dir(inode) || is_pinned_dir(inode)) {
+        if (!is_empty_dir(inode) || get_in_use(inode) > 0) {
             return false;
         }
     }
@@ -248,19 +248,4 @@ bool is_empty_dir(struct inode *inode) {
     }
     dir_close(dir);
     return true;
-}
-
-bool is_pinned_dir(struct inode *inode) {
-    ASSERT(is_dir(inode));
-    struct dir *dir = dir_open(inode);
-    int pin_count = dir->pin_count;
-    dir_close(dir);
-    return pin_count > 1; /* Discount the pin we added when opening */
-}
-
-void pin_cwd(struct inode *inode) {
-
-}
-void unpin_cwd(struct inode *inode) {
-
 }

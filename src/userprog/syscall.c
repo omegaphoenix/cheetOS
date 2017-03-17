@@ -741,7 +741,13 @@ bool sys_chdir (const char *dir) {
         return false;
     }
     // might need to close old directory?
+    if (cur->cur_dir_inode != NULL) {
+        dec_in_use(cur->cur_dir_inode);
+        //printf("chdir (inode %x) dec_in_use = %d\n", cur->cur_dir_inode, get_in_use(cur->cur_dir_inode));
+    }
     cur->cur_dir_inode = inode;
+    inc_in_use(cur->cur_dir_inode);
+    //printf("chdir (inode %x) inc_in_use = %d\n", cur->cur_dir_inode, get_in_use(cur->cur_dir_inode));
     free(dir_copy);
     return true;
 }

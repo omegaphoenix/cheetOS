@@ -29,6 +29,9 @@ off_t inode_length(const struct inode *);
 #ifdef CACHE
 bool is_dir(const struct inode *inode);
 void set_dir(struct inode *inode, bool is_dir);
-#endif 
+int get_in_use(struct inode *inode);
+void inc_in_use(struct inode *inode);
+void dec_in_use(struct inode *inode);
+#endif
 
 #endif /* filesys/inode.h */

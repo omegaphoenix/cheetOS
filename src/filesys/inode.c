@@ -43,6 +43,7 @@ struct inode {
 
 #ifdef CACHE
     bool is_dir;                        /*!< Directory or normal file. */
+    int in_use;                         /*!< Number of files/dirs open. */
 #endif
 };
 
@@ -425,6 +426,7 @@ struct inode * inode_open(block_sector_t sector) {
     inode->deny_write_cnt = 0;
     inode->removed = false;
     inode->is_dir = false; // fix this?
+    inode->in_use = 0; // only increment when corresponding file/dir is opened
     read_from_cache(inode->sector, &inode->data);
     return inode;
 }
@@ -576,6 +578,22 @@ bool is_dir(const struct inode *inode) {
 /* Sets inode's is_dir flag to specified bool. */
 void set_dir(struct inode *inode, bool is_dir) {
     inode->is_dir = is_dir;
+}
+
+/* Returns number of times inode has been opened as a file/dir. */
+int get_in_use(struct inode *inode) {
+    return inode->in_use;
+}
+
+/* Increments inode->in_use. */
+void inc_in_use(struct inode *inode) {
+    inode->in_use++;
+}
+
+/* Decrement inode->in_use. */
+void dec_in_use(struct inode *inode) {
+    inode->in_use--;
+    ASSERT(inode->in_use >= 0);
 }
 #endif
 
