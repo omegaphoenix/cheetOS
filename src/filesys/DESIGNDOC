@@ -97,10 +97,36 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+struct inode {
+    ...
+    bool is_dir;                        /*!< Directory or normal file. */
+    int in_use;                         /*!< Number of files/dirs open. */
+}
+is_dir is used to distinguish between files and directories.
+in_use stores a count of how many times the inode has been opened as a file/dir.
+
+struct thread {
+    ...
+    struct inode *cur_dir_inode;               /*!< Current directory inode. */
+}
+cur_dir_inode stores the inode of the thread's current working directory.
+
 ---- ALGORITHMS ----
 
 >> B2: Describe your code for traversing a user-specified path.  How
 >> do traversals of absolute and relative paths differ?
+
+Parsing is done with this function:
+    bool parse_path(char *path, struct dir **dir, char **name);
+
+Given a PATH, parse_path() stores the file (or directory) name in NAME and the
+file's parent directory in DIR. When called, the function first checks the first
+character of the path to determine whether the path is absolute or relative. If
+it is absolute, we open the root directory; otherwise, we open the current
+working directory. Then, we tokenize PATH using the delimiter "/". For each
+token, we attempt to open the parent directory and find a file/dir whose name
+matches the token. If any directory is NULL at any point along the path, we
+return false to indicate that the path is invalid.
 
 ---- SYNCHRONIZATION ----
 
@@ -109,15 +135,27 @@ which parts.
 >> should succeed, as should only one of two simultaneous attempts to
 >> create a file with the same name, and so on.
 
+// TODO
+Each directory has its own lock, and all I/O operations within the same
+directory are locked.
+
 >> B5: Does your implementation allow a directory to be removed if it
 >> is open by a process or if it is in use as a process's current
 >> working directory?  If so, what happens to that process's future
 >> file system operations?  If not, how do you prevent it?
 
+No, a directory that is in use as a current working directory cannot be removed.
+When an attempt is made to remove a directory, we reject it if IN_USE > 0.
+
 ---- RATIONALE ----
 
 >> B6: Explain why you chose to represent the current directory of a
 >> process the way you did.
+
+Each thread stores its own current directory; this makes it straightforward for
+a child thread to inherit parent thread's current working directory. We chose to
+store the inode of the directory because when working with the cwd, we access
+inode metadata more often than dir metadata.
 
 			     BUFFER CACHE
 			     ============
