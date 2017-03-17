@@ -35,6 +35,8 @@ Thanks!
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
 
+Wikipedia - Readers-writer lock
+
 ---- LOGISTICS ----
 
 These questions will help us to keep track of the difficulty level of
@@ -281,6 +283,15 @@ To also protect the cache table, we had to use a lock:
 
 /* Global lock for protecting cache table. */
 static struct lock cache_lock;
+
+struct rw_lock {
+  struct lock read_lock;        /*!< Used by readers. */
+  int num_readers;              /*!< Number of blocking readers. */
+  struct condition read_cond;   /*!< Condition to signal all readers. */
+  struct condition write_cond;  /*!< Condition to signal writers. */
+  enum rw_state state;          /*!< State lock is currently in. */
+};
+
 
 ---- ALGORITHMS ----
 
