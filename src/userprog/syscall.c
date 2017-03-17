@@ -5,9 +5,13 @@
 #include <user/syscall.h>
 #include "devices/input.h"
 #include "devices/shutdown.h"
+#include "filesys/directory.h"
+#include "filesys/inode.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "filesys/free-map.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -50,6 +54,15 @@ mapid_t sys_mmap(int fd, void *addr);
 void sys_munmap(mapid_t mapping);
 #endif
 
+#ifdef CACHE
+/* File system */
+bool sys_chdir (const char *dir);
+bool sys_mkdir (const char *dir);
+bool sys_readdir (int fd, char *name);
+bool sys_isdir (int fd);
+int sys_inumber (int fd);
+#endif
+
 /* User memory access */
 static int get_user(const uint8_t *uaddr);
 static bool put_user (uint8_t *udst, uint8_t byteput);
@@ -69,6 +82,7 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
     unsigned int *size, *initial_size, *position;
     char **cmd_line;
     char **file;
+    char **dir, **name;
 
     if (f == NULL || !valid_read_addr(f->esp)) {
         sys_exit(ERR);
@@ -151,6 +165,29 @@ static void syscall_handler(struct intr_frame *f UNUSED) {
         case SYS_MUNMAP:
             mapping = (mapid_t *) get_first_arg(f);
             sys_munmap(*mapping);
+            break;
+#endif
+#ifdef CACHE
+        case SYS_CHDIR:
+            dir = get_first_arg(f);
+            f->eax = sys_chdir(*dir);
+            break;
+        case SYS_MKDIR:
+            dir = get_first_arg(f);
+            f->eax = sys_mkdir(*dir);
+            break;
+        case SYS_READDIR:
+            fd = (int *) get_first_arg(f);
+            name = get_second_arg(f);
+            f->eax = sys_readdir(*fd, *name);
+            break;
+        case SYS_ISDIR:
+            fd = (int *) get_first_arg(f);
+            f->eax = sys_isdir(*fd);
+            break;
+        case SYS_INUMBER:
+            fd = (int *) get_first_arg(f);
+            f->eax = sys_inumber(*fd);
             break;
 #endif
         default:
@@ -570,7 +607,7 @@ void sys_close(int fd) {
 
 #ifdef VM
 /*! Maps the file open as FD into the process's virtual address space.
-    The entire file is mapped as consecutive pages starting at ADDR. 
+    The entire file is mapped as consecutive pages starting at ADDR.
     Returns mapping id that is unique within the process, or -1 on failure. */
 mapid_t sys_mmap (int fd, void *addr) {
     struct thread *cur = thread_current();
@@ -629,6 +666,7 @@ mapid_t sys_mmap (int fd, void *addr) {
     return add_mmap(cur, addr, fd, mapping);
 }
 
+/*! Unmaps mmapped file by writing file back to disk and evicting frame. */
 void sys_munmap (mapid_t mapping) {
     struct thread *cur = thread_current();
 
@@ -667,6 +705,125 @@ void sys_munmap (mapid_t mapping) {
     /* Remove entry from list of mmap files */
     remove_mmap(cur, mapping);
 
+}
+#endif
+
+#ifdef CACHE
+/*! Changes the current working directory of the process to DIR, which may be
+    relative or absolute. Returns true if successful, false on failure. */
+bool sys_chdir (const char *dir) {
+    bool success = false;
+    char *name = NULL;
+    struct dir *parent_dir = NULL;
+    struct inode *inode = NULL;
+    struct thread *cur = thread_current();
+
+    /* Copy path to be safe */
+    char *dir_copy = calloc(MAX_PATH_SIZE, 1);
+    if (dir_copy == NULL) {
+        return false;
+    }
+    strlcpy(dir_copy, dir, strlen(dir) + 1);
+
+    if (!(parse_path(dir_copy, &parent_dir, &name))) {
+        //printf("sys_chdir(): invalid path\n"); //debug
+        return false;
+    }
+    //printf("sys_chdir(): finished parsing path\n");
+
+    if (parent_dir != NULL) {
+        success = dir_lookup(parent_dir, name, &inode);
+    }
+    dir_close(parent_dir);
+
+    if (!success || !is_dir(inode)) {
+        free(dir_copy);
+        return false;
+    }
+    // might need to close old directory?
+    cur->cur_dir_inode = inode;
+    free(dir_copy);
+    return true;
+}
+
+/*! Creates the directory named DIR, which may be relative or absolute.
+    Returns true if successful, false on failure. Fails if DIR already exists
+    or if any directory name in DIR, besides the last, doesn't already exist. */
+bool sys_mkdir (const char *dir) {
+    //printf("mkdir begins...making %s\n", dir);
+    block_sector_t inode_sector = 0;
+    bool success = false;
+    char *name = NULL;
+    struct dir *parent_dir = NULL;
+    struct inode *inode = NULL;
+
+    /* Copy path to be safe */
+    char *dir_copy = calloc(MAX_PATH_SIZE, 1);
+    if (dir_copy == NULL) {
+        return false;
+    }
+    strlcpy(dir_copy, dir, strlen(dir) + 1);
+    bool valid_path = parse_path(dir_copy, &parent_dir, &name);
+    //printf("directory name is %s\n", name);
+
+    //printf("valid_path = %d\n", valid_path);
+
+    if (valid_path) {
+        success = (dir != NULL &&
+            free_map_allocate(1, &inode_sector) &&
+            dir_create(inode_sector, NUM_ENTRIES) &&
+            dir_add(parent_dir, name, inode_sector));
+
+        /* Do subdirectory setup */
+        if (success) {
+            inode = inode_open(inode_sector);
+            set_dir(inode, true);
+        }
+
+        if (!success && inode_sector != 0)
+            free_map_release(inode_sector, 1);
+        dir_close(parent_dir);
+        //printf("mkdir ends: %d\n", success);
+        free(dir_copy);
+        return success;
+    }
+    //printf("invalid mkdir path!\n");
+    free(dir_copy);
+    return false;
+}
+
+/*! Reads a directory entry from file descriptor FD, which must represent a
+    directory. If successful, stores the null-terminated file name in NAME,
+    which must have room for READDIR_MAX_LEN + 1 bytes, and returns true.
+    If no entries are left in the directory, returns false. */
+bool sys_readdir (int fd, char *name) {
+    struct file *file = get_fd(thread_current(), fd);
+    struct inode *inode = file_get_inode(file);
+    if (!is_dir(inode)) {
+        return false;
+    }
+
+    /* Open as directory */
+    struct dir *dir = dir_open(inode);
+
+    return dir_readdir(dir, name);
+
+}
+
+/*! Returns true if fd represents a directory, false if it represents an
+    ordinary file.*/
+bool sys_isdir (int fd) {
+    struct file *file = get_fd(thread_current(), fd);
+    struct inode *inode = file_get_inode(file);
+    return is_dir(inode);
+}
+
+/*! Returns the inode number of the inode associated with fd, which may
+    represent an ordinary file or a directory. */
+int sys_inumber (int fd) {
+    struct file *file = get_fd(thread_current(), fd);
+    struct inode *inode = file_get_inode(file);
+    return inode_get_inumber(inode);
 }
 #endif
 
