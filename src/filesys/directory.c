@@ -5,11 +5,13 @@
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
+#include "threads/synch.h"
 
 /*! A directory. */
 struct dir {
     struct inode *inode;                /*!< Backing store. */
     off_t pos;                          /*!< Current position. */
+    struct lock dir_lock;               /*!< Lock for I/O operations. */
 };
 
 /*! A single directory entry. */
@@ -19,11 +21,18 @@ struct dir_entry {
     bool in_use;                        /*!< In use or free? */
 };
 
+static void acquire_dir_lock(struct dir *dir) {
+    lock_acquire(&dir->dir_lock);
+}
+
+static void release_dir_lock(struct dir *dir) {
+    lock_release(&dir->dir_lock);
+}
+
 /*! Creates a directory with space for ENTRY_CNT entries in the
     given SECTOR.  Returns true if successful, false on failure. */
 bool dir_create(block_sector_t sector, size_t entry_cnt) {
     return inode_create(sector, entry_cnt * sizeof(struct dir_entry));
-    // add initialization here?
 }
 
 /*! Opens and returns the directory for the given INODE, of which
@@ -33,6 +42,7 @@ struct dir * dir_open(struct inode *inode) {
     if (inode != NULL && dir != NULL) {
         dir->inode = inode;
         dir->pos = 0;
+        lock_init(&dir->dir_lock);
         inc_in_use(dir->inode);
         return dir;
     }
@@ -119,7 +129,6 @@ bool dir_lookup(const struct dir *dir, const char *name, struct inode **inode) {
     Fails if NAME is invalid (i.e. too long) or a disk or memory
     error occurs. */
 bool dir_add(struct dir *dir, const char *name, block_sector_t inode_sector) {
-
     struct dir_entry e;
     off_t ofs;
     bool success = false;
@@ -131,6 +140,7 @@ bool dir_add(struct dir *dir, const char *name, block_sector_t inode_sector) {
     if (*name == '\0' || strlen(name) > NAME_MAX)
         return false;
 
+    acquire_dir_lock(dir);
     /* Check that NAME is not in use. */
     if (lookup(dir, name, NULL, NULL))
         goto done;
@@ -138,7 +148,7 @@ bool dir_add(struct dir *dir, const char *name, block_sector_t inode_sector) {
     /* Set OFS to offset of free slot.
        If there are no free slots, then it will be set to the
        current end-of-file.
-     
+
        inode_read_at() will only return a short read at end of file.
        Otherwise, we'd need to verify that we didn't get a short
        read due to something intermittent such as low memory. */
@@ -155,6 +165,7 @@ bool dir_add(struct dir *dir, const char *name, block_sector_t inode_sector) {
     success = inode_write_at(dir->inode, &e, sizeof(e), ofs) == sizeof(e);
 
 done:
+    release_dir_lock(dir);
     return success;
 }
 
@@ -169,6 +180,7 @@ bool dir_remove(struct dir *dir, const char *name) {
     ASSERT(dir != NULL);
     ASSERT(name != NULL);
 
+    acquire_dir_lock(dir);
     /* Find directory entry. */
     if (!lookup(dir, name, &e, &ofs))
         goto done;
@@ -184,7 +196,8 @@ bool dir_remove(struct dir *dir, const char *name) {
            - dir must be empty to be deleted.
            - dir must not be in use as working directory or in a process. */
         if (!is_empty_dir(inode) || get_in_use(inode) > 0) {
-            return false;
+            success = false;
+            goto done;
         }
     }
 
@@ -199,22 +212,26 @@ bool dir_remove(struct dir *dir, const char *name) {
 
 done:
     inode_close(inode);
+    release_dir_lock(dir);
     return success;
 }
 
 /*! Reads the next directory entry in DIR and stores the name in NAME.  Returns
-    true if successful, false if the directory contains no more entries. 
+    true if successful, false if the directory contains no more entries.
     Ignore "." and ".." entries. */
 bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
     struct dir_entry e;
 
+    acquire_dir_lock(dir);
     while (inode_read_at(dir->inode, &e, sizeof(e), dir->pos) == sizeof(e)) {
         dir->pos += sizeof(e);
         if (e.in_use && strcmp(e.name, ".") && strcmp(e.name, "..")) {
             strlcpy(name, e.name, NAME_MAX + 1);
+            release_dir_lock(dir);
             return true;
-        } 
+        }
     }
+    release_dir_lock(dir);
     return false;
 }
 
