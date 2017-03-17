@@ -45,14 +45,14 @@ which parts.
    Make sure that each member's total time is listed.
 
   Justin Leong: 33:43:33 (hh/mm/ss)
-  John Li:
+  John Li: 29-30 hours
   Christina Lin: 33-34 hours
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
 
   Justin Leong: Buffer cache, read-ahead, write-behind, debugging VM
-  John Li:
+  John Li: Buffer cache, file extension and inode refactor.
   Christina Lin: Subdirectories (including current directory and
   parsing/navigating directory paths)
 
@@ -65,8 +65,63 @@ which parts.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+INODE REFACTOR:
+
+We changed the inode_disk struct to be the following:
+
+/*! On-disk inode.
+    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
+struct inode_disk {
+    block_sector_t direct_blocks[DIRECT_BLOCK_COUNT];   /*!< Number of direct blocks. */
+    block_sector_t indirect_block;                      /*!< Index for indirect block */
+    block_sector_t double_indirect_block;               /*!< Index for double indirect block */
+
+    off_t length;                                       /*!< File size in bytes. */
+    unsigned magic;                                     /*!< Magic number. */
+};
+
+For the inode, we have the following:
+/*! In-memory inode. */
+struct inode {
+    struct list_elem elem;              /*!< Element in inode list. */
+    block_sector_t sector;              /*!< Sector number of disk location. */
+    int open_cnt;                       /*!< Number of openers. */
+    bool removed;                       /*!< True if deleted, false otherwise. */
+    int deny_write_cnt;                 /*!< 0: writes ok, >0: deny writes. */
+
+#ifdef CACHE
+    bool is_dir;                        /*!< Directory or normal file. */
+    int in_use;                         /*!< Number of files/dirs open. */
+    struct lock node_lock;              /*!< Locking for file extension */
+#endif
+};
+
+Note that we removed the inode_disk attribute from inode, because we store 
+data in the cache now. 
+
+INDEXING:
+
+  Because we are using indirect blocks, we also created a struct to
+represent an indirect block:
+
+struct indirect_block {
+    block_sector_t blocks[TOTAL_SECTOR_COUNT];          /*!< Number of indirect blocks */
+};
+
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
+
+Work for this is found in inode.h:
+
+/* Each inode_disk will have 124 direct, 1 indirect, and 1 double indirect
+ * 124 direct indices + 128 indirect indices + 128 ^ 2 double indirect indices
+ * = 16636 indices > 16384 */
+#define DIRECT_BLOCK_COUNT 124
+#define TOTAL_SECTOR_COUNT 128
+
+Since we have 16636 indices, we can then support up to 8.124 megabytes:
+16636 indices * 512 bytes (BLOCK_SECTOR_SIZE) = 8518656 bytes
+8518656 bytes = 8.124 megabytes.
 
 ---- SYNCHRONIZATION ----
 
@@ -114,6 +169,14 @@ By alternating readers and writers, file access is guaranteed to be "fair".
 >> indirect blocks?  If not, why did you choose an alternative inode
 >> structure, and what advantages and disadvantages does your
 >> structure have, compared to a multilevel index?
+
+Yes, this is a multilevel indexed inode structure. We wished to meet 
+the requirements of holding an 8MB file using the fewest number
+of indirect and doubly indirect blocks, because dealing with these
+blocks makes the problem much more complex. The set requirement 
+required us to have at least one indirect and one doubly indirect.
+Given this constraint, we then calculated to see if this would satisfy
+the size requirement, and it did.
 
 			    SUBDIRECTORIES
 			    ==============
@@ -191,6 +254,33 @@ inode metadata more often than dir metadata.
 >> C1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+
+Our cache_sector struct looks like the following: 
+
+struct cache_sector {
+    block_sector_t sector_idx;          /*!< Sector index on filesys block. */
+    bool valid;                         /*!< True if sector is used. False when evicted. */
+    bool evicting;                      /*!< True if sector is being evicted. */
+    bool accessed;                      /*!< Sector access level. */
+    bool dirty;                         /*!< Boolean if sector is dirty. */
+    struct list_elem cache_list_elem;   /*!< Makes it part of an eviction list. */
+    uint8_t sector[BLOCK_SECTOR_SIZE];  /*!< Each sector is 512 bytes. */
+    struct rw_lock read_write_lock;     /*!< For synchronizing readers/writers. */
+    struct lock block_lock;             /*!< Lock for using block. */
+    int pin_count;                      /*!< Pin to prevent eviction. */
+};
+
+These sectors are stored in two data structures: an array and also a list. The list
+purpose is for the clock algorithm for eviction. The array purpose is for lookup.
+
+static struct cache_sector cache_buffer[MAX_BUFFER_SIZE];
+/* List for clock eviction. */
+static struct list cache_list;
+
+To also protect the cache table, we had to use a lock:
+
+/* Global lock for protecting cache table. */
+static struct lock cache_lock;
 
 ---- ALGORITHMS ----
 
