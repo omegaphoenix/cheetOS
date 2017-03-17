@@ -41,6 +41,10 @@ void filesys_init(bool format) {
 
 /*! Shuts down the file system module, writing any unwritten data to disk. */
 void filesys_done(void) {
+    /* Let write-behind and read-ahead threads know they can finish. */
+    filesys_done_wait = true;
+    sema_up(&read_ahead_sema);
+    timer_sleep(TIMER_FREQ);
     write_all_dirty();
     free_map_close();
 }

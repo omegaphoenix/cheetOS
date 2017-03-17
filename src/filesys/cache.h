@@ -13,6 +13,11 @@
 
 #define MAX_BUFFER_SIZE 64
 
+/* Flag which indicates that filesys_done has been called. */
+bool filesys_done_wait;
+struct semaphore read_ahead_sema;
+
+
 /* We would like our cache sector to be in a list for
    easier eviction. We will use sector index as the key. */
 struct cache_sector {

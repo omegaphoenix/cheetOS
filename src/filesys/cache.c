@@ -16,7 +16,6 @@ static struct list cache_list;
 
 /* List for read_ahead. */
 static struct list read_ahead_list;
-static struct semaphore read_ahead_sema;
 
 /* Points to list_elem that is to be checked for eviction. */
 static struct list_elem *clock_hand;
@@ -71,6 +70,7 @@ void cache_table_init(void) {
     lock_init(&cache_lock);
     acquire_cache_lock();
     clock_hand = NULL;
+    filesys_done_wait = false;
     int i;
     for (i = 0; i < MAX_BUFFER_SIZE; i++) {
         cache_buffer[i].sector_idx = 0;
@@ -84,9 +84,9 @@ void cache_table_init(void) {
     release_cache_lock();
 
     /* Spawn write-behind child. */
-    // thread_create("write-behind", PRI_DEFAULT, write_behind, NULL);
+    thread_create("write-behind", PRI_DEFAULT, write_behind, NULL);
     /* Spawn read-ahead child. */
-    // thread_create("read-ahead", PRI_DEFAULT, read_ahead_loop, NULL);
+    thread_create("read-ahead", PRI_DEFAULT, read_ahead_loop, NULL);
 }
 
 static void pin(int array_idx) {
@@ -215,9 +215,9 @@ static void cache_evict(void) {
 }
 
 static void write_behind(void *arg_ UNUSED) {
-    while (true) {
-        timer_sleep(100 * TIMER_FREQ);
+    while (!filesys_done_wait) {
         write_all_dirty();
+        timer_sleep(TIMER_FREQ);
     }
 }
 
@@ -240,8 +240,8 @@ static void cache_write_to_disk(int array_idx) {
         begin_write(&cache_buffer[array_idx].read_write_lock);
         block_write(fs_device, cache_buffer[array_idx].sector_idx,
                 cache_buffer[array_idx].sector);
-        end_write(&cache_buffer[array_idx].read_write_lock);
         cache_buffer[array_idx].dirty = false;
+        end_write(&cache_buffer[array_idx].read_write_lock);
     }
 }
 
@@ -253,8 +253,8 @@ static void cache_write_sector_to_disk(int sector_idx) {
     if (cache_buffer[array_idx].valid && cache_buffer[array_idx].dirty) {
         begin_write(&cache_buffer[array_idx].read_write_lock);
         block_write(fs_device, sector_idx, cache_buffer[array_idx].sector);
-        end_write(&cache_buffer[array_idx].read_write_lock);
         cache_buffer[array_idx].dirty = false;
+        end_write(&cache_buffer[array_idx].read_write_lock);
     }
 }
 
@@ -300,6 +300,9 @@ static int cache_get_free(void) {
 }
 
 static void add_to_read_ahead(block_sector_t sector_idx) {
+    if (sector_idx >= block_size(fs_device)) {
+        return;
+    }
     struct read_ahead_sector *new_elem =
         malloc(sizeof(struct read_ahead_sector));
     new_elem->sector_idx = sector_idx;
@@ -308,15 +311,16 @@ static void add_to_read_ahead(block_sector_t sector_idx) {
 }
 
 static void read_ahead_loop(void *arg_ UNUSED) {
-    while (true) {
+    while (!filesys_done_wait) {
         sema_down(&read_ahead_sema);
         acquire_cache_lock();
-        ASSERT(list_size(&read_ahead_list) > 0);
-        struct list_elem *cur_elem = list_pop_front(&read_ahead_list);
-        struct read_ahead_sector *sect_elem =
-            list_entry(cur_elem, struct read_ahead_sector, ra_elem);
-        read_ahead(sect_elem->sector_idx);
-        free(sect_elem);
+        if (list_size(&read_ahead_list) > 0) {
+            struct list_elem *cur_elem = list_pop_front(&read_ahead_list);
+            struct read_ahead_sector *sect_elem =
+                list_entry(cur_elem, struct read_ahead_sector, ra_elem);
+            read_ahead(sect_elem->sector_idx);
+            free(sect_elem);
+        }
         release_cache_lock();
         sema_up(&read_ahead_sema);
     }
