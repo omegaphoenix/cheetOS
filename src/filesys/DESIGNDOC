@@ -46,7 +46,7 @@ which parts.
 
   Justin Leong:
   John Li:
-  Christina Lin: 27-28 hours
+  Christina Lin: 33-34 hours
 
 >> L2: What did each team member focus on for this assignment?  Keep
    descriptions to 25-30 words or less.
@@ -162,9 +162,8 @@ return false to indicate that the path is invalid.
 >> should succeed, as should only one of two simultaneous attempts to
 >> create a file with the same name, and so on.
 
-// TODO
-Each directory has its own lock, and all I/O operations within the same
-directory are locked.
+Each directory has its own lock, and all operations that involve reading and
+writing directory entries within the same directory are locked.
 
 >> B5: Does your implementation allow a directory to be removed if it
 >> is open by a process or if it is in use as a process's current
