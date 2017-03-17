@@ -24,6 +24,7 @@ void filesys_init(bool format) {
         PANIC("No file system device found, can't initialize file system.");
 
     inode_init();
+    directory_init();
     free_map_init();
 
     if (format)
@@ -31,7 +32,7 @@ void filesys_init(bool format) {
 
     free_map_open();
 
-    /* Init current directory for current thread -- not sure this is the right place to put it*/
+    /* Init current directory for current thread */
     struct inode *inode = inode_open(ROOT_DIR_SECTOR);
     thread_current()->cur_dir_inode = inode;
     inc_in_use(inode);

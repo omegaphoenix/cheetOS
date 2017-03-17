@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <list.h>
+#include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
@@ -12,6 +13,8 @@ struct dir {
     struct inode *inode;                /*!< Backing store. */
     off_t pos;                          /*!< Current position. */
     struct lock dir_lock;               /*!< Lock for I/O operations. */
+    struct list_elem elem;              /*!< Element in inode list. */
+    int open_cnt;                       /*!< Number of times dir has been opened. */
 };
 
 /*! A single directory entry. */
@@ -29,6 +32,16 @@ static void release_dir_lock(struct dir *dir) {
     lock_release(&dir->dir_lock);
 }
 
+/*! List of open directories, so that opening a single directory twice
+    returns the same `struct dir'. */
+static struct list open_dirs;
+
+/*! Initializes the inode module. */
+void directory_init(void) {
+    list_init(&open_dirs);
+    printf("THERE ARE %d dirs in open_dirs\n", list_size(&open_dirs));
+}
+
 /*! Creates a directory with space for ENTRY_CNT entries in the
     given SECTOR.  Returns true if successful, false on failure. */
 bool dir_create(block_sector_t sector, size_t entry_cnt) {
@@ -38,11 +51,28 @@ bool dir_create(block_sector_t sector, size_t entry_cnt) {
 /*! Opens and returns the directory for the given INODE, of which
     it takes ownership.  Returns a null pointer on failure. */
 struct dir * dir_open(struct inode *inode) {
-    struct dir *dir = calloc(1, sizeof(*dir));
+    struct list_elem *e;
+    struct dir *dir;
+
+    /* Check if inode is already open as dir */
+    for (e = list_begin(&open_dirs); e != list_end(&open_dirs);
+         e = list_next(e)) {
+        dir = list_entry(e, struct dir, elem);
+        if (dir_get_inode(dir) == inode) {
+            dir->open_cnt++;
+            inc_in_use(inode);
+            return dir;
+        }
+    }
+
+    /* Couldn't find open dir. */
+    dir = calloc(1, sizeof(*dir));
     if (inode != NULL && dir != NULL) {
+        list_push_front(&open_dirs, &dir->elem);
         dir->inode = inode;
         dir->pos = 0;
         lock_init(&dir->dir_lock);
+        dir->open_cnt++;
         inc_in_use(dir->inode);
         return dir;
     }
@@ -69,8 +99,14 @@ struct dir * dir_reopen(struct dir *dir) {
 void dir_close(struct dir *dir) {
     if (dir != NULL) {
         dec_in_use(dir->inode);
-        inode_close(dir->inode);
-        free(dir);
+        dir->open_cnt--;
+        if(dir->open_cnt == 0) {
+            /* Release resources if this was the last opener. */
+            list_remove(&dir->elem);
+            inode_close(dir->inode);
+            free(dir);
+        }
+
     }
 }
 
