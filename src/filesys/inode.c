@@ -533,8 +533,7 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
 /*! Writes SIZE bytes from BUFFER into INODE, starting at OFFSET.
     Returns the number of bytes actually written, which may be
     less than SIZE if end of file is reached or an error occurs.
-    (Normally a write at end of file would extend the inode, but
-    growth is not yet implemented.) */
+    A write at end of file will extend the inode. */
 
 off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t offset) {
     const uint8_t *buffer = buffer_;
@@ -545,14 +544,19 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size, off_t
 
     /* If I write past EOF, expand file */
     if (inode->data.length < offset + size) {
-        /* Expand the file */
+        /* Use double check locking. */
         extension_lock_acquire(inode);
-        inode->data.length = size + offset;
-        if (!inode_allocate_free_map(&inode->data))
-            return bytes_written;
+        if (((volatile int) inode->data.length) < offset + size) {
+            /* Expand the file */
+            inode->data.length = size + offset;
+            if (!inode_allocate_free_map(&inode->data)) {
+                extension_lock_release(inode);
+                return bytes_written;
+            }
 
-        /* Editted inode, write back to sector */
-        write_to_cache(inode->sector, &inode->data);
+            /* Editted inode, write back to sector */
+            write_to_cache(inode->sector, &inode->data);
+        }
         extension_lock_release(inode);
     }
 
@@ -605,6 +609,10 @@ off_t inode_length(const struct inode *inode) {
 }
 
 #ifdef CACHE
+bool inode_is_removed(const struct inode *inode) {
+    return inode->removed;
+}
+
 bool file_is_dir(struct file *open_file) {
     struct inode *inode = file_get_inode(open_file);
     return is_dir(inode);
