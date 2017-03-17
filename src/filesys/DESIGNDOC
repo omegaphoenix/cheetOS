@@ -44,7 +44,7 @@ which parts.
 >> L1: How many hours did each team member spend on this assignment?
    Make sure that each member's total time is listed.
 
-  Justin Leong:
+  Justin Leong: 33:43:33 (hh/mm/ss)
   John Li:
   Christina Lin: 33-34 hours
 
@@ -231,13 +231,33 @@ is set to false right before the filesystem up's the semaphore.
 >> buffer cache block, how are other processes prevented from evicting
 >> that block?
 
+The block is pinned as soon as it is accessed so the eviction algorithm will
+not choose that block since it skips pinned blocks. A cache_lock is acquired
+before pinning and eviction to avoid race conditions where the cache sector
+is pinned right after the eviction algorithm checks if it is pinnned.
+
 >> C6: During the eviction of a block from the cache, how are other
 >> processes prevented from attempting to access the block?
+
+As soon as a block is chosen for eviction, it's evicting flag is set to true
+so it cannot be accessed. In addition a lock is acquired when choosing a
+lock for eviction and evicting so no new process will be able to get a
+block until after eviction is complete.
 
 ---- RATIONALE ----
 
 >> C7: Describe a file workload likely to benefit from buffer caching,
 >> and workloads likely to benefit from read-ahead and write-behind.
+
+A file workload that repeatedly accessed the same sector would benefit from
+buffer caching.
+A file workload that reads sequentially and does I/O after reading each sector
+or part of a sector would benefit from read-ahead since the next sector could
+be read in during the I/O operation.
+Anything that modifies the same sectors in cache a lot and then crashes could
+benefit from write-behind since this will periodically save the progress.
+In addition, even if it doesn't crash, time is saved from modifying the
+data in cache as opposed to writing out to disk every time.
 
 			   SURVEY QUESTIONS
 			   ================
