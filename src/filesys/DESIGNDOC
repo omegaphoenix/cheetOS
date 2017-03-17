@@ -198,9 +198,33 @@ inode metadata more often than dir metadata.
 >> C2: Describe how your cache replacement algorithm chooses a cache
 >> block to evict.
 
+Our cache replacement algorithm uses the clock algorithm to choose a cache
+block to evict. Every time a sector is added to cache, it is inserted in a
+list before the element the clock hand is pointing to. Then when we need to
+evict, we check each element starting from the clock hand. If it is not
+accessed and not pinned, we can evict it. If it is not pinned and accessed,
+we mark it as not accessed and continue until we find a cache sector that can
+be evicted.
+
 >> C3: Describe your implementation of write-behind.
 
+We start up a thread in the initiation of the filesystem which sleeps for
+TIMER_FREQ timer ticks before iterating through the cache and writing all
+dirty sectors out to disk and marking them as not dirty.  When the filesystem
+exits, it toggles a flag which lets the write-behind loop know that it is
+done. The write-behind loop would then exit the next time it wakes up. Then
+the filesystem writes all dirty pages out to disk one last time.
+
 >> C4: Describe your implementation of read-ahead.
+
+We start up a thread in the initiation of the filesystem which loops until
+the filesystem exit function is called. We have a list of sectors to read
+ahead which is added to every time a new sector is retrieved from disk.
+The loop is blocked on a semaphore which should be down whenever the list
+is empty and which us up'ed when a new sector index is added to the list to
+be retrived.  When the filesystem is finished, it will up the semaphore so
+that the process can finish it's loop and then exit because the loop condition
+is set to false right before the filesystem up's the semaphore.
 
 ---- SYNCHRONIZATION ----
 
