@@ -34,7 +34,6 @@ struct dir * dir_open(struct inode *inode) {
         dir->inode = inode;
         dir->pos = 0;
         inc_in_use(dir->inode);
-        //printf("dir_open %x in_use = %d\n", dir, get_in_use(dir->inode));
         return dir;
     }
     else {
@@ -60,8 +59,8 @@ struct dir * dir_reopen(struct dir *dir) {
 void dir_close(struct dir *dir) {
     if (dir != NULL) {
         dec_in_use(dir->inode);
-        //printf("dir_close %x, in_use = %d\n", dir, get_in_use(dir->inode));
         inode_close(dir->inode);
+        //printf("dir_close %x, in_use = %d, open_cnt = %d\n", dir, get_in_use(dir->inode), get_open_cnt(dir->inode));
         free(dir);
     }
 }
@@ -215,13 +214,14 @@ done:
 }
 
 /*! Reads the next directory entry in DIR and stores the name in NAME.  Returns
-    true if successful, false if the directory contains no more entries. */
+    true if successful, false if the directory contains no more entries. 
+    Ignore "." and ".." entries. */
 bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
     struct dir_entry e;
 
     while (inode_read_at(dir->inode, &e, sizeof(e), dir->pos) == sizeof(e)) {
         dir->pos += sizeof(e);
-        if (e.in_use) {
+        if (e.in_use && strcmp(e.name, ".") && strcmp(e.name, "..")) {
             strlcpy(name, e.name, NAME_MAX + 1);
             return true;
         } 
@@ -229,10 +229,10 @@ bool dir_readdir(struct dir *dir, char name[NAME_MAX + 1]) {
     return false;
 }
 
-
 /* Returns true if directory is empty (other than "." and "..") */
 bool is_empty_dir(struct inode *inode) {
-    struct dir *dir = dir_open(inode);
+    //printf("\nis_empty_dir()? inode %x\n", inode);
+    struct dir *dir = dir_open(inode_reopen(inode)); // hmmm
     struct dir_entry e;
     size_t ofs;
 
@@ -241,6 +241,7 @@ bool is_empty_dir(struct inode *inode) {
 
     for (ofs = 0; inode_read_at(dir->inode, &e, sizeof(e), ofs) == sizeof(e);
          ofs += sizeof(e)) {
+        //printf("e: %s\n", e.name);
         if (e.in_use && strcmp(e.name, ".") && strcmp(e.name, "..")) {
             dir_close(dir);
             return false;
@@ -248,4 +249,27 @@ bool is_empty_dir(struct inode *inode) {
     }
     dir_close(dir);
     return true;
+}
+
+void init_subdir(struct inode *inode, struct dir *parent_dir) {
+    /* Set inode's 'is_dir' to true */
+    set_dir(inode, true);
+    //printf("set inode %x is_dir to true, now it's %d\n", inode, is_dir(inode));
+
+    /* Add "." and ".." directories */
+    struct dir *dir = dir_open(inode_reopen(inode));
+    dir_add(dir, ".", inode_get_inumber(inode)); /* "." points to itself */
+
+    if (inode_get_inumber(inode) == ROOT_DIR_SECTOR) {
+         /* ".." points to itself */
+        dir_add(dir, "..", inode_get_inumber(inode));
+    }
+    else {
+        /* ".." points to parent */
+        dir_add(dir, "..", inode_get_inumber(dir_get_inode(parent_dir)));
+    }
+
+    dir_close(dir);
+    //printf("finished init_subdir of inode %x in dir %x\n", inode, parent_dir);
+    return;
 }

@@ -718,6 +718,12 @@ bool sys_chdir (const char *dir) {
     struct inode *inode = NULL;
     struct thread *cur = thread_current();
 
+    /* Special case: '/' is root, no need to call dir_lookup */
+    if (!strcmp(dir, "/")) {
+        inode = inode_open(ROOT_DIR_SECTOR);
+        goto done;
+    }
+
     /* Copy path to be safe */
     char *dir_copy = calloc(MAX_PATH_SIZE, 1);
     if (dir_copy == NULL) {
@@ -740,7 +746,9 @@ bool sys_chdir (const char *dir) {
         free(dir_copy);
         return false;
     }
-    // might need to close old directory?
+
+done:
+    /* Set new dir */
     if (cur->cur_dir_inode != NULL) {
         dec_in_use(cur->cur_dir_inode);
         //printf("chdir (inode %x) dec_in_use = %d\n", cur->cur_dir_inode, get_in_use(cur->cur_dir_inode));
@@ -782,8 +790,10 @@ bool sys_mkdir (const char *dir) {
 
         /* Do subdirectory setup */
         if (success) {
-            inode = inode_open(inode_sector);
-            set_dir(inode, true);
+            struct inode *inode = inode_open(inode_sector);
+            //printf("inode %x open_cnt = %d\n", inode, get_open_cnt(inode));
+            init_subdir(inode, parent_dir);
+            // close inode?
         }
 
         if (!success && inode_sector != 0)
@@ -810,7 +820,7 @@ bool sys_readdir (int fd, char *name) {
     }
 
     /* Open as directory */
-    struct dir *dir = dir_open(inode);
+    struct dir *dir = dir_open(inode); // reopen?
 
     return dir_readdir(dir, name);
 

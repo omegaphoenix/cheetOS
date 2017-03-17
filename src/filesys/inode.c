@@ -401,6 +401,7 @@ bool inode_create(block_sector_t sector, off_t length) {
     and returns a `struct inode' that contains it.
     Returns a null pointer if memory allocation fails. */
 struct inode * inode_open(block_sector_t sector) {
+    //printf("inode open in process\n");
     struct list_elem *e;
     struct inode *inode;
 
@@ -428,6 +429,7 @@ struct inode * inode_open(block_sector_t sector) {
     inode->is_dir = false; // fix this?
     inode->in_use = 0; // only increment when corresponding file/dir is opened
     read_from_cache(inode->sector, &inode->data);
+    //printf("returning from inode open\n");
     return inode;
 }
 
@@ -452,7 +454,8 @@ void inode_close(struct inode *inode) {
         return;
 
     /* Release resources if this was the last opener. */
-    if (--inode->open_cnt == 0) {
+    if (--inode->open_cnt == 0 && inode->in_use == 0) {
+        //printf("freeing inode %x\n", inode);
         /* Remove from inode list and release lock. */
         list_remove(&inode->elem);
 
@@ -594,6 +597,11 @@ void inc_in_use(struct inode *inode) {
 void dec_in_use(struct inode *inode) {
     inode->in_use--;
     ASSERT(inode->in_use >= 0);
+}
+
+// DEBUGGING PURPOSES
+int get_open_cnt(struct inode *inode) {
+    return inode->open_cnt;
 }
 #endif
 

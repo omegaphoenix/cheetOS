@@ -30,6 +30,13 @@ void filesys_init(bool format) {
         do_format();
 
     free_map_open();
+
+    /* Init current directory for current thread -- not sure this is the right place to put it*/
+    struct inode *inode = inode_open(ROOT_DIR_SECTOR);
+    thread_current()->cur_dir_inode = inode;
+    inc_in_use(inode);
+    init_subdir(inode, NULL);
+
 }
 
 /*! Shuts down the file system module, writing any unwritten data to disk. */
