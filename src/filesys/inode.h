@@ -20,4 +20,9 @@ void inode_deny_write(struct inode *);
 void inode_allow_write(struct inode *);
 off_t inode_length(const struct inode *);
 
+#ifdef CACHE
+bool is_dir(const struct inode *inode);
+void set_dir(struct inode *inode, bool is_dir);
+#endif 
+
 #endif /* filesys/inode.h */

@@ -176,6 +176,10 @@ struct thread {
     uint8_t *esp;                      /*!< esp to pass to page_fault */
 #endif
 
+#ifdef CACHE
+    struct inode *cur_dir_inode;               /*!< Current directory inode. */
+#endif
+
     /*! Owned by thread.c. */
     /**@{*/
     unsigned magic;                     /* Detects stack overflow. */
