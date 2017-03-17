@@ -28,12 +28,12 @@ static void evict(void);
 
 static void *fte_create(void *frame, struct thread *owner);
 
-/* Acquire eviction lock. */
+/*! Acquire frame lock. */
 void acquire_frame_lock(void) {
     lock_acquire(&frame_lock);
 }
 
-/* Release eviction lock. */
+/*! Release frame lock. */
 void release_frame_lock(void) {
     lock_release(&frame_lock);
 }
@@ -106,11 +106,14 @@ struct frame_table_entry *get_frame(void) {
     list. If we reach the end of the list, wrap around to the beginning. */
 static void increment_clock_hand(void) {
     acquire_frame_lock();
-    if (clock_hand == NULL || clock_hand == list_end(&frame_table)) {
+    if (clock_hand == NULL || clock_hand == list_back(&frame_table)) {
         clock_hand = list_begin(&frame_table);
     }
     else {
         clock_hand = list_next(clock_hand);
+    }
+    if (list_size(&frame_table) == 1) {
+        clock_hand = NULL;
     }
     release_frame_lock();
 }
@@ -200,10 +203,11 @@ static void evict_frame(struct frame_table_entry *fte) {
             pin(fte);
             /* If dirty, maybe write */
             struct file *file = page->file_stats->file;
+            size_t bytes = page->file_stats->read_bytes;
             ASSERT(file != NULL);
             off_t offset = page->file_stats->offset;
             acquire_file_lock();
-            file_write_at(file, page->addr, PGSIZE, offset);
+            file_write_at(file, page->addr, bytes, offset);
             release_file_lock();
 
             unpin(fte);

@@ -47,6 +47,28 @@ void cond_wait(struct condition *, struct lock *);
 void cond_signal(struct condition *, struct lock *);
 void cond_broadcast(struct condition *, struct lock *);
 
+enum rw_state {
+  READ,
+  WRITE,
+  NONE,
+  READER_WAIT,
+  WRITER_WAIT,
+};
+
+struct rw_lock {
+  struct lock read_lock;        /*!< Lock to change and access variables. */
+  int num_readers;              /*!< Number of blocking readers. */
+  struct condition read_cond;   /*!< Condition to signal all readers. */
+  struct condition write_cond;  /*!< Condition to signal writers. */
+  enum rw_state state;          /*!< State lock is currently in. */
+};
+
+void rw_lock_init(struct rw_lock *rw);
+void begin_read(struct rw_lock *rw);
+void end_read(struct rw_lock *rw);
+void begin_write(struct rw_lock *rw);
+void end_write(struct rw_lock *rw);
+
 /*! Optimization barrier.
 
    The compiler will not reorder operations across an

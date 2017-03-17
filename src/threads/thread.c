@@ -5,7 +5,10 @@
 #include <stdio.h>
 #include <string.h>
 #include "devices/timer.h"
+#include "filesys/directory.h"
 #include "filesys/file.h"
+#include "filesys/filesys.h"
+#include "filesys/inode.h"
 #include "threads/fixed_point.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
@@ -285,6 +288,14 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     struct thread *parent = thread_current();
     list_push_back(&parent->kids, &t->kid_elem);
     t->parent = parent;
+
+    /* Set current directory to parent's current directory */
+    t->cur_dir_inode = parent->cur_dir_inode;
+    if (t->cur_dir_inode != NULL) {
+        inc_in_use(t->cur_dir_inode);
+    }
+
+
     ASSERT(t->done_sema.value == 1);
     sema_down(&t->done_sema);
 
@@ -296,6 +307,7 @@ tid_t thread_create(const char *name, int priority, thread_func *function,
     if (prev_highest_priority < t->priority) {
         thread_yield();
     }
+
     return tid;
 }
 
@@ -397,6 +409,14 @@ void thread_exit(void) {
         kid->parent = NULL;
         sema_up(&kid->done_sema);
     }
+
+#ifdef CACHE
+    /* Close current directory */
+    if (cur->cur_dir_inode != NULL) { // maybe assert
+        dec_in_use(cur->cur_dir_inode);
+        //inode_close(cur->cur_dir_inode);
+    }
+#endif
 
 #ifdef USERPROG
     process_exit();
@@ -851,10 +871,6 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     t->waited_on = false;
     t->num_files = 0;
     t->parent = NULL;
-#ifdef VM
-    list_init(&t->mappings);
-    t->num_mappings = 0;
-#endif
 
     if (list_empty(&all_list)) {
         t->niceness = 0;  /* Set niceness to 0 on initial thread */
@@ -873,6 +889,14 @@ static void init_thread(struct thread *t, const char *name, int priority) {
     else {
         t->priority = priority;
     }
+
+#ifdef VM
+    list_init(&t->mappings);
+    t->num_mappings = 0;
+#endif
+#ifdef CACHE
+    t->cur_dir_inode = NULL;
+#endif
 
     old_level = intr_disable();
     list_push_back(&all_list, &t->allelem);
