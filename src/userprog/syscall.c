@@ -509,7 +509,7 @@ int sys_write(int fd, void *buffer, unsigned size) {
             ASSERT(success || (page != NULL && page->loaded));
 
             struct file *open_file = get_fd(cur, fd);
-            if (open_file == NULL) {
+            if (open_file == NULL || file_is_dir(open_file)) {
                 sys_exit(ERR);
             }
 
@@ -538,7 +538,7 @@ int sys_write(int fd, void *buffer, unsigned size) {
 #else
         acquire_file_lock();
         struct file *open_file = get_fd(cur, fd);
-        if (open_file == NULL) {
+        if (open_file == NULL || file_is_dir(open_file)) {
             release_file_lock();
             sys_exit(ERR);
         }

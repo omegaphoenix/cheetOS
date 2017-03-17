@@ -2,8 +2,9 @@
 #define FILESYS_INODE_H
 
 #include <stdbool.h>
-#include "filesys/off_t.h"
 #include "devices/block.h"
+#include "filesys/off_t.h"
+#include "filesys/file.h"
 
 /* Each inode_disk will have 126 direct, 1 indirect, and 1 double indirect
  * 124 direct indices + 128 indirect indices + 128 ^ 2 double indirect indices
@@ -27,6 +28,7 @@ void inode_allow_write(struct inode *);
 off_t inode_length(const struct inode *);
 
 #ifdef CACHE
+bool file_is_dir(struct file *open_file);
 bool is_dir(const struct inode *inode);
 void set_dir(struct inode *inode, bool is_dir);
 int get_in_use(struct inode *inode);
