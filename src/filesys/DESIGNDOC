@@ -8,15 +8,15 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Justin Leong <jleong@caltech.edu>
+John Li <jzli@caltech.edu>
+Christina Lin <cylin@caltech.edu>
 
->> Specify how many late tokens you are using on this assignment:  
+>> Specify how many late tokens you are using on this assignment: 0
 
 >> What is the Git repository and commit hash for your submission?
 
-   Repository URL:  
+   Repository URL: https://github.com/omegaphoenix/cheetOS
    commit ...
 
 ---- PRELIMINARIES ----
@@ -27,6 +27,27 @@ FirstName LastName <email@domain.example>
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course instructors.
+
+---- LOGISTICS ----
+
+These questions will help us to keep track of the difficulty level of
+assignments, as well as keeping track of which team members worked on
+which parts.
+
+>> L1: How many hours did each team member spend on this assignment?
+   Make sure that each member's total time is listed.
+
+  Justin Leong:
+  John Li:
+  Christina Lin: 27-28 hours
+
+>> L2: What did each team member focus on for this assignment?  Keep
+   descriptions to 25-30 words or less.
+
+  Justin Leong:
+  John Li:
+  Christina Lin: Subdirectories (including current directory and
+  parsing/navigating directory paths)
 
 		     INDEXED AND EXTENSIBLE FILES
 		     ============================
