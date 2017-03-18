@@ -262,12 +262,6 @@ void sys_exit(int status) {
         e = list_begin(&cur->open_files);
         struct sys_file *open_file =
             list_entry(e, struct sys_file, file_elem);
-        // if (file_is_dir(open_file->file)) {
-        //     /* Try to close directory */
-        //     printf("try to close directory\n");
-        //     struct dir *dir = get_open_dir(file_get_inode(open_file->file));
-        //     dir_close(dir);
-        // }
         sys_close(open_file->fd);
     }
     thread_exit();
@@ -349,7 +343,6 @@ int sys_open(const char *file) {
     release_file_lock();
 
     ASSERT(fd >= CONSOLE_FD || fd == ERR);
-    //printf("opened %s as fd %d\n", file, fd);
     return fd;
 }
 
@@ -790,7 +783,6 @@ bool sys_mkdir (const char *dir) {
         if (success) {
             struct inode *inode = inode_open(inode_sector);
             success = init_subdir(inode, parent_dir);
-            // close inode?
         }
 
         if (!success && inode_sector != 0)
@@ -819,7 +811,7 @@ bool sys_readdir (int fd, char *name) {
     }
 
     /* Open as directory */
-    struct dir *dir = dir_open(inode); // reopen?
+    struct dir *dir = dir_open(inode);
 
     return dir_readdir(dir, name);
 
