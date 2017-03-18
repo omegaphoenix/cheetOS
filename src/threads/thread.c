@@ -413,8 +413,7 @@ void thread_exit(void) {
 #ifdef CACHE
     /* Close current directory */
     if (cur->cur_dir_inode != NULL) { // maybe assert
-        dec_in_use(cur->cur_dir_inode);
-        //inode_close(cur->cur_dir_inode);
+        inode_close(cur->cur_dir_inode);
     }
 #endif
 

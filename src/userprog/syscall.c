@@ -782,8 +782,7 @@ bool sys_mkdir (const char *dir) {
         /* Do subdirectory setup */
         if (success) {
             struct inode *inode = inode_open(inode_sector);
-            init_subdir(inode, parent_dir);
-            // close inode?
+            success = init_subdir(inode, parent_dir);
         }
 
         if (!success && inode_sector != 0)
@@ -812,7 +811,7 @@ bool sys_readdir (int fd, char *name) {
     }
 
     /* Open as directory */
-    struct dir *dir = dir_open(inode); // reopen?
+    struct dir *dir = dir_open(inode);
 
     return dir_readdir(dir, name);
 
